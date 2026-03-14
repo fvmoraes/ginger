@@ -6,78 +6,40 @@
 
   [![Go Reference](https://pkg.go.dev/badge/github.com/fvmoraes/ginger.svg)](https://pkg.go.dev/github.com/fvmoraes/ginger)
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
-  ![Version](https://img.shields.io/badge/version-1.1.3-blue?style=flat)
+  ![Version](https://img.shields.io/badge/version-1.1.4-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
 
 ---
 
-## ⚡ TL;DR — For the Impatient
-
-**Want to start NOW? 3 commands:**
-
-```bash
-# 1. Install
-git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
-
-# 2. Create project
-ginger new my-api && cd my-api && go mod tidy
-
-# 3. Run
-ginger run
-```
-
-**Done!** API running at http://localhost:8080/health
-
-**Create complete CRUD:**
-```bash
-ginger generate crud product
-```
-
-**Add database:**
-```bash
-ginger add postgres
-```
-
-**See everything:** [5-Minute Guide](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
-
----
-
-## ⚡ TL;DR — Para Preguiçosos
-
-**Quer começar AGORA? 3 comandos:**
-
-```bash
-# 1. Instalar
-git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
-
-# 2. Criar projeto
-ginger new minha-api && cd minha-api && go mod tidy
-
-# 3. Rodar
-ginger run
-```
-
-**Pronto!** API rodando em http://localhost:8080/health
-
-**Criar CRUD completo:**
-```bash
-ginger generate crud produto
-```
-
-**Adicionar banco:**
-```bash
-ginger add postgres
-```
-
-**Ver tudo:** [Guia de 5 Minutos](./docs/GETTING_STARTED.md) | [Comandos Rápidos](./docs/QUICK_REFERENCE.md)
-
----
-
-> **Requires Go 1.25+** — Ginger depends on `go.opentelemetry.io/otel v1.42` which sets the minimum Go version to 1.25. All projects scaffolded by `ginger new` also target `go 1.25`.
+> **Requires Go 1.25+** — Ginger depends on `go.opentelemetry.io/otel v1.42` which sets the minimum Go version to 1.25.
 >
-> **Requer Go 1.25+** — O Ginger depende de `go.opentelemetry.io/otel v1.42`, que exige Go 1.25 como versão mínima. Todos os projetos gerados por `ginger new` também usam `go 1.25`.
+> **Requer Go 1.25+** — O Ginger depende de `go.opentelemetry.io/otel v1.42`, que exige Go 1.25 como versão mínima.
+
+---
+
+## ⚡ Quick Start
+
+**3 commands to get started:**
+
+```bash
+# Install CLI
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
+
+# Create and run project
+ginger new my-api && cd my-api && go mod tidy && ginger run
+```
+
+**Your API is now running at** `http://localhost:8080`
+
+**Next steps:**
+```bash
+ginger generate crud product    # Generate complete CRUD
+ginger add postgres             # Add PostgreSQL integration
+```
+
+📖 **Full guide:** [Getting Started (5 min)](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
 
 ---
 
@@ -655,37 +617,6 @@ Production deployment with Docker, Kubernetes, and Helm:
 ---
 
 # 🇧🇷 Português
-
-## ⚡ TL;DR — Para Preguiçosos
-
-**Quer começar AGORA? 3 comandos:**
-
-```bash
-# 1. Instalar
-git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
-
-# 2. Criar projeto
-ginger new minha-api && cd minha-api && go mod tidy
-
-# 3. Rodar
-ginger run
-```
-
-**Pronto!** API rodando em http://localhost:8080/health
-
-**Criar CRUD completo:**
-```bash
-ginger generate crud produto
-```
-
-**Adicionar banco:**
-```bash
-ginger add postgres
-```
-
-**Ver tudo:** [Guia de 5 Minutos](./docs/GETTING_STARTED.md) | [Comandos Rápidos](./docs/QUICK_REFERENCE.md)
-
----
 
 ## O que é o Ginger?
 
