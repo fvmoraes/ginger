@@ -7,7 +7,9 @@ import (
 	"os"
 )
 
-// Run is the CLI entrypoint.
+const version = "0.1.0"
+
+// Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -30,8 +32,8 @@ func Run() {
 		runAdd(args)
 	case "doctor":
 		runDoctor(args)
-	case "version":
-		fmt.Println("ginger version 0.1.0")
+	case "version", "--version", "-v":
+		fmt.Println("ginger version " + version)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -42,36 +44,42 @@ func Run() {
 }
 
 func printUsage() {
-	fmt.Print(`Ginger - Opinionated Go Framework
+	fmt.Print(`Ginger — Agilize e padronize projetos Go
 
 Usage:
   ginger <command> [arguments]
 
 Commands:
   new <name> [--type api|microservice|cli|worker]
-                              Scaffold a new Ginger project
-  run                         Run the application (go run ./cmd/app)
-  build                       Build the application binary
-  generate handler <name>     Generate a new HTTP handler
-  generate service <name>     Generate a new service
-  generate repository <name>  Generate a new repository
+                              Scaffold a new project
+  run                         Run the app  (go run ./cmd/app)
+  build [output]              Build the binary
+  generate handler  <name>    Generate an HTTP handler
+  generate service  <name>    Generate a service
+  generate repository <name>  Generate a repository
   generate crud <name>        Generate full CRUD (model+handler+service+repo+test)
-  add <integration>           Add an integration (postgres|redis|kafka|otel|prometheus)
-  doctor                      Diagnose project health and best practices
-  version                     Print the Ginger version
-  help                        Show this help message
+  add <integration>           Add an integration:
+                                databases : postgres, mysql, sqlite, sqlserver
+                                cache     : redis
+                                messaging : kafka, rabbitmq, nats, pubsub
+                                protocols : grpc, mcp
+                                observ.   : otel, prometheus
+  doctor                      Diagnose project health
+  version                     Print Ginger version
+  help                        Show this help
 
 Examples:
   ginger new my-api
   ginger new my-worker --type worker
   ginger generate crud user
   ginger add postgres
+  ginger add grpc
   ginger doctor
   ginger run
 `)
 }
 
-// mustFlag returns a FlagSet for a subcommand.
+// mustFlag returns a FlagSet for a subcommand, exiting on parse error.
 func mustFlag(name string) *flag.FlagSet {
 	return flag.NewFlagSet(name, flag.ExitOnError)
 }

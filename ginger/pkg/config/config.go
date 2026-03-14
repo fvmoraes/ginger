@@ -1,4 +1,7 @@
-// Package config provides configuration loading from env and yaml files.
+// Package config provides configuration loading from YAML files with
+// environment variable overrides.
+// YAML is read first; env vars take precedence, following the twelve-factor
+// app methodology (https://12factor.net/config).
 package config
 
 import (
@@ -10,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the application configuration.
+// Config holds the full application configuration.
 type Config struct {
 	App      AppConfig      `yaml:"app"`
 	HTTP     HTTPConfig     `yaml:"http"`
@@ -46,14 +49,15 @@ type LogConfig struct {
 	Format string `yaml:"format"` // json | text
 }
 
-// Load reads config from a yaml file, then overrides with env vars.
+// Load reads config from path (YAML), then overrides with environment variables.
+// If path is empty or the file does not exist, only defaults + env vars are used.
 func Load(path string) (*Config, error) {
 	cfg := defaults()
 
 	if path != "" {
 		data, err := os.ReadFile(path)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("config: read file: %w", err)
+			return nil, fmt.Errorf("config: read %s: %w", path, err)
 		}
 		if err == nil {
 			if err := yaml.Unmarshal(data, cfg); err != nil {
@@ -75,34 +79,39 @@ func defaults() *Config {
 	}
 }
 
-func applyEnv(cfg *Config) {
-	if v := os.Getenv("APP_NAME"); v != "" {
-		cfg.App.Name = v
+// envString overrides dst with the env var value when non-empty.
+func envString(dst *string, key string) {
+	if v := os.Getenv(key); v != "" {
+		*dst = v
 	}
-	if v := os.Getenv("APP_ENV"); v != "" {
-		cfg.App.Env = v
+}
+
+// envStringLower overrides dst with the lowercased env var value when non-empty.
+func envStringLower(dst *string, key string) {
+	if v := os.Getenv(key); v != "" {
+		*dst = strings.ToLower(v)
 	}
-	if v := os.Getenv("APP_VERSION"); v != "" {
-		cfg.App.Version = v
-	}
-	if v := os.Getenv("HTTP_HOST"); v != "" {
-		cfg.HTTP.Host = v
-	}
-	if v := os.Getenv("HTTP_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			cfg.HTTP.Port = p
+}
+
+// envInt overrides dst with the parsed env var value when non-empty and valid.
+func envInt(dst *int, key string) {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			*dst = n
 		}
 	}
-	if v := os.Getenv("DATABASE_DSN"); v != "" {
-		cfg.Database.DSN = v
-	}
-	if v := os.Getenv("DATABASE_DRIVER"); v != "" {
-		cfg.Database.Driver = v
-	}
-	if v := os.Getenv("LOG_LEVEL"); v != "" {
-		cfg.Log.Level = strings.ToLower(v)
-	}
-	if v := os.Getenv("LOG_FORMAT"); v != "" {
-		cfg.Log.Format = strings.ToLower(v)
-	}
+}
+
+// applyEnv overrides cfg fields from environment variables.
+// Uses a table-driven approach to keep the mapping explicit and DRY.
+func applyEnv(cfg *Config) {
+	envString(&cfg.App.Name, "APP_NAME")
+	envString(&cfg.App.Env, "APP_ENV")
+	envString(&cfg.App.Version, "APP_VERSION")
+	envString(&cfg.HTTP.Host, "HTTP_HOST")
+	envInt(&cfg.HTTP.Port, "HTTP_PORT")
+	envString(&cfg.Database.Driver, "DATABASE_DRIVER")
+	envString(&cfg.Database.DSN, "DATABASE_DSN")
+	envStringLower(&cfg.Log.Level, "LOG_LEVEL")
+	envStringLower(&cfg.Log.Format, "LOG_FORMAT")
 }

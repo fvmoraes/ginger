@@ -1,7 +1,8 @@
-// Package doctor analyzes a Ginger project and reports best-practice violations.
+// Package doctor analyses a Ginger project and reports best-practice violations.
 package doctor
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,7 +16,7 @@ type check struct {
 
 // Run executes all checks and prints a diagnostic report.
 func Run() {
-	fmt.Println("\n🩺 Ginger Doctor\n")
+	fmt.Print("\n🩺 Ginger Doctor\n\n")
 
 	checks := []check{
 		{"valid project structure", checkStructure},
@@ -25,6 +26,7 @@ func Run() {
 		{"health check endpoint", checkHealthEndpoint},
 		{"graceful shutdown configured", checkGracefulShutdown},
 		{"tests present", checkTests},
+		{"go vet passes", checkGoVet},
 		{"lint (golangci-lint)", checkLint},
 	}
 
@@ -48,12 +50,7 @@ func Run() {
 }
 
 func checkStructure() bool {
-	required := []string{
-		"cmd",
-		"internal",
-		"configs",
-	}
-	for _, d := range required {
+	for _, d := range []string{"cmd", "internal", "configs"} {
 		if _, err := os.Stat(d); os.IsNotExist(err) {
 			return false
 		}
@@ -77,32 +74,28 @@ func checkDockerfile() bool {
 }
 
 func checkHealthEndpoint() bool {
-	// Check for /health route or health package import
 	return grepInDir(".", "/health") ||
-		grepInDir(".", `health.New`) ||
-		grepInDir(".", `gingerapp.New`) // app.New registers /health automatically
+		grepInDir(".", "health.New") ||
+		grepInDir(".", "gingerapp.New")
 }
 
 func checkGracefulShutdown() bool {
-	// Check for explicit shutdown or use of gingerapp.New (which includes graceful shutdown)
 	return grepInDir(".", "Shutdown") ||
 		grepInDir(".", "SIGTERM") ||
 		grepInDir(".", "gingerapp.New") ||
-		grepInDir(".", `app.New`)
+		grepInDir(".", "app.New")
 }
 
 func checkTests() bool {
-	matches, _ := filepath.Glob("**/*_test.go")
-	if len(matches) > 0 {
-		return true
-	}
-	// walk manually since ** doesn't work in filepath.Glob on all platforms
 	found := false
-	filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+	filepath.Walk(".", func(path string, info os.FileInfo, err error) error { //nolint:errcheck
+		if err != nil || found {
 			return nil
 		}
-		if !info.IsDir() && len(path) > 8 && path[len(path)-8:] == "_test.go" {
+		if info.IsDir() && (info.Name() == "vendor" || info.Name() == ".git") {
+			return filepath.SkipDir
+		}
+		if !info.IsDir() && len(path) >= 8 && path[len(path)-8:] == "_test.go" {
 			found = true
 		}
 		return nil
@@ -110,10 +103,17 @@ func checkTests() bool {
 	return found
 }
 
+// checkGoVet runs go vet ./... and reports whether it passes.
+func checkGoVet() bool {
+	cmd := exec.Command("go", "vet", "./...")
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run() == nil
+}
+
 func checkLint() bool {
-	_, err := exec.LookPath("golangci-lint")
-	if err != nil {
-		return false // not installed, skip
+	if _, err := exec.LookPath("golangci-lint"); err != nil {
+		return false
 	}
 	cmd := exec.Command("golangci-lint", "run", "--fast", "--timeout", "30s")
 	cmd.Stdout = nil
@@ -121,10 +121,12 @@ func checkLint() bool {
 	return cmd.Run() == nil
 }
 
-// grepInDir checks if a string appears in any .go file under dir.
+// grepInDir reports whether pattern appears in any .go file under dir.
+// Uses bytes.Contains from the standard library — no need to reimplement.
 func grepInDir(dir, pattern string) bool {
+	needle := []byte(pattern)
 	found := false
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error { //nolint:errcheck
 		if err != nil || found {
 			return nil
 		}
@@ -133,27 +135,11 @@ func grepInDir(dir, pattern string) bool {
 		}
 		if !info.IsDir() && filepath.Ext(path) == ".go" {
 			data, err := os.ReadFile(path)
-			if err == nil && contains(data, pattern) {
+			if err == nil && bytes.Contains(data, needle) {
 				found = true
 			}
 		}
 		return nil
 	})
 	return found
-}
-
-func contains(data []byte, s string) bool {
-	return len(data) > 0 && indexBytes(data, []byte(s)) >= 0
-}
-
-func indexBytes(haystack, needle []byte) int {
-	if len(needle) == 0 {
-		return 0
-	}
-	for i := 0; i <= len(haystack)-len(needle); i++ {
-		if string(haystack[i:i+len(needle)]) == string(needle) {
-			return i
-		}
-	}
-	return -1
 }

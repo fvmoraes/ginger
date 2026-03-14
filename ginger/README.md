@@ -8,6 +8,10 @@
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
 
+> **Requires Go 1.25+** — Ginger depends on `go.opentelemetry.io/otel v1.42` which sets the minimum Go version to 1.25. All projects scaffolded by `ginger new` also target `go 1.25`.
+>
+> **Requer Go 1.25+** — O Ginger depende de `go.opentelemetry.io/otel v1.42`, que exige Go 1.25 como versão mínima. Todos os projetos gerados por `ginger new` também usam `go 1.25`.
+
 ---
 
 ## English
@@ -87,6 +91,8 @@ my-api/
 ## Getting Started
 
 ### Install the CLI
+
+> Requires **Go 1.25+**. Check your version with `go version`.
 
 ```bash
 git clone https://github.com/ginger-framework/ginger
@@ -442,6 +448,8 @@ my-api/
 ## Começando
 
 ### Instalar a CLI
+
+> Requer **Go 1.25+**. Verifique com `go version`.
 
 ```bash
 git clone https://github.com/ginger-framework/ginger
