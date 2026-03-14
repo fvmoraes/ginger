@@ -1,4 +1,4 @@
-// Package generator produces boilerplate Go files for handlers, services, and repositories.
+// Package generator produces boilerplate Go files for handlers, services, repositories, models and tests.
 package generator
 
 import (
@@ -49,6 +49,46 @@ func Repository(name string) error {
 		repositoryTmpl,
 		newData(name),
 	)
+}
+
+// Model generates internal/models/<name>.go
+func Model(name string) error {
+	return generate(
+		filepath.Join("internal", "models", strings.ToLower(name)+".go"),
+		modelTmpl,
+		newData(name),
+	)
+}
+
+// Test generates a basic handler test file.
+func Test(name string) error {
+	return generate(
+		filepath.Join("internal", "api", "handlers", strings.ToLower(name)+"_handler_test.go"),
+		handlerTestTmpl,
+		newData(name),
+	)
+}
+
+// CRUD generates model + handler + service + repository + test for a given name.
+func CRUD(name string) error {
+	fmt.Printf("\n  Generating CRUD for '%s'...\n\n", name)
+	steps := []struct {
+		label string
+		fn    func(string) error
+	}{
+		{"model", Model},
+		{"repository", Repository},
+		{"service", Service},
+		{"handler", Handler},
+		{"test", Test},
+	}
+	for _, s := range steps {
+		if err := s.fn(name); err != nil {
+			return fmt.Errorf("crud %s: %w", s.label, err)
+		}
+	}
+	fmt.Printf("\n  ✓ CRUD for '%s' generated. Wire it up in your router!\n", name)
+	return nil
 }
 
 func generate(path, tmplStr string, data genData) error {

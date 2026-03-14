@@ -9,7 +9,7 @@ import (
 
 func runGenerate(args []string) {
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: ginger generate <handler|service|repository> <name>")
+		fmt.Fprintln(os.Stderr, "usage: ginger generate <handler|service|repository|crud> <name>")
 		os.Exit(1)
 	}
 
@@ -24,9 +24,11 @@ func runGenerate(args []string) {
 		err = generator.Service(name)
 	case "repository", "repo", "r":
 		err = generator.Repository(name)
+	case "crud", "c":
+		err = generator.CRUD(name)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown generator: %s\n", kind)
-		fmt.Fprintln(os.Stderr, "available: handler, service, repository")
+		fmt.Fprintln(os.Stderr, "available: handler, service, repository, crud")
 		os.Exit(1)
 	}
 

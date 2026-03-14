@@ -148,3 +148,55 @@ func (r *{{.Name}}Repository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 `
+
+const modelTmpl = `package models
+
+import "time"
+
+// {{.NameTitle}} is the domain model for {{.NamePlural}}.
+type {{.NameTitle}} struct {
+	ID        string    ` + "`json:\"id\"`" + `
+	CreatedAt time.Time ` + "`json:\"created_at\"`" + `
+	UpdatedAt time.Time ` + "`json:\"updated_at\"`" + `
+}
+
+// Create{{.NameTitle}}Input is the payload for creating a {{.Name}}.
+type Create{{.NameTitle}}Input struct {
+	// TODO: add fields
+}
+
+// Update{{.NameTitle}}Input is the payload for updating a {{.Name}}.
+type Update{{.NameTitle}}Input struct {
+	// TODO: add fields
+}
+`
+
+const handlerTestTmpl = `package handlers_test
+
+import (
+	"net/http"
+	"testing"
+
+	"github.com/ginger-framework/ginger/pkg/testhelper"
+)
+
+func Test{{.NameTitle}}Handler_List(t *testing.T) {
+	// TODO: inject a mock service and create the handler
+	// h := New{{.NameTitle}}Handler(mockSvc)
+	// r := router.New()
+	// h.Register(r)
+
+	rec := testhelper.NewRequest(t, http.NotFoundHandler(), http.MethodGet, "/{{.NamePlural}}").Do()
+	testhelper.AssertStatus(t, rec, http.StatusNotFound) // replace with real handler
+}
+
+func Test{{.NameTitle}}Handler_Create(t *testing.T) {
+	body := map[string]any{
+		// TODO: fill with valid fields
+	}
+	rec := testhelper.NewRequest(t, http.NotFoundHandler(), http.MethodPost, "/{{.NamePlural}}").
+		WithBody(body).
+		Do()
+	testhelper.AssertStatus(t, rec, http.StatusNotFound) // replace with real handler
+}
+`
