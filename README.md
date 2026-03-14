@@ -1,6 +1,7 @@
 <div align="center">
   <img src="./assets/logo.png" alt="Ginger Logo" width="180"/>
   <h1>Ginger</h1>
+  <p><strong>Accelerate and standardize Go projects</strong></p>
   <p><strong>Agilize e padronize projetos Go</strong></p>
 
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
@@ -8,6 +9,37 @@
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
+
+---
+
+## ⚡ TL;DR — For the Impatient
+
+**Want to start NOW? 3 commands:**
+
+```bash
+# 1. Install
+git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
+
+# 2. Create project
+ginger new my-api && cd my-api && go mod tidy
+
+# 3. Run
+ginger run
+```
+
+**Done!** API running at http://localhost:8080/health
+
+**Create complete CRUD:**
+```bash
+ginger generate crud product
+```
+
+**Add database:**
+```bash
+ginger add postgres
+```
+
+**See everything:** [5-Minute Guide](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
 
 ---
 
@@ -518,24 +550,24 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ---
 
-## ⚡ Cheat Sheet — Comandos Essenciais
+## ⚡ Cheat Sheet — Essential Commands
 
-### Criar e Rodar
+### Create and Run
 ```bash
-ginger new my-api              # Criar projeto
-cd my-api && go mod tidy       # Instalar deps
-ginger run                     # Rodar (dev)
+ginger new my-api              # Create project
+cd my-api && go mod tidy       # Install deps
+ginger run                     # Run (dev)
 ginger build                   # Build (prod)
 ```
 
-### Gerar Código
+### Generate Code
 ```bash
-ginger generate crud user      # CRUD completo
-ginger generate handler auth   # Apenas handler
-ginger generate service email  # Apenas service
+ginger generate crud user      # Complete CRUD
+ginger generate handler auth   # Handler only
+ginger generate service email  # Service only
 ```
 
-### Adicionar Integrações
+### Add Integrations
 ```bash
 ginger add postgres            # PostgreSQL
 ginger add redis               # Redis
@@ -543,28 +575,28 @@ ginger add kafka               # Kafka
 ginger add grpc                # gRPC
 ```
 
-### Testar e Validar
+### Test and Validate
 ```bash
-go test ./...                  # Rodar testes
-ginger doctor                  # Diagnosticar projeto
-go vet ./...                   # Verificar código
+go test ./...                  # Run tests
+ginger doctor                  # Diagnose project
+go vet ./...                   # Check code
 ```
 
 ### Docker
 ```bash
-docker build -t my-api .       # Build imagem
-docker run -p 8080:8080 my-api # Rodar container
-docker-compose up -d           # Rodar com deps
+docker build -t my-api .       # Build image
+docker run -p 8080:8080 my-api # Run container
+docker-compose up -d           # Run with deps
 ```
 
 ### Kubernetes
 ```bash
 kubectl apply -f kubernetes/   # Deploy
-kubectl get pods               # Ver pods
-kubectl logs -f deploy/my-api  # Ver logs
+kubectl get pods               # View pods
+kubectl logs -f deploy/my-api  # View logs
 ```
 
-**Mais comandos:** [Referência Rápida](./docs/QUICK_REFERENCE.md)
+**More commands:** [Quick Reference](./docs/QUICK_REFERENCE.md)
 
 ---
 
