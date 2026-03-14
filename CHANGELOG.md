@@ -126,4 +126,6 @@ Verify downloads with `checksums.txt`.
 
 ---
 
+[1.1.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.1.3
+[1.1.2]: https://github.com/fvmoraes/ginger/releases/tag/v1.1.2
 [1.1.1]: https://github.com/fvmoraes/ginger/releases/tag/v1.1.1
