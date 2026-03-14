@@ -87,7 +87,7 @@ import (
     "net/http"
     "testing"
     
-    "github.com/ginger-framework/ginger/pkg/testhelper"
+    "github.com/fvmoraes/ginger/pkg/testhelper"
     "yourmodule/internal/api/handlers"
 )
 
@@ -488,7 +488,7 @@ func TestUserService_Create_WithTestify(t *testing.T) {
 ### pkg/testhelper
 
 ```go
-import "github.com/ginger-framework/ginger/pkg/testhelper"
+import "github.com/fvmoraes/ginger/pkg/testhelper"
 
 // HTTP request helper
 rec := testhelper.NewRequest(t, handler, http.MethodGet, "/users/1").Do()

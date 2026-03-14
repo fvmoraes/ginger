@@ -3,10 +3,10 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/ginger-framework/ginger/example/internal/api/services"
-	"github.com/ginger-framework/ginger/example/internal/models"
-	apperrors "github.com/ginger-framework/ginger/pkg/errors"
-	"github.com/ginger-framework/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/example/internal/api/services"
+	"github.com/fvmoraes/ginger/example/internal/models"
+	apperrors "github.com/fvmoraes/ginger/pkg/errors"
+	"github.com/fvmoraes/ginger/pkg/router"
 )
 
 // UserHandler handles HTTP requests for users.

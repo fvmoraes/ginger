@@ -3,9 +3,9 @@ package services
 import (
 	"context"
 
-	"github.com/ginger-framework/ginger/example/internal/api/repositories"
-	"github.com/ginger-framework/ginger/example/internal/models"
-	apperrors "github.com/ginger-framework/ginger/pkg/errors"
+	"github.com/fvmoraes/ginger/example/internal/api/repositories"
+	"github.com/fvmoraes/ginger/example/internal/models"
+	apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
 // UserService defines business logic for users.

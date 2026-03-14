@@ -14,10 +14,10 @@ Exemplos prontos para copiar e colar. Zero configuração, máxima velocidade.
 package main
 
 import (
-    gingerapp "github.com/ginger-framework/ginger/pkg/app"
-    "github.com/ginger-framework/ginger/pkg/config"
-    "github.com/ginger-framework/ginger/pkg/middleware"
-    "github.com/ginger-framework/ginger/pkg/router"
+    gingerapp "github.com/fvmoraes/ginger/pkg/app"
+    "github.com/fvmoraes/ginger/pkg/config"
+    "github.com/fvmoraes/ginger/pkg/middleware"
+    "github.com/fvmoraes/ginger/pkg/router"
     "net/http"
 )
 
@@ -67,9 +67,9 @@ package handlers
 
 import (
     "net/http"
-    "github.com/ginger-framework/ginger/pkg/router"
-    "github.com/ginger-framework/ginger/pkg/response"
-    apperrors "github.com/ginger-framework/ginger/pkg/errors"
+    "github.com/fvmoraes/ginger/pkg/router"
+    "github.com/fvmoraes/ginger/pkg/response"
+    apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
 type UserHandler struct {
@@ -151,7 +151,7 @@ package services
 
 import (
     "context"
-    apperrors "github.com/ginger-framework/ginger/pkg/errors"
+    apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
 type UserService struct {
@@ -348,9 +348,9 @@ import (
     "context"
     "net/http"
     "strings"
-    "github.com/ginger-framework/ginger/pkg/middleware"
-    "github.com/ginger-framework/ginger/pkg/router"
-    apperrors "github.com/ginger-framework/ginger/pkg/errors"
+    "github.com/fvmoraes/ginger/pkg/middleware"
+    "github.com/fvmoraes/ginger/pkg/router"
+    apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
 type contextKey string
@@ -404,7 +404,7 @@ package handlers
 import (
     "net/http"
     "strconv"
-    "github.com/ginger-framework/ginger/pkg/response"
+    "github.com/fvmoraes/ginger/pkg/response"
 )
 
 func (h *UserHandler) ListPaginated(w http.ResponseWriter, r *http.Request) {
@@ -528,7 +528,7 @@ package handlers
 import (
     "net/http"
     "time"
-    "github.com/ginger-framework/ginger/pkg/sse"
+    "github.com/fvmoraes/ginger/pkg/sse"
 )
 
 func (h *Handler) StreamEvents(w http.ResponseWriter, r *http.Request) {
@@ -577,7 +577,7 @@ package handlers
 
 import (
     "net/http"
-    "github.com/ginger-framework/ginger/pkg/ws"
+    "github.com/fvmoraes/ginger/pkg/ws"
 )
 
 func (h *Handler) WebSocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -754,8 +754,8 @@ package handlers_test
 import (
     "net/http"
     "testing"
-    "github.com/ginger-framework/ginger/pkg/testhelper"
-    "github.com/ginger-framework/ginger/pkg/response"
+    "github.com/fvmoraes/ginger/pkg/testhelper"
+    "github.com/fvmoraes/ginger/pkg/response"
 )
 
 func TestUserHandler_Create(t *testing.T) {

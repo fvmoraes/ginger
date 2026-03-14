@@ -118,7 +118,7 @@ ginger/                          # Raiz do projeto
 ### Módulo Principal
 
 ```
-module github.com/ginger-framework/ginger
+module github.com/fvmoraes/ginger
 go 1.25.0
 ```
 
@@ -132,10 +132,10 @@ go 1.25.0
 ### Módulo de Exemplo
 
 ```
-module github.com/ginger-framework/ginger/example
+module github.com/fvmoraes/ginger/example
 go 1.25.0
 
-replace github.com/ginger-framework/ginger => ../
+replace github.com/fvmoraes/ginger => ../
 ```
 
 **Localização:** `example/go.mod`
@@ -178,8 +178,8 @@ import (
     "github.com/external/package"
     
     // Pacotes do Ginger
-    "github.com/ginger-framework/ginger/pkg/router"
-    "github.com/ginger-framework/ginger/pkg/middleware"
+    "github.com/fvmoraes/ginger/pkg/router"
+    "github.com/fvmoraes/ginger/pkg/middleware"
     
     // Pacotes locais
     "yourmodule/internal/api/handlers"

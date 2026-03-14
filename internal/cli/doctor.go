@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/ginger-framework/ginger/internal/doctor"
+	"github.com/fvmoraes/ginger/internal/doctor"
 )
 
 func runDoctor(_ []string) {

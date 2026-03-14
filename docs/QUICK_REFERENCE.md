@@ -48,24 +48,24 @@ ginger version
 ```go
 import (
     // Core
-    "github.com/ginger-framework/ginger/pkg/app"
-    "github.com/ginger-framework/ginger/pkg/router"
-    "github.com/ginger-framework/ginger/pkg/middleware"
-    "github.com/ginger-framework/ginger/pkg/config"
-    "github.com/ginger-framework/ginger/pkg/logger"
+    "github.com/fvmoraes/ginger/pkg/app"
+    "github.com/fvmoraes/ginger/pkg/router"
+    "github.com/fvmoraes/ginger/pkg/middleware"
+    "github.com/fvmoraes/ginger/pkg/config"
+    "github.com/fvmoraes/ginger/pkg/logger"
     
     // Errors & Response
-    apperrors "github.com/ginger-framework/ginger/pkg/errors"
-    "github.com/ginger-framework/ginger/pkg/response"
+    apperrors "github.com/fvmoraes/ginger/pkg/errors"
+    "github.com/fvmoraes/ginger/pkg/response"
     
     // Real-time
-    "github.com/ginger-framework/ginger/pkg/sse"
-    "github.com/ginger-framework/ginger/pkg/ws"
+    "github.com/fvmoraes/ginger/pkg/sse"
+    "github.com/fvmoraes/ginger/pkg/ws"
     
     // Infra
-    "github.com/ginger-framework/ginger/pkg/database"
-    "github.com/ginger-framework/ginger/pkg/health"
-    "github.com/ginger-framework/ginger/pkg/telemetry"
+    "github.com/fvmoraes/ginger/pkg/database"
+    "github.com/fvmoraes/ginger/pkg/health"
+    "github.com/fvmoraes/ginger/pkg/telemetry"
 )
 ```
 
@@ -80,9 +80,9 @@ package main
 
 import (
     "context"
-    gingerapp "github.com/ginger-framework/ginger/pkg/app"
-    "github.com/ginger-framework/ginger/pkg/config"
-    "github.com/ginger-framework/ginger/pkg/middleware"
+    gingerapp "github.com/fvmoraes/ginger/pkg/app"
+    "github.com/fvmoraes/ginger/pkg/config"
+    "github.com/fvmoraes/ginger/pkg/middleware"
 )
 
 func main() {

@@ -4,14 +4,14 @@ import (
 	"log"
 	"net/http"
 
-	gingerapp "github.com/ginger-framework/ginger/pkg/app"
-	"github.com/ginger-framework/ginger/pkg/config"
-	"github.com/ginger-framework/ginger/pkg/middleware"
-	"github.com/ginger-framework/ginger/pkg/router"
+	gingerapp "github.com/fvmoraes/ginger/pkg/app"
+	"github.com/fvmoraes/ginger/pkg/config"
+	"github.com/fvmoraes/ginger/pkg/middleware"
+	"github.com/fvmoraes/ginger/pkg/router"
 
-	"github.com/ginger-framework/ginger/example/internal/api/handlers"
-	"github.com/ginger-framework/ginger/example/internal/api/repositories"
-	"github.com/ginger-framework/ginger/example/internal/api/services"
+	"github.com/fvmoraes/ginger/example/internal/api/handlers"
+	"github.com/fvmoraes/ginger/example/internal/api/repositories"
+	"github.com/fvmoraes/ginger/example/internal/api/services"
 )
 
 func main() {

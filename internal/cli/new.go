@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ginger-framework/ginger/internal/scaffold"
+	"github.com/fvmoraes/ginger/internal/scaffold"
 )
 
 func runNew(args []string) {

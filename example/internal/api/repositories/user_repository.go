@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ginger-framework/ginger/example/internal/models"
+	"github.com/fvmoraes/ginger/example/internal/models"
 )
 
 // UserRepository defines data access for users.

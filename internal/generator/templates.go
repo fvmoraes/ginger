@@ -5,7 +5,7 @@ const handlerTmpl = `package handlers
 import (
 	"net/http"
 
-	"github.com/ginger-framework/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/pkg/router"
 )
 
 // {{.NameTitle}}Handler handles HTTP requests for {{.NamePlural}}.
@@ -177,7 +177,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ginger-framework/ginger/pkg/testhelper"
+	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
 
 // Test{{.NameTitle}}Handler uses table-driven tests as recommended by

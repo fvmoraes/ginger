@@ -717,14 +717,14 @@ func errResponse(msg string) map[string]string {
 // ─── UI / Real-time ──────────────────────────────────────────────────────────
 
 const sseTmpl = `// Package realtime provides a Server-Sent Events (SSE) handler example.
-// For the full SSE helper, see github.com/ginger-framework/ginger/pkg/sse.
+// For the full SSE helper, see github.com/fvmoraes/ginger/pkg/sse.
 package realtime
 
 import (
 	"net/http"
 	"time"
 
-	"github.com/ginger-framework/ginger/pkg/sse"
+	"github.com/fvmoraes/ginger/pkg/sse"
 )
 
 // LiveFeedHandler streams real-time events to the client.
@@ -757,13 +757,13 @@ func LiveFeedHandler(w http.ResponseWriter, r *http.Request) {
 `
 
 const wsTmpl = `// Package realtime provides a WebSocket handler example.
-// For the full WebSocket helper, see github.com/ginger-framework/ginger/pkg/ws.
+// For the full WebSocket helper, see github.com/fvmoraes/ginger/pkg/ws.
 package realtime
 
 import (
 	"net/http"
 
-	"github.com/ginger-framework/ginger/pkg/ws"
+	"github.com/fvmoraes/ginger/pkg/ws"
 )
 
 // EchoHandler upgrades the connection to WebSocket and echoes every message.

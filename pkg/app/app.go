@@ -20,11 +20,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ginger-framework/ginger/pkg/config"
-	"github.com/ginger-framework/ginger/pkg/health"
-	"github.com/ginger-framework/ginger/pkg/logger"
-	"github.com/ginger-framework/ginger/pkg/middleware"
-	"github.com/ginger-framework/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/pkg/config"
+	"github.com/fvmoraes/ginger/pkg/health"
+	"github.com/fvmoraes/ginger/pkg/logger"
+	"github.com/fvmoraes/ginger/pkg/middleware"
+	"github.com/fvmoraes/ginger/pkg/router"
 )
 
 // App is the central application container.

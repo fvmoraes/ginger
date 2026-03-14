@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ginger-framework/ginger/pkg/logger"
+	"github.com/fvmoraes/ginger/pkg/logger"
 )
 
 // Func is a standard middleware type.

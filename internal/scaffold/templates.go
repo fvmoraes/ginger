@@ -12,7 +12,7 @@ import (
 
 	"{{.Module}}/internal/config"
 	"{{.Module}}/internal/api/handlers"
-	gingerapp "github.com/ginger-framework/ginger/pkg/app"
+	gingerapp "github.com/fvmoraes/ginger/pkg/app"
 )
 
 func main() {
@@ -98,7 +98,7 @@ func (w *Worker) Run(ctx context.Context) error {
 const internalConfigTmpl = `package config
 
 import (
-	gingercfg "github.com/ginger-framework/ginger/pkg/config"
+	gingercfg "github.com/fvmoraes/ginger/pkg/config"
 )
 
 // Load reads the application configuration.
@@ -112,7 +112,7 @@ const healthHandlerTmpl = `package handlers
 import (
 	"net/http"
 
-	"github.com/ginger-framework/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/pkg/router"
 )
 
 // Register mounts all application routes.

@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	apperrors "github.com/ginger-framework/ginger/pkg/errors"
-	"github.com/ginger-framework/ginger/pkg/middleware"
+	apperrors "github.com/fvmoraes/ginger/pkg/errors"
+	"github.com/fvmoraes/ginger/pkg/middleware"
 )
 
 // Router wraps http.ServeMux with group and middleware support.

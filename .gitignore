@@ -39,3 +39,6 @@ $RECYCLE.BIN/
 
 # Local
 my-local/
+
+# Release binaries
+releases/

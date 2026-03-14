@@ -4,6 +4,7 @@
   <p><strong>Agilize e padronize projetos Go</strong></p>
 
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
+  ![Version](https://img.shields.io/badge/version-1.1.1-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
@@ -16,7 +17,7 @@
 
 ```bash
 # 1. Instalar
-git clone https://github.com/ginger-framework/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
+git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
 
 # 2. Criar projeto
 ginger new minha-api && cd minha-api && go mod tidy
@@ -129,10 +130,25 @@ my-api/
 
 > Requires **Go 1.25+**. Check your version with `go version`.
 
+**Option 1: One-line install (recommended)**
 ```bash
-git clone https://github.com/ginger-framework/ginger
+curl -sSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
+```
+
+**Option 2: Download binary**
+
+Download from [releases page](https://github.com/fvmoraes/ginger/releases/latest), make executable, and move to your PATH.
+
+**Option 3: Build from source**
+```bash
+git clone https://github.com/fvmoraes/ginger
 cd ginger
 go build -o /usr/local/bin/ginger ./cmd/ginger
+```
+
+**Option 4: Go install**
+```bash
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ```
 
 ### Create a new project
@@ -613,7 +629,7 @@ Production deployment with Docker, Kubernetes, and Helm:
 
 ```bash
 # 1. Instalar
-git clone https://github.com/ginger-framework/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
+git clone https://github.com/fvmoraes/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
 
 # 2. Criar projeto
 ginger new minha-api && cd minha-api && go mod tidy
@@ -688,10 +704,25 @@ my-api/
 
 > Requer **Go 1.25+**. Verifique com `go version`.
 
+**Opção 1: Instalação com um comando (recomendado)**
 ```bash
-git clone https://github.com/ginger-framework/ginger
+curl -sSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
+```
+
+**Opção 2: Download do binário**
+
+Baixe da [página de releases](https://github.com/fvmoraes/ginger/releases/latest), torne executável e mova para seu PATH.
+
+**Opção 3: Build do código fonte**
+```bash
+git clone https://github.com/fvmoraes/ginger
 cd ginger
 go build -o /usr/local/bin/ginger ./cmd/ginger
+```
+
+**Opção 4: Go install**
+```bash
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ```
 
 ### Criar um novo projeto

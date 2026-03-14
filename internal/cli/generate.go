@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ginger-framework/ginger/internal/generator"
+	"github.com/fvmoraes/ginger/internal/generator"
 )
 
 func runGenerate(args []string) {

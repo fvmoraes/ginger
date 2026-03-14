@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ginger-framework/ginger/internal/integrations"
+	"github.com/fvmoraes/ginger/internal/integrations"
 )
 
 const addUsage = `usage: ginger add <integration>

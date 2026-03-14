@@ -335,9 +335,9 @@ Encontrou um erro na documentação? Quer adicionar exemplos?
 
 ## 📞 Suporte
 
-- **Issues:** [GitHub Issues](https://github.com/ginger-framework/ginger/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/ginger-framework/ginger/discussions)
-- **Email:** support@ginger-framework.dev
+- **Issues:** [GitHub Issues](https://github.com/fvmoraes/ginger/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/fvmoraes/ginger/discussions)
+- **Email:** fvmoraes@gmail.com
 
 ---
 

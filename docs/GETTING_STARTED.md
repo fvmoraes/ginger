@@ -9,7 +9,7 @@ Comece a usar o Ginger em 5 minutos.
 ## 1. Instalar o Ginger
 
 ```bash
-git clone https://github.com/ginger-framework/ginger
+git clone https://github.com/fvmoraes/ginger
 cd ginger
 go build -o /usr/local/bin/ginger ./cmd/ginger
 ```
@@ -73,9 +73,9 @@ Edite `cmd/app/main.go`:
 package main
 
 import (
-    gingerapp "github.com/ginger-framework/ginger/pkg/app"
-    "github.com/ginger-framework/ginger/pkg/config"
-    "github.com/ginger-framework/ginger/pkg/middleware"
+    gingerapp "github.com/fvmoraes/ginger/pkg/app"
+    "github.com/fvmoraes/ginger/pkg/config"
+    "github.com/fvmoraes/ginger/pkg/middleware"
     
     "minha-api/internal/api/handlers"
 )
