@@ -1,0 +1,41 @@
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS - macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+
+# OS - Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# OS - Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Env
+.env
+*.env.local
+
+# Logs
+*.log
+
+# Local
+my-local/
