@@ -2,6 +2,9 @@ module github.com/fvmoraes/ginger
 
 go 1.25.0
 
+// v1.1.1 has incorrect module path in go.mod
+retract v1.1.1
+
 require (
 	go.opentelemetry.io/otel v1.42.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.42.0
