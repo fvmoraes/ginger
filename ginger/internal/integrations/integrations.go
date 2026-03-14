@@ -54,6 +54,25 @@ var registry = map[string]integration{
 		file: "platform/cache/redis.go",
 		tmpl: redisTmpl,
 	},
+	// ── NoSQL / Analytical ─────────────────────────────────────────────────
+	"couchbase": {
+		name: "couchbase",
+		pkg:  "github.com/couchbase/gocb/v2",
+		file: "platform/nosql/couchbase.go",
+		tmpl: couchbaseTmpl,
+	},
+	"mongodb": {
+		name: "mongodb",
+		pkg:  "go.mongodb.org/mongo-driver/mongo",
+		file: "platform/nosql/mongo.go",
+		tmpl: mongoTmpl,
+	},
+	"clickhouse": {
+		name: "clickhouse",
+		pkg:  "github.com/ClickHouse/clickhouse-go/v2",
+		file: "platform/database/clickhouse.go",
+		tmpl: clickhouseTmpl,
+	},
 	// ── Messaging ──────────────────────────────────────────────────────────
 	"kafka": {
 		name: "kafka",
@@ -114,6 +133,8 @@ func Add(name string) error {
 		return fmt.Errorf(
 			"unknown integration: %s\n\navailable integrations:\n"+
 				"  databases  : postgres, mysql, sqlite, sqlserver\n"+
+				"  nosql      : couchbase, mongodb\n"+
+				"  analytical : clickhouse\n"+
 				"  cache      : redis\n"+
 				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
 				"  protocols  : grpc, mcp\n"+

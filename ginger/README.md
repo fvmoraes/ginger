@@ -142,8 +142,9 @@ ginger help                        Show help
 |             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
 |             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
 |             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
-| Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
-| Messaging   | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
+| NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
+|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
+| Analytical  | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
 |             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
 |             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
@@ -499,6 +500,9 @@ ginger help                        Exibe a ajuda
 |             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
 |             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
 |             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
+| NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
+|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
+| Analítico   | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
 | Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
 | Mensageria  | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |

@@ -713,3 +713,378 @@ func errResponse(msg string) map[string]string {
 	return map[string]string{"error": msg}
 }
 `
+
+// ─── ORM / Query builders ─────────────────────────────────────────────────────
+
+const gormTmpl = `// Package database provides a GORM setup helper.
+// GORM supports PostgreSQL, MySQL, SQLite and SQL Server via driver packages.
+//
+// Usage:
+//
+//	db, err := database.OpenGORM(database.GORMConfig{
+//	    Dialector: postgres.Open(dsn),
+//	    LogLevel:  logger.Info,
+//	})
+package database
+
+import (
+	"fmt"
+	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+// GORMConfig holds GORM connection settings.
+type GORMConfig struct {
+	// Dialector is the database-specific driver, e.g.:
+	//   postgres.Open(dsn)  — gorm.io/driver/postgres
+	//   mysql.Open(dsn)     — gorm.io/driver/mysql
+	//   sqlite.Open(file)   — gorm.io/driver/sqlite
+	//   sqlserver.Open(dsn) — gorm.io/driver/sqlserver
+	Dialector gorm.Dialector
+	LogLevel  logger.LogLevel // logger.Silent | Info | Warn | Error
+	MaxOpen   int
+	MaxIdle   int
+}
+
+// OpenGORM opens a GORM database connection and configures the connection pool.
+func OpenGORM(cfg GORMConfig) (*gorm.DB, error) {
+	lvl := cfg.LogLevel
+	if lvl == 0 {
+		lvl = logger.Warn
+	}
+
+	db, err := gorm.Open(cfg.Dialector, &gorm.Config{
+		Logger: logger.Default.LogMode(lvl),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("gorm: open: %w", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("gorm: get sql.DB: %w", err)
+	}
+
+	if cfg.MaxOpen > 0 {
+		sqlDB.SetMaxOpenConns(cfg.MaxOpen)
+	}
+	if cfg.MaxIdle > 0 {
+		sqlDB.SetMaxIdleConns(cfg.MaxIdle)
+	}
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+	return db, nil
+}
+`
+
+const sqlxTmpl = `// Package database provides a sqlx setup helper.
+// sqlx extends database/sql with named queries, struct scanning and more.
+//
+// Usage:
+//
+//	db, err := database.OpenSQLx(database.SQLxConfig{
+//	    Driver: "postgres",
+//	    DSN:    "postgres://user:pass@localhost/db?sslmode=disable",
+//	})
+package database
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"           // postgres  — swap as needed
+	// _ "github.com/go-sql-driver/mysql"   // mysql
+	// _ "github.com/mattn/go-sqlite3"      // sqlite
+	// _ "github.com/microsoft/go-mssqldb"  // sqlserver
+)
+
+// SQLxConfig holds sqlx connection settings.
+type SQLxConfig struct {
+	Driver  string // "postgres" | "mysql" | "sqlite3" | "sqlserver"
+	DSN     string
+	MaxOpen int
+	MaxIdle int
+}
+
+// OpenSQLx opens a sqlx database connection and validates it with a ping.
+func OpenSQLx(cfg SQLxConfig) (*sqlx.DB, error) {
+	db, err := sqlx.Connect(cfg.Driver, cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("sqlx: connect: %w", err)
+	}
+
+	if cfg.MaxOpen > 0 {
+		db.SetMaxOpenConns(cfg.MaxOpen)
+	}
+	if cfg.MaxIdle > 0 {
+		db.SetMaxIdleConns(cfg.MaxIdle)
+	}
+	db.SetConnMaxLifetime(30 * time.Minute)
+
+	return db, nil
+}
+
+// SQLxChecker implements health.Checker for a *sqlx.DB.
+type SQLxChecker struct{ db *sqlx.DB }
+
+func NewSQLxChecker(db *sqlx.DB) *SQLxChecker { return &SQLxChecker{db: db} }
+func (c *SQLxChecker) Name() string            { return "database" }
+func (c *SQLxChecker) Check(ctx context.Context) error {
+	return c.db.PingContext(ctx)
+}
+`
+
+const bunTmpl = `// Package database provides a Bun ORM setup helper.
+// Bun supports PostgreSQL, MySQL, SQLite and SQL Server.
+//
+// Usage:
+//
+//	db, err := database.OpenBun(database.BunConfig{
+//	    Driver: "postgres",
+//	    DSN:    "postgres://user:pass@localhost/db?sslmode=disable",
+//	})
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
+	// Swap dialect/driver for other databases:
+	// "github.com/uptrace/bun/dialect/mysqldialect"
+	// "github.com/uptrace/bun/driver/sqliteshim"
+	// "github.com/uptrace/bun/dialect/sqlitedialect"
+)
+
+// BunConfig holds Bun connection settings.
+type BunConfig struct {
+	DSN     string
+	MaxOpen int
+	MaxIdle int
+}
+
+// OpenBun opens a Bun database connection backed by PostgreSQL.
+// Swap pgdriver/pgdialect for your target database.
+func OpenBun(cfg BunConfig) (*bun.DB, error) {
+	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(cfg.DSN)))
+
+	if cfg.MaxOpen > 0 {
+		sqldb.SetMaxOpenConns(cfg.MaxOpen)
+	}
+	if cfg.MaxIdle > 0 {
+		sqldb.SetMaxIdleConns(cfg.MaxIdle)
+	}
+	sqldb.SetConnMaxLifetime(30 * time.Minute)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := sqldb.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("bun: ping: %w", err)
+	}
+
+	db := bun.NewDB(sqldb, pgdialect.New())
+	return db, nil
+}
+
+// BunChecker implements health.Checker for a *bun.DB.
+type BunChecker struct{ db *bun.DB }
+
+func NewBunChecker(db *bun.DB) *BunChecker { return &BunChecker{db: db} }
+func (c *BunChecker) Name() string         { return "database" }
+func (c *BunChecker) Check(ctx context.Context) error {
+	return c.db.PingContext(ctx)
+}
+`
+
+// ─── NoSQL / Analytical ───────────────────────────────────────────────────────
+
+const couchbaseTmpl = `// Package nosql provides a Couchbase connection helper.
+// Uses the official Couchbase Go SDK v2.
+//
+// Usage:
+//
+//	cluster, bucket, err := nosql.ConnectCouchbase(nosql.CouchbaseConfig{
+//	    ConnectionString: "couchbase://localhost",
+//	    Username:         "Administrator",
+//	    Password:         "password",
+//	    BucketName:       "my-bucket",
+//	})
+package nosql
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/couchbase/gocb/v2"
+)
+
+// CouchbaseConfig holds Couchbase connection settings.
+type CouchbaseConfig struct {
+	ConnectionString string // e.g. "couchbase://localhost"
+	Username         string
+	Password         string
+	BucketName       string
+}
+
+// ConnectCouchbase connects to a Couchbase cluster and opens a bucket.
+func ConnectCouchbase(cfg CouchbaseConfig) (*gocb.Cluster, *gocb.Bucket, error) {
+	cluster, err := gocb.Connect(cfg.ConnectionString, gocb.ClusterOptions{
+		Authenticator: gocb.PasswordAuthenticator{
+			Username: cfg.Username,
+			Password: cfg.Password,
+		},
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couchbase: connect: %w", err)
+	}
+
+	bucket := cluster.Bucket(cfg.BucketName)
+	if err := bucket.WaitUntilReady(10*time.Second, nil); err != nil {
+		return nil, nil, fmt.Errorf("couchbase: bucket not ready: %w", err)
+	}
+
+	return cluster, bucket, nil
+}
+
+// CouchbaseChecker implements health.Checker for a Couchbase cluster.
+type CouchbaseChecker struct{ cluster *gocb.Cluster }
+
+func NewCouchbaseChecker(c *gocb.Cluster) *CouchbaseChecker { return &CouchbaseChecker{cluster: c} }
+func (c *CouchbaseChecker) Name() string                     { return "couchbase" }
+func (c *CouchbaseChecker) Check(_ context.Context) error {
+	_, err := c.cluster.Ping(nil)
+	if err != nil {
+		return fmt.Errorf("couchbase: ping: %w", err)
+	}
+	return nil
+}
+`
+
+const clickhouseTmpl = `// Package database provides a ClickHouse connection helper.
+// Uses the official ClickHouse Go driver v2 (database/sql interface).
+//
+// Usage:
+//
+//	db, err := database.ConnectClickHouse(database.ClickHouseConfig{
+//	    Addr:     []string{"localhost:9000"},
+//	    Database: "default",
+//	    Username: "default",
+//	    Password: "",
+//	})
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	"github.com/ClickHouse/clickhouse-go/v2"
+)
+
+// ClickHouseConfig holds ClickHouse connection settings.
+type ClickHouseConfig struct {
+	Addr     []string // e.g. []string{"localhost:9000"}
+	Database string
+	Username string
+	Password string
+	MaxOpen  int
+	MaxIdle  int
+}
+
+// ConnectClickHouse opens and validates a ClickHouse connection via database/sql.
+func ConnectClickHouse(cfg ClickHouseConfig) (*sql.DB, error) {
+	conn := clickhouse.OpenDB(&clickhouse.Options{
+		Addr: cfg.Addr,
+		Auth: clickhouse.Auth{
+			Database: cfg.Database,
+			Username: cfg.Username,
+			Password: cfg.Password,
+		},
+		DialTimeout:  5 * time.Second,
+		MaxOpenConns: cfg.MaxOpen,
+		MaxIdleConns: cfg.MaxIdle,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := conn.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("clickhouse: ping: %w", err)
+	}
+	return conn, nil
+}
+
+// ClickHouseChecker implements health.Checker for ClickHouse.
+type ClickHouseChecker struct{ db *sql.DB }
+
+func NewClickHouseChecker(db *sql.DB) *ClickHouseChecker { return &ClickHouseChecker{db: db} }
+func (c *ClickHouseChecker) Name() string                { return "clickhouse" }
+func (c *ClickHouseChecker) Check(ctx context.Context) error {
+	return c.db.PingContext(ctx)
+}
+`
+
+const mongoTmpl = `// Package nosql provides a MongoDB connection helper.
+// Uses the official MongoDB Go driver.
+//
+// Usage:
+//
+//	client, db, err := nosql.ConnectMongo(nosql.MongoConfig{
+//	    URI:      "mongodb://localhost:27017",
+//	    Database: "mydb",
+//	})
+package nosql
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+)
+
+// MongoConfig holds MongoDB connection settings.
+type MongoConfig struct {
+	URI      string // e.g. "mongodb://localhost:27017"
+	Database string
+}
+
+// ConnectMongo connects to MongoDB and returns the client and the target database.
+func ConnectMongo(cfg MongoConfig) (*mongo.Client, *mongo.Database, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.URI))
+	if err != nil {
+		return nil, nil, fmt.Errorf("mongo: connect: %w", err)
+	}
+
+	if err := client.Ping(ctx, nil); err != nil {
+		return nil, nil, fmt.Errorf("mongo: ping: %w", err)
+	}
+
+	return client, client.Database(cfg.Database), nil
+}
+
+// MongoChecker implements health.Checker for MongoDB.
+type MongoChecker struct{ client *mongo.Client }
+
+func NewMongoChecker(c *mongo.Client) *MongoChecker { return &MongoChecker{client: c} }
+func (c *MongoChecker) Name() string                { return "mongodb" }
+func (c *MongoChecker) Check(ctx context.Context) error {
+	return c.client.Database("admin").RunCommand(ctx, bson.D{{Key: "ping", Value: 1}}).Err()
+}
+`

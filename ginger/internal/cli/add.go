@@ -10,6 +10,8 @@ import (
 const addUsage = `usage: ginger add <integration>
 
 databases  : postgres, mysql, sqlite, sqlserver
+nosql      : couchbase, mongodb
+analytical : clickhouse
 cache      : redis
 messaging  : kafka, rabbitmq, nats, pubsub
 protocols  : grpc, mcp

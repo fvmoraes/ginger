@@ -59,11 +59,13 @@ Commands:
   generate repository <name>  Generate a repository
   generate crud <name>        Generate full CRUD (model+handler+service+repo+test)
   add <integration>           Add an integration:
-                                databases : postgres, mysql, sqlite, sqlserver
-                                cache     : redis
-                                messaging : kafka, rabbitmq, nats, pubsub
-                                protocols : grpc, mcp
-                                observ.   : otel, prometheus
+                                databases  : postgres, mysql, sqlite, sqlserver
+                                nosql      : couchbase, mongodb
+                                analytical : clickhouse
+                                cache      : redis
+                                messaging  : kafka, rabbitmq, nats, pubsub
+                                protocols  : grpc, mcp
+                                observ.    : otel, prometheus
   doctor                      Diagnose project health
   version                     Print Ginger version
   help                        Show this help
