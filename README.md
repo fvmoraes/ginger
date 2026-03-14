@@ -4,6 +4,7 @@
   <p><strong>Accelerate and standardize Go projects</strong></p>
   <p><strong>Agilize e padronize projetos Go</strong></p>
 
+  [![Go Reference](https://pkg.go.dev/badge/github.com/fvmoraes/ginger.svg)](https://pkg.go.dev/github.com/fvmoraes/ginger)
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
   ![Version](https://img.shields.io/badge/version-1.1.1-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
