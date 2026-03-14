@@ -8,6 +8,39 @@
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
 
+---
+
+## ⚡ TL;DR — Para Preguiçosos
+
+**Quer começar AGORA? 3 comandos:**
+
+```bash
+# 1. Instalar
+git clone https://github.com/ginger-framework/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
+
+# 2. Criar projeto
+ginger new minha-api && cd minha-api && go mod tidy
+
+# 3. Rodar
+ginger run
+```
+
+**Pronto!** API rodando em http://localhost:8080/health
+
+**Criar CRUD completo:**
+```bash
+ginger generate crud produto
+```
+
+**Adicionar banco:**
+```bash
+ginger add postgres
+```
+
+**Ver tudo:** [Guia de 5 Minutos](./docs/GETTING_STARTED.md) | [Comandos Rápidos](./docs/QUICK_REFERENCE.md)
+
+---
+
 > **Requires Go 1.25+** — Ginger depends on `go.opentelemetry.io/otel v1.42` which sets the minimum Go version to 1.25. All projects scaffolded by `ginger new` also target `go 1.25`.
 >
 > **Requer Go 1.25+** — O Ginger depende de `go.opentelemetry.io/otel v1.42`, que exige Go 1.25 como versão mínima. Todos os projetos gerados por `ginger new` também usam `go 1.25`.
@@ -469,6 +502,56 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ---
 
+## ⚡ Cheat Sheet — Comandos Essenciais
+
+### Criar e Rodar
+```bash
+ginger new my-api              # Criar projeto
+cd my-api && go mod tidy       # Instalar deps
+ginger run                     # Rodar (dev)
+ginger build                   # Build (prod)
+```
+
+### Gerar Código
+```bash
+ginger generate crud user      # CRUD completo
+ginger generate handler auth   # Apenas handler
+ginger generate service email  # Apenas service
+```
+
+### Adicionar Integrações
+```bash
+ginger add postgres            # PostgreSQL
+ginger add redis               # Redis
+ginger add kafka               # Kafka
+ginger add grpc                # gRPC
+```
+
+### Testar e Validar
+```bash
+go test ./...                  # Rodar testes
+ginger doctor                  # Diagnosticar projeto
+go vet ./...                   # Verificar código
+```
+
+### Docker
+```bash
+docker build -t my-api .       # Build imagem
+docker run -p 8080:8080 my-api # Rodar container
+docker-compose up -d           # Rodar com deps
+```
+
+### Kubernetes
+```bash
+kubectl apply -f kubernetes/   # Deploy
+kubectl get pods               # Ver pods
+kubectl logs -f deploy/my-api  # Ver logs
+```
+
+**Mais comandos:** [Referência Rápida](./docs/QUICK_REFERENCE.md)
+
+---
+
 ## 📚 Complete Documentation
 
 Ginger comes with comprehensive, in-depth documentation covering every aspect of the framework:
@@ -523,6 +606,37 @@ Production deployment with Docker, Kubernetes, and Helm:
 ---
 
 # 🇧🇷 Português
+
+## ⚡ TL;DR — Para Preguiçosos
+
+**Quer começar AGORA? 3 comandos:**
+
+```bash
+# 1. Instalar
+git clone https://github.com/ginger-framework/ginger && cd ginger && go build -o /usr/local/bin/ginger ./cmd/ginger
+
+# 2. Criar projeto
+ginger new minha-api && cd minha-api && go mod tidy
+
+# 3. Rodar
+ginger run
+```
+
+**Pronto!** API rodando em http://localhost:8080/health
+
+**Criar CRUD completo:**
+```bash
+ginger generate crud produto
+```
+
+**Adicionar banco:**
+```bash
+ginger add postgres
+```
+
+**Ver tudo:** [Guia de 5 Minutos](./docs/GETTING_STARTED.md) | [Comandos Rápidos](./docs/QUICK_REFERENCE.md)
+
+---
 
 ## O que é o Ginger?
 
@@ -951,6 +1065,56 @@ docker run -p 8080:8080 minha-api:latest
 ```
 
 Um template de `Deployment` + `Service` Kubernetes está disponível em `templates/k8s/deployment.yaml`. Ele inclui probes de readiness e liveness apontando para `/health`, limites de recursos e um serviço `ClusterIP`.
+
+---
+
+## ⚡ Cheat Sheet — Comandos Essenciais
+
+### Criar e Rodar
+```bash
+ginger new minha-api           # Criar projeto
+cd minha-api && go mod tidy    # Instalar deps
+ginger run                     # Rodar (dev)
+ginger build                   # Build (prod)
+```
+
+### Gerar Código
+```bash
+ginger generate crud usuario   # CRUD completo
+ginger generate handler auth   # Apenas handler
+ginger generate service email  # Apenas service
+```
+
+### Adicionar Integrações
+```bash
+ginger add postgres            # PostgreSQL
+ginger add redis               # Redis
+ginger add kafka               # Kafka
+ginger add grpc                # gRPC
+```
+
+### Testar e Validar
+```bash
+go test ./...                  # Rodar testes
+ginger doctor                  # Diagnosticar projeto
+go vet ./...                   # Verificar código
+```
+
+### Docker
+```bash
+docker build -t minha-api .    # Build imagem
+docker run -p 8080:8080 minha-api # Rodar container
+docker-compose up -d           # Rodar com deps
+```
+
+### Kubernetes
+```bash
+kubectl apply -f kubernetes/   # Deploy
+kubectl get pods               # Ver pods
+kubectl logs -f deploy/minha-api # Ver logs
+```
+
+**Mais comandos:** [Referência Rápida](./docs/QUICK_REFERENCE.md)
 
 ---
 
