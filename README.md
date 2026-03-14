@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="../GINGER_LOGO.png" alt="Ginger Logo" width="180"/>
+  <img src="./my-local/GINGER_LOGO.png" alt="Ginger Logo" width="180"/>
   <h1>Ginger</h1>
   <p><strong>Agilize e padronize projetos Go</strong></p>
 
