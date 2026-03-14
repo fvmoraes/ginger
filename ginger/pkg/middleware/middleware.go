@@ -6,6 +6,8 @@ package middleware
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ginger-framework/ginger/pkg/logger"
@@ -122,8 +124,8 @@ func CORS(cfg ...CORSConfig) Func {
 		}
 	}
 
-	methods := joinStrings(c.AllowedMethods)
-	headers := joinStrings(c.AllowedHeaders)
+	methods := strings.Join(c.AllowedMethods, ", ")
+	headers := strings.Join(c.AllowedHeaders, ", ")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +140,7 @@ func CORS(cfg ...CORSConfig) Func {
 				h.Set("Access-Control-Allow-Credentials", "true")
 			}
 			if c.MaxAge > 0 {
-				h.Set("Access-Control-Max-Age", itoa(c.MaxAge))
+				h.Set("Access-Control-Max-Age", strconv.Itoa(c.MaxAge))
 			}
 			// Vary header ensures caches don't serve wrong origin responses.
 			h.Add("Vary", "Origin")
@@ -167,31 +169,6 @@ func resolveOrigin(requestOrigin string, allowed []string) string {
 		return allowed[0]
 	}
 	return "*"
-}
-
-func joinStrings(ss []string) string {
-	out := ""
-	for i, s := range ss {
-		if i > 0 {
-			out += ", "
-		}
-		out += s
-	}
-	return out
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	buf := [20]byte{}
-	pos := len(buf)
-	for n > 0 {
-		pos--
-		buf[pos] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(buf[pos:])
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code.

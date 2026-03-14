@@ -8,6 +8,22 @@ Bem-vindo à documentação completa do Ginger Framework. Esta documentação co
 
 ## 📖 Guias Principais
 
+### 🚀 [Guia de Início Rápido](./GETTING_STARTED.md)
+**Comece em 5 minutos**
+
+Tutorial prático e direto:
+- Instalar o Ginger
+- Criar primeiro projeto
+- Gerar CRUD completo
+- Adicionar banco de dados
+- Deploy com Docker
+- Exemplos de código prontos
+- Dúvidas comuns respondidas
+
+**Ideal para:** Quem quer começar imediatamente.
+
+---
+
 ### 🏗️ [Guia de Arquitetura](./ARCHITECTURE.md)
 **Entenda a estrutura e filosofia do Ginger**
 
@@ -194,8 +210,8 @@ Deploy completo do desenvolvimento à produção:
 ## 🎯 Fluxo de Aprendizado Recomendado
 
 ### 1. Iniciante
-1. Leia o [README principal](../README.md) — visão geral e quick start
-2. Crie seu primeiro projeto: `ginger new my-api`
+1. Leia o [README principal](../README.md) — visão geral
+2. Siga o [Guia de Início Rápido](./GETTING_STARTED.md) — tutorial prático
 3. Explore o [Guia de Arquitetura](./ARCHITECTURE.md) — entenda a estrutura
 4. Consulte a [Referência de Pacotes](./PACKAGES.md) conforme necessário
 

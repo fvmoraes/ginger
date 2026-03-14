@@ -87,20 +87,7 @@ func checkGracefulShutdown() bool {
 }
 
 func checkTests() bool {
-	found := false
-	filepath.Walk(".", func(path string, info os.FileInfo, err error) error { //nolint:errcheck
-		if err != nil || found {
-			return nil
-		}
-		if info.IsDir() && (info.Name() == "vendor" || info.Name() == ".git") {
-			return filepath.SkipDir
-		}
-		if !info.IsDir() && len(path) >= 8 && path[len(path)-8:] == "_test.go" {
-			found = true
-		}
-		return nil
-	})
-	return found
+	return hasFileWithSuffix(".", "_test.go")
 }
 
 // checkGoVet runs go vet ./... and reports whether it passes.
@@ -122,7 +109,6 @@ func checkLint() bool {
 }
 
 // grepInDir reports whether pattern appears in any .go file under dir.
-// Uses bytes.Contains from the standard library — no need to reimplement.
 func grepInDir(dir, pattern string) bool {
 	needle := []byte(pattern)
 	found := false
@@ -138,6 +124,24 @@ func grepInDir(dir, pattern string) bool {
 			if err == nil && bytes.Contains(data, needle) {
 				found = true
 			}
+		}
+		return nil
+	})
+	return found
+}
+
+// hasFileWithSuffix checks if any file with the given suffix exists under dir.
+func hasFileWithSuffix(dir, suffix string) bool {
+	found := false
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error { //nolint:errcheck
+		if err != nil || found {
+			return nil
+		}
+		if info.IsDir() && (info.Name() == "vendor" || info.Name() == ".git") {
+			return filepath.SkipDir
+		}
+		if !info.IsDir() && len(path) >= len(suffix) && path[len(path)-len(suffix):] == suffix {
+			found = true
 		}
 		return nil
 	})

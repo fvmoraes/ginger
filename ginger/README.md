@@ -113,12 +113,12 @@ ginger run
 
 Your API is now running at `http://localhost:8080`.
 
-Built-in endpoints available immediately:
+**Quick test:**
+```bash
+curl http://localhost:8080/health
+```
 
-| Method | Path      | Description        |
-|--------|-----------|--------------------|
-| GET    | /health   | Health check       |
-| GET    | /api/v1/ping | Ping endpoint   |
+**Next steps:** See [Getting Started Guide](./docs/GETTING_STARTED.md) for a complete tutorial.
 
 ## CLI Reference
 
@@ -160,20 +160,15 @@ ginger help                        Show help
 ### Code generation example
 
 ```bash
-ginger generate handler  product
-ginger generate service  product
-ginger generate repository product
+ginger generate crud product
 ```
 
-This creates:
+This creates a complete CRUD with:
+- Model, Handler, Service, Repository
+- Tests included
+- Ready to wire in your router
 
-```
-internal/api/handlers/product_handler.go
-internal/api/services/product_service.go
-internal/api/repositories/product_repository.go
-```
-
-Each file is fully wired with the correct interface, constructor, and method stubs — ready to fill in.
+**Learn more:** [Getting Started Guide](./docs/GETTING_STARTED.md)
 
 ## Core Packages
 
