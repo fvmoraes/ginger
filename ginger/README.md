@@ -150,6 +150,8 @@ ginger help                        Show help
 |             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
 | Protocols   | `ginger add grpc`          | `google.golang.org/grpc`             |
 |             | `ginger add mcp`           | stdlib only                          |
+| Real-time   | `ginger add sse`           | stdlib only                          |
+|             | `ginger add websocket`     | stdlib only                          |
 | Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
 |             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
 
@@ -232,7 +234,17 @@ All errors serialize to a consistent JSON shape:
 middleware.Logger(log)    // structured request logging
 middleware.Recover(log)   // panic recovery → 500
 middleware.RequestID()    // injects X-Request-ID
-middleware.CORS("*")      // CORS headers
+
+// Simple allow-all CORS
+middleware.CORS()
+
+// Fine-grained CORS config
+middleware.CORS(middleware.CORSConfig{
+    AllowedOrigins:   []string{"https://app.example.com"},
+    AllowedHeaders:   []string{"Content-Type", "Authorization"},
+    AllowCredentials: true,
+    MaxAge:           86400,
+})
 
 // Compose
 middleware.Chain(mw1, mw2, mw3)
@@ -303,6 +315,66 @@ testhelper.AssertStatus(t, rec, http.StatusOK)
 var result []User
 testhelper.DecodeJSON(t, rec, &result)
 ```
+
+### `pkg/response` — JSON response envelopes
+
+Consistent JSON shapes for all API responses — frontend clients can handle them generically.
+
+```go
+// Single resource — { "data": {...} }
+response.OK(w, user)
+response.Created(w, user)
+
+// Paginated list — { "data": [...], "pagination": { "page": 1, "per_page": 20, "total": 100, "total_pages": 5 } }
+response.Paginated(w, users, page, perPage, total)
+
+// 204 No Content
+response.NoContent(w)
+```
+
+### `pkg/sse` — Server-Sent Events
+
+One-way server→client streaming over plain HTTP. Ideal for live feeds, notifications, and progress updates.
+
+```go
+func streamHandler(w http.ResponseWriter, r *http.Request) {
+    stream, err := sse.New(w)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    for {
+        select {
+        case <-r.Context().Done():
+            return
+        case event := <-eventCh:
+            stream.Send(sse.Event{Type: "update", Data: event})
+        }
+    }
+}
+```
+
+Nginx buffering is disabled automatically (`X-Accel-Buffering: no`). Clients reconnect using the `id` field.
+
+### `pkg/ws` — WebSocket
+
+Bidirectional real-time communication. Zero external dependencies — implemented over `net/http` hijack + RFC 6455 framing.
+
+```go
+func chatHandler(w http.ResponseWriter, r *http.Request) {
+    ws.Handle(w, r, func(conn *ws.Conn) {
+        for {
+            var msg ws.Message
+            if err := conn.Recv(&msg); err != nil {
+                return // client disconnected
+            }
+            conn.Send(ws.Message{Type: "echo", Data: msg.Data})
+        }
+    })
+}
+```
+
+Use `ginger add sse` or `ginger add websocket` to scaffold a ready-to-use handler in your project.
 
 ## Example App
 
@@ -510,6 +582,8 @@ ginger help                        Exibe a ajuda
 |             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
 | Protocolos  | `ginger add grpc`          | `google.golang.org/grpc`             |
 |             | `ginger add mcp`           | stdlib only                          |
+| Tempo real  | `ginger add sse`           | stdlib only                          |
+|             | `ginger add websocket`     | stdlib only                          |
 | Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
 |             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
 
@@ -592,7 +666,17 @@ Todos os erros serializam para um formato JSON consistente:
 middleware.Logger(log)    // log estruturado de requisições
 middleware.Recover(log)   // recuperação de panic → 500
 middleware.RequestID()    // injeta X-Request-ID
-middleware.CORS("*")      // headers CORS
+
+// CORS permissivo (allow-all)
+middleware.CORS()
+
+// CORS com configuração detalhada
+middleware.CORS(middleware.CORSConfig{
+    AllowedOrigins:   []string{"https://app.exemplo.com"},
+    AllowedHeaders:   []string{"Content-Type", "Authorization"},
+    AllowCredentials: true,
+    MaxAge:           86400,
+})
 
 // Composição
 middleware.Chain(mw1, mw2, mw3)
@@ -663,6 +747,66 @@ testhelper.AssertStatus(t, rec, http.StatusOK)
 var resultado []Usuario
 testhelper.DecodeJSON(t, rec, &resultado)
 ```
+
+### `pkg/response` — Envelopes de resposta JSON
+
+Formatos JSON consistentes para todas as respostas da API — clientes frontend podem tratá-los de forma genérica.
+
+```go
+// Recurso único — { "data": {...} }
+response.OK(w, usuario)
+response.Created(w, usuario)
+
+// Lista paginada — { "data": [...], "pagination": { "page": 1, "per_page": 20, "total": 100, "total_pages": 5 } }
+response.Paginated(w, usuarios, page, perPage, total)
+
+// 204 No Content
+response.NoContent(w)
+```
+
+### `pkg/sse` — Server-Sent Events
+
+Streaming unidirecional servidor→cliente sobre HTTP puro. Ideal para feeds ao vivo, notificações e atualizações de progresso.
+
+```go
+func streamHandler(w http.ResponseWriter, r *http.Request) {
+    stream, err := sse.New(w)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    for {
+        select {
+        case <-r.Context().Done():
+            return
+        case evento := <-eventoCh:
+            stream.Send(sse.Event{Type: "update", Data: evento})
+        }
+    }
+}
+```
+
+O buffering do nginx é desabilitado automaticamente (`X-Accel-Buffering: no`). Clientes reconectam usando o campo `id`.
+
+### `pkg/ws` — WebSocket
+
+Comunicação bidirecional em tempo real. Zero dependências externas — implementado sobre hijack do `net/http` + framing RFC 6455.
+
+```go
+func chatHandler(w http.ResponseWriter, r *http.Request) {
+    ws.Handle(w, r, func(conn *ws.Conn) {
+        for {
+            var msg ws.Message
+            if err := conn.Recv(&msg); err != nil {
+                return // cliente desconectou
+            }
+            conn.Send(ws.Message{Type: "echo", Data: msg.Data})
+        }
+    })
+}
+```
+
+Use `ginger add sse` ou `ginger add websocket` para gerar um handler pronto no seu projeto.
 
 ## App de Exemplo
 

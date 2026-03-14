@@ -98,6 +98,19 @@ var registry = map[string]integration{
 		file: "platform/messaging/pubsub.go",
 		tmpl: pubsubTmpl,
 	},
+	// ── UI / Real-time ─────────────────────────────────────────────────────────
+	"sse": {
+		name: "sse",
+		pkg:  "",
+		file: "internal/api/handlers/sse_handler.go",
+		tmpl: sseTmpl,
+	},
+	"websocket": {
+		name: "websocket",
+		pkg:  "",
+		file: "internal/api/handlers/ws_handler.go",
+		tmpl: wsTmpl,
+	},
 	// ── Observability ──────────────────────────────────────────────────────
 	"otel": {
 		name: "otel",
@@ -138,6 +151,7 @@ func Add(name string) error {
 				"  cache      : redis\n"+
 				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
 				"  protocols  : grpc, mcp\n"+
+				"  realtime   : sse, websocket\n"+
 				"  observ.    : otel, prometheus",
 			name,
 		)

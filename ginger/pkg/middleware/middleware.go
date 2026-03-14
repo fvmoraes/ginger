@@ -79,17 +79,70 @@ func RequestID() Func {
 	}
 }
 
-// CORS adds basic CORS headers.
-func CORS(allowedOrigins ...string) Func {
-	origins := "*"
-	if len(allowedOrigins) > 0 {
-		origins = allowedOrigins[0]
+// CORSConfig holds the configuration for the CORS middleware.
+type CORSConfig struct {
+	// AllowedOrigins is the list of origins allowed to make cross-origin requests.
+	// Use ["*"] to allow all origins. Defaults to ["*"].
+	AllowedOrigins []string
+	// AllowedHeaders is the list of headers allowed in cross-origin requests.
+	// Defaults to ["Content-Type", "Authorization", "X-Request-ID"].
+	AllowedHeaders []string
+	// AllowedMethods is the list of HTTP methods allowed.
+	// Defaults to ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"].
+	AllowedMethods []string
+	// AllowCredentials sets Access-Control-Allow-Credentials.
+	// NOTE: cannot be used together with AllowedOrigins: ["*"].
+	AllowCredentials bool
+	// MaxAge sets Access-Control-Max-Age in seconds (preflight cache).
+	// Defaults to 0 (no cache header sent).
+	MaxAge int
+}
+
+// CORS adds CORS headers using the provided config.
+// When called with no arguments it defaults to allow-all (origin: *).
+//
+//	middleware.CORS()                          // allow all
+//	middleware.CORS(CORSConfig{...})           // custom config
+func CORS(cfg ...CORSConfig) Func {
+	c := CORSConfig{
+		AllowedOrigins: []string{"*"},
+		AllowedHeaders: []string{"Content-Type", "Authorization", "X-Request-ID"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 	}
+	if len(cfg) > 0 {
+		c = cfg[0]
+		if len(c.AllowedOrigins) == 0 {
+			c.AllowedOrigins = []string{"*"}
+		}
+		if len(c.AllowedHeaders) == 0 {
+			c.AllowedHeaders = []string{"Content-Type", "Authorization", "X-Request-ID"}
+		}
+		if len(c.AllowedMethods) == 0 {
+			c.AllowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+		}
+	}
+
+	methods := joinStrings(c.AllowedMethods)
+	headers := joinStrings(c.AllowedHeaders)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", origins)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-ID")
+			origin := r.Header.Get("Origin")
+			allowed := resolveOrigin(origin, c.AllowedOrigins)
+
+			h := w.Header()
+			h.Set("Access-Control-Allow-Origin", allowed)
+			h.Set("Access-Control-Allow-Methods", methods)
+			h.Set("Access-Control-Allow-Headers", headers)
+			if c.AllowCredentials {
+				h.Set("Access-Control-Allow-Credentials", "true")
+			}
+			if c.MaxAge > 0 {
+				h.Set("Access-Control-Max-Age", itoa(c.MaxAge))
+			}
+			// Vary header ensures caches don't serve wrong origin responses.
+			h.Add("Vary", "Origin")
+
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return
@@ -97,6 +150,48 @@ func CORS(allowedOrigins ...string) Func {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// resolveOrigin returns the matching allowed origin or "*".
+func resolveOrigin(requestOrigin string, allowed []string) string {
+	if len(allowed) == 1 && allowed[0] == "*" {
+		return "*"
+	}
+	for _, o := range allowed {
+		if o == requestOrigin {
+			return requestOrigin
+		}
+	}
+	// Return first allowed origin as fallback (browser will block mismatches).
+	if len(allowed) > 0 {
+		return allowed[0]
+	}
+	return "*"
+}
+
+func joinStrings(ss []string) string {
+	out := ""
+	for i, s := range ss {
+		if i > 0 {
+			out += ", "
+		}
+		out += s
+	}
+	return out
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	buf := [20]byte{}
+	pos := len(buf)
+	for n > 0 {
+		pos--
+		buf[pos] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[pos:])
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code.

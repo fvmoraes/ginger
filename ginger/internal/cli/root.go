@@ -65,6 +65,7 @@ Commands:
                                 cache      : redis
                                 messaging  : kafka, rabbitmq, nats, pubsub
                                 protocols  : grpc, mcp
+                                realtime   : sse, websocket
                                 observ.    : otel, prometheus
   doctor                      Diagnose project health
   version                     Print Ginger version

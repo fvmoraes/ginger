@@ -714,6 +714,76 @@ func errResponse(msg string) map[string]string {
 }
 `
 
+// ─── UI / Real-time ──────────────────────────────────────────────────────────
+
+const sseTmpl = `// Package realtime provides a Server-Sent Events (SSE) handler example.
+// For the full SSE helper, see github.com/ginger-framework/ginger/pkg/sse.
+package realtime
+
+import (
+	"net/http"
+	"time"
+
+	"github.com/ginger-framework/ginger/pkg/sse"
+)
+
+// LiveFeedHandler streams real-time events to the client.
+// Mount at: GET /api/v1/events
+func LiveFeedHandler(w http.ResponseWriter, r *http.Request) {
+	stream, err := sse.New(w)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	// Send an initial connected event.
+	_ = stream.Send(sse.Event{Type: "connected", Data: map[string]string{"status": "ok"}})
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case t := <-ticker.C:
+			_ = stream.Send(sse.Event{
+				Type: "tick",
+				Data: map[string]string{"time": t.Format(time.RFC3339)},
+			})
+		}
+	}
+}
+`
+
+const wsTmpl = `// Package realtime provides a WebSocket handler example.
+// For the full WebSocket helper, see github.com/ginger-framework/ginger/pkg/ws.
+package realtime
+
+import (
+	"net/http"
+
+	"github.com/ginger-framework/ginger/pkg/ws"
+)
+
+// EchoHandler upgrades the connection to WebSocket and echoes every message.
+// Mount at: GET /api/v1/ws
+func EchoHandler(w http.ResponseWriter, r *http.Request) {
+	ws.Handle(w, r, func(conn *ws.Conn) {
+		for {
+			var msg ws.Message
+			if err := conn.Recv(&msg); err != nil {
+				return // client disconnected
+			}
+			// Echo the message back with type "echo".
+			if err := conn.Send(ws.Message{Type: "echo", Data: msg.Data}); err != nil {
+				return
+			}
+		}
+	})
+}
+`
+
 // ─── ORM / Query builders ─────────────────────────────────────────────────────
 
 const gormTmpl = `// Package database provides a GORM setup helper.
