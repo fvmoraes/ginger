@@ -1,0 +1,5 @@
+fe093ccbe371781e3a712268f9fadf7f015c4ca1a5942d98a0adf89d356ea167  releases/v1.1.1/ginger-darwin-amd64
+cea6270b47c164afb2c372e07775fc6c1b23c34c1976fa653153cd1a0e02dbaf  releases/v1.1.1/ginger-darwin-arm64
+dd931f1ed12f018cff77c5463fa9affaf040b542b267f72a14d101835c39e953  releases/v1.1.1/ginger-linux-amd64
+addc7c2a94fa04c6be9e89a5347d064941b1e2033f1f0a9f1ac327db3185803f  releases/v1.1.1/ginger-linux-arm64
+aac4b652d0a9045a3ed69a8ab67950228f28b898203b210c36aeb2d6d6286eff  releases/v1.1.1/ginger-windows-amd64.exe
