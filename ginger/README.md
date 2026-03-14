@@ -26,6 +26,7 @@
 - [Configuration](#configuration)
 - [Observability](#observability)
 - [Docker & Kubernetes](#docker--kubernetes)
+- [📚 Complete Documentation](#-complete-documentation)
 
 ## Português
 
@@ -39,6 +40,7 @@
 - [Configuração](#configuração)
 - [Observabilidade](#observabilidade)
 - [Docker e Kubernetes](#docker-e-kubernetes)
+- [📚 Documentação Completa](#-documentação-completa)
 
 ---
 
@@ -472,6 +474,59 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ---
 
+## 📚 Complete Documentation
+
+Ginger comes with comprehensive, in-depth documentation covering every aspect of the framework:
+
+### 🏗️ [Architecture Guide](./docs/ARCHITECTURE.md)
+Deep dive into Ginger's architecture, design philosophy, and code patterns:
+- Component diagram and request flow
+- Layer responsibilities (Handler → Service → Repository)
+- Dependency injection patterns
+- Error handling strategies
+- Naming conventions and project structure
+
+### 📦 [Package Reference](./docs/PACKAGES.md)
+Complete API documentation for every core package with examples:
+- `pkg/app` — Application bootstrap and lifecycle
+- `pkg/router` — HTTP routing and helpers
+- `pkg/middleware` — Built-in middlewares (Logger, CORS, Recover, RequestID)
+- `pkg/errors` — Typed errors with HTTP status mapping
+- `pkg/response` — JSON envelopes for consistent API responses
+- `pkg/sse` — Server-Sent Events for real-time streaming
+- `pkg/ws` — WebSocket for bidirectional communication
+- `pkg/config`, `pkg/logger`, `pkg/database`, `pkg/health`, `pkg/telemetry`
+
+### 🔌 [Integrations Guide](./docs/INTEGRATIONS.md)
+How to add databases, cache, messaging, and protocols:
+- **Databases:** PostgreSQL, MySQL, SQLite, SQL Server, ClickHouse
+- **NoSQL:** MongoDB, Couchbase
+- **Cache:** Redis
+- **Messaging:** Kafka, RabbitMQ, NATS, Google Pub/Sub
+- **Protocols:** gRPC, MCP (Model Context Protocol)
+- **Real-time:** SSE, WebSocket
+- **Observability:** OpenTelemetry, Prometheus
+
+### 🧪 [Testing Guide](./docs/TESTING.md)
+Testing strategies, patterns, and best practices:
+- Unit tests, integration tests, E2E tests
+- Mocking patterns (manual and testify)
+- Table-driven tests
+- Test helpers and utilities
+- Coverage reporting
+- CI/CD integration (GitHub Actions, GitLab CI)
+
+### 🚀 [Deployment Guide](./docs/DEPLOYMENT.md)
+Production deployment with Docker, Kubernetes, and Helm:
+- Docker multi-stage builds and optimizations
+- Docker Compose for local development
+- Kubernetes manifests (Deployment, Service, ConfigMap, Secrets)
+- Helm charts for multi-environment deployments
+- CI/CD pipelines (GitHub Actions, GitLab CI)
+- Health checks, monitoring, and troubleshooting
+
+---
+
 # 🇧🇷 Português
 
 ## O que é o Ginger?
@@ -901,6 +956,59 @@ docker run -p 8080:8080 minha-api:latest
 ```
 
 Um template de `Deployment` + `Service` Kubernetes está disponível em `templates/k8s/deployment.yaml`. Ele inclui probes de readiness e liveness apontando para `/health`, limites de recursos e um serviço `ClusterIP`.
+
+---
+
+## 📚 Documentação Completa
+
+O Ginger vem com documentação abrangente e profunda cobrindo todos os aspectos do framework:
+
+### 🏗️ [Guia de Arquitetura](./docs/ARCHITECTURE.md)
+Mergulho profundo na arquitetura do Ginger, filosofia de design e padrões de código:
+- Diagrama de componentes e fluxo de requisição
+- Responsabilidades das camadas (Handler → Service → Repository)
+- Padrões de injeção de dependência
+- Estratégias de tratamento de erros
+- Convenções de nomenclatura e estrutura de projeto
+
+### 📦 [Referência de Pacotes](./docs/PACKAGES.md)
+Documentação completa da API de cada pacote core com exemplos:
+- `pkg/app` — Bootstrap e lifecycle da aplicação
+- `pkg/router` — Roteamento HTTP e helpers
+- `pkg/middleware` — Middlewares embutidos (Logger, CORS, Recover, RequestID)
+- `pkg/errors` — Erros tipados com mapeamento de status HTTP
+- `pkg/response` — Envelopes JSON para respostas consistentes
+- `pkg/sse` — Server-Sent Events para streaming em tempo real
+- `pkg/ws` — WebSocket para comunicação bidirecional
+- `pkg/config`, `pkg/logger`, `pkg/database`, `pkg/health`, `pkg/telemetry`
+
+### 🔌 [Guia de Integrações](./docs/INTEGRATIONS.md)
+Como adicionar bancos de dados, cache, mensageria e protocolos:
+- **Bancos:** PostgreSQL, MySQL, SQLite, SQL Server, ClickHouse
+- **NoSQL:** MongoDB, Couchbase
+- **Cache:** Redis
+- **Mensageria:** Kafka, RabbitMQ, NATS, Google Pub/Sub
+- **Protocolos:** gRPC, MCP (Model Context Protocol)
+- **Tempo real:** SSE, WebSocket
+- **Observabilidade:** OpenTelemetry, Prometheus
+
+### 🧪 [Guia de Testes](./docs/TESTING.md)
+Estratégias de teste, padrões e melhores práticas:
+- Testes unitários, de integração e E2E
+- Padrões de mocking (manual e testify)
+- Testes table-driven
+- Test helpers e utilitários
+- Relatórios de coverage
+- Integração CI/CD (GitHub Actions, GitLab CI)
+
+### 🚀 [Guia de Deploy](./docs/DEPLOYMENT.md)
+Deploy em produção com Docker, Kubernetes e Helm:
+- Builds Docker multi-stage e otimizações
+- Docker Compose para desenvolvimento local
+- Manifests Kubernetes (Deployment, Service, ConfigMap, Secrets)
+- Helm charts para deploys multi-ambiente
+- Pipelines CI/CD (GitHub Actions, GitLab CI)
+- Health checks, monitoramento e troubleshooting
 
 ---
 
