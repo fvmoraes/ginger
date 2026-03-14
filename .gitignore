@@ -40,3 +40,6 @@ $RECYCLE.BIN/
 # Local
 my-local/
 
+# Build artifacts
+bin/
+*.exe
