@@ -1,8 +1,7 @@
 <div align="center">
   <img src="../GINGER_LOGO.png" alt="Ginger Logo" width="180"/>
   <h1>Ginger</h1>
-  <p><strong>Accelerate and standardize Go projects across your team</strong></p>
-  <p><em>Agilize e padronize projetos Go em toda a sua equipe</em></p>
+  <p><strong>Agilize e padronize projetos Go</strong></p>
 
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
