@@ -22,24 +22,64 @@ type integration struct {
 }
 
 var registry = map[string]integration{
+	// ── Databases ──────────────────────────────────────────────────────────
 	"postgres": {
 		name: "postgres",
 		pkg:  "github.com/lib/pq",
 		file: "platform/database/postgres.go",
 		tmpl: postgresTmpl,
 	},
+	"mysql": {
+		name: "mysql",
+		pkg:  "github.com/go-sql-driver/mysql",
+		file: "platform/database/mysql.go",
+		tmpl: mysqlTmpl,
+	},
+	"sqlite": {
+		name: "sqlite",
+		pkg:  "github.com/mattn/go-sqlite3",
+		file: "platform/database/sqlite.go",
+		tmpl: sqliteTmpl,
+	},
+	"sqlserver": {
+		name: "sqlserver",
+		pkg:  "github.com/microsoft/go-mssqldb",
+		file: "platform/database/sqlserver.go",
+		tmpl: sqlserverTmpl,
+	},
+	// ── Cache ──────────────────────────────────────────────────────────────
 	"redis": {
 		name: "redis",
 		pkg:  "github.com/redis/go-redis/v9",
 		file: "platform/cache/redis.go",
 		tmpl: redisTmpl,
 	},
+	// ── Messaging ──────────────────────────────────────────────────────────
 	"kafka": {
 		name: "kafka",
 		pkg:  "github.com/segmentio/kafka-go",
 		file: "platform/messaging/kafka.go",
 		tmpl: kafkaTmpl,
 	},
+	"rabbitmq": {
+		name: "rabbitmq",
+		pkg:  "github.com/rabbitmq/amqp091-go",
+		file: "platform/messaging/rabbitmq.go",
+		tmpl: rabbitmqTmpl,
+	},
+	"nats": {
+		name: "nats",
+		pkg:  "github.com/nats-io/nats.go",
+		file: "platform/messaging/nats.go",
+		tmpl: natsTmpl,
+	},
+	"pubsub": {
+		name: "pubsub",
+		pkg:  "cloud.google.com/go/pubsub",
+		file: "platform/messaging/pubsub.go",
+		tmpl: pubsubTmpl,
+	},
+	// ── Observability ──────────────────────────────────────────────────────
 	"otel": {
 		name: "otel",
 		pkg:  "go.opentelemetry.io/otel",
@@ -52,13 +92,34 @@ var registry = map[string]integration{
 		file: "platform/metrics/prometheus.go",
 		tmpl: prometheusTmpl,
 	},
+	// ── Protocols ──────────────────────────────────────────────────────────
+	"grpc": {
+		name: "grpc",
+		pkg:  "google.golang.org/grpc",
+		file: "platform/grpc/server.go",
+		tmpl: grpcTmpl,
+	},
+	"mcp": {
+		name: "mcp",
+		pkg:  "",
+		file: "platform/mcp/server.go",
+		tmpl: mcpTmpl,
+	},
 }
 
 // Add generates the integration file and runs go get for the required package.
 func Add(name string) error {
 	intg, ok := registry[name]
 	if !ok {
-		return fmt.Errorf("unknown integration: %s\navailable: postgres, redis, kafka, otel, prometheus", name)
+		return fmt.Errorf(
+			"unknown integration: %s\n\navailable integrations:\n"+
+				"  databases  : postgres, mysql, sqlite, sqlserver\n"+
+				"  cache      : redis\n"+
+				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
+				"  protocols  : grpc, mcp\n"+
+				"  observ.    : otel, prometheus",
+			name,
+		)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(intg.file), 0755); err != nil {
@@ -84,6 +145,12 @@ func Add(name string) error {
 	}
 
 	fmt.Printf("  ✓ created %s\n", intg.file)
+
+	// MCP is stdlib-only — no external dependency needed.
+	if intg.pkg == "" {
+		fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", name)
+		return nil
+	}
 
 	// go get the dependency
 	fmt.Printf("  → go get %s\n", intg.pkg)

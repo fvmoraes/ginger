@@ -262,3 +262,454 @@ func (sw *statusWriter) WriteHeader(code int) {
 	sw.ResponseWriter.WriteHeader(code)
 }
 `
+
+// ─── Messaging ───────────────────────────────────────────────────────────────
+
+const rabbitmqTmpl = `// Package messaging provides a RabbitMQ connection and channel helper.
+package messaging
+
+import (
+	"context"
+	"fmt"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+// RabbitMQ wraps an AMQP connection and channel.
+type RabbitMQ struct {
+	conn    *amqp.Connection
+	Channel *amqp.Channel
+}
+
+// ConnectRabbitMQ dials RabbitMQ and opens a channel.
+// dsn example: amqp://guest:guest@localhost:5672/
+func ConnectRabbitMQ(dsn string) (*RabbitMQ, error) {
+	conn, err := amqp.Dial(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("rabbitmq: dial: %w", err)
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("rabbitmq: channel: %w", err)
+	}
+	return &RabbitMQ{conn: conn, Channel: ch}, nil
+}
+
+// Publish sends a message to the given exchange/routing key.
+func (r *RabbitMQ) Publish(ctx context.Context, exchange, key string, body []byte) error {
+	return r.Channel.PublishWithContext(ctx, exchange, key, false, false,
+		amqp.Publishing{ContentType: "application/json", Body: body},
+	)
+}
+
+// Close releases the channel and connection.
+func (r *RabbitMQ) Close() error {
+	if err := r.Channel.Close(); err != nil {
+		return err
+	}
+	return r.conn.Close()
+}
+
+// Checker implements health.Checker for RabbitMQ.
+type RabbitMQChecker struct{ r *RabbitMQ }
+
+func NewRabbitMQChecker(r *RabbitMQ) *RabbitMQChecker { return &RabbitMQChecker{r: r} }
+func (c *RabbitMQChecker) Name() string                { return "rabbitmq" }
+func (c *RabbitMQChecker) Check(_ context.Context) error {
+	if c.r.conn.IsClosed() {
+		return fmt.Errorf("rabbitmq: connection closed")
+	}
+	return nil
+}
+`
+
+const natsTmpl = `// Package messaging provides a NATS connection helper.
+package messaging
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/nats-io/nats.go"
+)
+
+// ConnectNATS connects to a NATS server.
+// url example: nats://localhost:4222
+func ConnectNATS(url string) (*nats.Conn, error) {
+	nc, err := nats.Connect(url, nats.MaxReconnects(5))
+	if err != nil {
+		return nil, fmt.Errorf("nats: connect: %w", err)
+	}
+	return nc, nil
+}
+
+// Publish sends a message to a NATS subject.
+func Publish(nc *nats.Conn, subject string, data []byte) error {
+	return nc.Publish(subject, data)
+}
+
+// Subscribe registers a handler for a NATS subject.
+func Subscribe(nc *nats.Conn, subject string, handler nats.MsgHandler) (*nats.Subscription, error) {
+	return nc.Subscribe(subject, handler)
+}
+
+// NATSChecker implements health.Checker for NATS.
+type NATSChecker struct{ nc *nats.Conn }
+
+func NewNATSChecker(nc *nats.Conn) *NATSChecker { return &NATSChecker{nc: nc} }
+func (c *NATSChecker) Name() string              { return "nats" }
+func (c *NATSChecker) Check(_ context.Context) error {
+	if !c.nc.IsConnected() {
+		return fmt.Errorf("nats: not connected")
+	}
+	return nil
+}
+`
+
+const pubsubTmpl = `// Package messaging provides a Google Cloud Pub/Sub helper.
+package messaging
+
+import (
+	"context"
+	"fmt"
+
+	"cloud.google.com/go/pubsub"
+)
+
+// PubSubClient wraps a Google Cloud Pub/Sub client.
+type PubSubClient struct {
+	client *pubsub.Client
+}
+
+// ConnectPubSub creates a Pub/Sub client for the given GCP project.
+// Requires GOOGLE_APPLICATION_CREDENTIALS or Workload Identity.
+func ConnectPubSub(ctx context.Context, projectID string) (*PubSubClient, error) {
+	c, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("pubsub: client: %w", err)
+	}
+	return &PubSubClient{client: c}, nil
+}
+
+// Publish sends a message to the given topic.
+func (p *PubSubClient) Publish(ctx context.Context, topicID string, data []byte) (string, error) {
+	t := p.client.Topic(topicID)
+	result := t.Publish(ctx, &pubsub.Message{Data: data})
+	id, err := result.Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("pubsub: publish: %w", err)
+	}
+	return id, nil
+}
+
+// Subscribe pulls messages from a subscription.
+func (p *PubSubClient) Subscribe(ctx context.Context, subID string, fn func(ctx context.Context, msg *pubsub.Message)) error {
+	sub := p.client.Subscription(subID)
+	return sub.Receive(ctx, fn)
+}
+
+// Close releases the Pub/Sub client.
+func (p *PubSubClient) Close() error { return p.client.Close() }
+`
+
+// ─── Relational databases ─────────────────────────────────────────────────────
+
+const mysqlTmpl = `// Package database provides a MySQL connection helper.
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+// MySQLConfig holds MySQL connection settings.
+type MySQLConfig struct {
+	DSN     string // user:pass@tcp(host:3306)/dbname?parseTime=true
+	MaxOpen int
+	MaxIdle int
+}
+
+// ConnectMySQL opens and validates a MySQL connection.
+func ConnectMySQL(cfg MySQLConfig) (*sql.DB, error) {
+	db, err := sql.Open("mysql", cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("mysql: open: %w", err)
+	}
+	if cfg.MaxOpen > 0 {
+		db.SetMaxOpenConns(cfg.MaxOpen)
+	}
+	if cfg.MaxIdle > 0 {
+		db.SetMaxIdleConns(cfg.MaxIdle)
+	}
+	db.SetConnMaxLifetime(30 * time.Minute)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("mysql: ping: %w", err)
+	}
+	return db, nil
+}
+`
+
+const sqliteTmpl = `// Package database provides a SQLite connection helper.
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+// ConnectSQLite opens a SQLite database file.
+// path example: "./data.db" or ":memory:"
+func ConnectSQLite(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: open: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("sqlite: ping: %w", err)
+	}
+	return db, nil
+}
+`
+
+const sqlserverTmpl = `// Package database provides a SQL Server connection helper.
+package database
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
+	_ "github.com/microsoft/go-mssqldb"
+)
+
+// SQLServerConfig holds SQL Server connection settings.
+type SQLServerConfig struct {
+	DSN     string // sqlserver://user:pass@host:1433?database=dbname
+	MaxOpen int
+	MaxIdle int
+}
+
+// ConnectSQLServer opens and validates a SQL Server connection.
+func ConnectSQLServer(cfg SQLServerConfig) (*sql.DB, error) {
+	db, err := sql.Open("sqlserver", cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("sqlserver: open: %w", err)
+	}
+	if cfg.MaxOpen > 0 {
+		db.SetMaxOpenConns(cfg.MaxOpen)
+	}
+	if cfg.MaxIdle > 0 {
+		db.SetMaxIdleConns(cfg.MaxIdle)
+	}
+	db.SetConnMaxLifetime(30 * time.Minute)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("sqlserver: ping: %w", err)
+	}
+	return db, nil
+}
+`
+
+// ─── gRPC ─────────────────────────────────────────────────────────────────────
+
+const grpcTmpl = `// Package grpc provides a gRPC server and client helper for Ginger projects.
+package grpc
+
+import (
+	"context"
+	"fmt"
+	"net"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
+)
+
+// ServerConfig holds gRPC server settings.
+type ServerConfig struct {
+	Addr string // e.g. ":50051"
+}
+
+// Server wraps a *grpc.Server with lifecycle helpers.
+type Server struct {
+	srv  *grpc.Server
+	addr string
+}
+
+// NewServer creates a gRPC server with health check and reflection enabled.
+// Pass additional grpc.ServerOption values to customise (e.g. TLS, interceptors).
+func NewServer(cfg ServerConfig, opts ...grpc.ServerOption) *Server {
+	srv := grpc.NewServer(opts...)
+
+	// Standard health check service (used by k8s probes, grpc-health-probe, etc.)
+	grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
+
+	// Reflection lets tools like grpcurl discover services without .proto files.
+	reflection.Register(srv)
+
+	return &Server{srv: srv, addr: cfg.Addr}
+}
+
+// Register adds a gRPC service to the server.
+// Call this before Serve.
+func (s *Server) Register(fn func(*grpc.Server)) {
+	fn(s.srv)
+}
+
+// Serve starts listening and blocks until the server stops.
+func (s *Server) Serve() error {
+	lis, err := net.Listen("tcp", s.addr)
+	if err != nil {
+		return fmt.Errorf("grpc: listen %s: %w", s.addr, err)
+	}
+	return s.srv.Serve(lis)
+}
+
+// Stop performs a graceful shutdown.
+func (s *Server) Stop() { s.srv.GracefulStop() }
+
+// NewClient dials a gRPC server and returns the connection.
+// Uses insecure credentials by default — swap for TLS in production.
+func NewClient(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	defaults := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	conn, err := grpc.DialContext(ctx, target, append(defaults, opts...)...)
+	if err != nil {
+		return nil, fmt.Errorf("grpc: dial %s: %w", target, err)
+	}
+	return conn, nil
+}
+`
+
+// ─── MCP (Model Context Protocol) ────────────────────────────────────────────
+
+const mcpTmpl = `// Package mcp provides a minimal Model Context Protocol (MCP) server for
+// exposing tools and resources to LLM clients (e.g. Claude, Cursor, Kiro).
+//
+// The MCP spec: https://modelcontextprotocol.io/specification
+package mcp
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+// Tool represents an MCP tool that can be called by an LLM client.
+type Tool struct {
+	Name        string          // unique tool identifier
+	Description string          // shown to the LLM
+	InputSchema json.RawMessage // JSON Schema for the input object
+	Handler     ToolHandler     // called when the tool is invoked
+}
+
+// ToolHandler is the function signature for an MCP tool implementation.
+type ToolHandler func(ctx context.Context, input json.RawMessage) (any, error)
+
+// Server is a minimal MCP server that exposes tools over HTTP (SSE + JSON-RPC).
+type Server struct {
+	tools map[string]Tool
+}
+
+// NewServer creates an MCP server.
+func NewServer() *Server {
+	return &Server{tools: make(map[string]Tool)}
+}
+
+// Register adds a tool to the server.
+func (s *Server) Register(t Tool) {
+	s.tools[t.Name] = t
+}
+
+// Handler returns an http.Handler that implements the MCP HTTP transport.
+// Mount it at a path, e.g.: mux.Handle("/mcp", mcpServer.Handler())
+func (s *Server) Handler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/mcp/tools/list":
+			s.handleList(w, r)
+		case "/mcp/tools/call":
+			s.handleCall(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// toolInfo is the wire format for a tool in the list response.
+type toolInfo struct {
+	Name        string          ` + "`json:\"name\"`" + `
+	Description string          ` + "`json:\"description\"`" + `
+	InputSchema json.RawMessage ` + "`json:\"inputSchema\"`" + `
+}
+
+func (s *Server) handleList(w http.ResponseWriter, _ *http.Request) {
+	list := make([]toolInfo, 0, len(s.tools))
+	for _, t := range s.tools {
+		list = append(list, toolInfo{
+			Name:        t.Name,
+			Description: t.Description,
+			InputSchema: t.InputSchema,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"tools": list})
+}
+
+type callRequest struct {
+	Name  string          ` + "`json:\"name\"`" + `
+	Input json.RawMessage ` + "`json:\"input\"`" + `
+}
+
+func (s *Server) handleCall(w http.ResponseWriter, r *http.Request) {
+	var req callRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, errResponse(fmt.Sprintf("invalid request: %v", err)))
+		return
+	}
+
+	t, ok := s.tools[req.Name]
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errResponse(fmt.Sprintf("tool not found: %s", req.Name)))
+		return
+	}
+
+	result, err := t.Handler(r.Context(), req.Input)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errResponse(err.Error()))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"result": result})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v) //nolint:errcheck
+}
+
+func errResponse(msg string) map[string]string {
+	return map[string]string{"error": msg}
+}
+`

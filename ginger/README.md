@@ -121,9 +121,30 @@ ginger build [output]              Build the binary
 ginger generate handler <name>     Generate an HTTP handler
 ginger generate service <name>     Generate a service
 ginger generate repository <name>  Generate a repository
+ginger generate crud <name>        Generate full CRUD (model+handler+service+repo+test)
+ginger add <integration>           Add an integration to the project
+ginger doctor                      Run project health diagnostics
 ginger version                     Print Ginger version
 ginger help                        Show help
 ```
+
+### Integrations (`ginger add`)
+
+| Category    | Command                    | Package                              |
+|-------------|----------------------------|--------------------------------------|
+| Databases   | `ginger add postgres`      | `github.com/lib/pq`                  |
+|             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
+|             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
+|             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
+| Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
+| Messaging   | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
+|             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
+|             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
+|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
+| Protocols   | `ginger add grpc`          | `google.golang.org/grpc`             |
+|             | `ginger add mcp`           | stdlib only                          |
+| Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
+|             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
 
 ### Code generation example
 
@@ -455,9 +476,30 @@ ginger build [saída]               Compila o binário
 ginger generate handler <nome>     Gera um handler HTTP
 ginger generate service <nome>     Gera um service
 ginger generate repository <nome>  Gera um repository
+ginger generate crud <nome>        Gera CRUD completo (model+handler+service+repo+test)
+ginger add <integração>            Adiciona uma integração ao projeto
+ginger doctor                      Diagnóstico de saúde do projeto
 ginger version                     Exibe a versão do Ginger
 ginger help                        Exibe a ajuda
 ```
+
+### Integrações (`ginger add`)
+
+| Categoria   | Comando                    | Pacote                               |
+|-------------|----------------------------|--------------------------------------|
+| Bancos      | `ginger add postgres`      | `github.com/lib/pq`                  |
+|             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
+|             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
+|             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
+| Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
+| Mensageria  | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
+|             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
+|             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
+|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
+| Protocolos  | `ginger add grpc`          | `google.golang.org/grpc`             |
+|             | `ginger add mcp`           | stdlib only                          |
+| Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
+|             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
 
 ### Exemplo de geração de código
 
