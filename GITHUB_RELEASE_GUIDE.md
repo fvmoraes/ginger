@@ -1,6 +1,6 @@
 # GitHub Release Guide - Ginger Framework
 
-Guia para criar os releases v1.1.2 e v1.1.3 no GitHub.
+Guia para criar os releases v1.1.2, v1.1.3 e v1.1.4 no GitHub.
 
 ---
 
@@ -32,7 +32,7 @@ Faça upload dos seguintes arquivos de `releases/v1.1.2/`:
 
 ### 5. Opções
 
-- ⬜ Set as the latest release (NÃO marcar - v1.1.3 será a latest)
+- ⬜ Set as the latest release (NÃO marcar - v1.1.4 será a latest)
 - ⬜ Set as a pre-release (NÃO marcar)
 - ✅ Create a discussion for this release (OPCIONAL)
 
@@ -42,7 +42,7 @@ Clique em: **Publish release**
 
 ---
 
-## 📦 Release v1.1.3 (LATEST)
+## 📦 Release v1.1.3
 
 ### 1. Acessar GitHub Releases
 https://github.com/fvmoraes/ginger/releases/new
@@ -51,7 +51,7 @@ https://github.com/fvmoraes/ginger/releases/new
 
 **Tag:** `v1.1.3`  
 **Target:** `main` branch  
-**Title:** `Ginger Framework v1.1.3 - Recommended Release`
+**Title:** `Ginger Framework v1.1.3 - Retraction Release`
 
 ### 3. Descrição
 
@@ -60,6 +60,44 @@ Copie o conteúdo de: `releases/v1.1.3/RELEASE_NOTES.md`
 ### 4. Upload de Binários
 
 Faça upload dos seguintes arquivos de `releases/v1.1.3/`:
+
+- ✅ `ginger-linux-amd64`
+- ✅ `ginger-linux-arm64`
+- ✅ `ginger-darwin-amd64`
+- ✅ `ginger-darwin-arm64`
+- ✅ `ginger-windows-amd64.exe`
+- ✅ `checksums.txt`
+
+### 5. Opções
+
+- ⬜ Set as the latest release (NÃO marcar - v1.1.4 será a latest)
+- ⬜ Set as a pre-release (NÃO marcar)
+- ✅ Create a discussion for this release (OPCIONAL)
+
+### 6. Publicar
+
+Clique em: **Publish release**
+
+---
+
+## 📦 Release v1.1.4 (LATEST)
+
+### 1. Acessar GitHub Releases
+https://github.com/fvmoraes/ginger/releases/new
+
+### 2. Configurar Release
+
+**Tag:** `v1.1.4`  
+**Target:** `main` branch  
+**Title:** `Ginger Framework v1.1.4 - Documentation Release`
+
+### 3. Descrição
+
+Copie o conteúdo de: `releases/v1.1.4/RELEASE_NOTES.md`
+
+### 4. Upload de Binários
+
+Faça upload dos seguintes arquivos de `releases/v1.1.4/`:
 
 - ✅ `ginger-linux-amd64`
 - ✅ `ginger-linux-arm64`
@@ -85,9 +123,10 @@ Clique em: **Publish release**
 **IMPORTANTE:** Crie os releases nesta ordem:
 
 1. **Primeiro:** v1.1.2
-2. **Depois:** v1.1.3 (marcando como "latest")
+2. **Segundo:** v1.1.3
+3. **Terceiro:** v1.1.4 (marcando como "latest")
 
-Isso garante que v1.1.3 apareça como a versão mais recente.
+Isso garante que v1.1.4 apareça como a versão mais recente.
 
 ---
 
