@@ -1,8 +1,8 @@
 <div align="center">
   <img src="../GINGER_LOGO.png" alt="Ginger Logo" width="180"/>
   <h1>Ginger</h1>
-  <p><strong>An opinionated Go framework for building production-ready APIs</strong></p>
-  <p><em>Um framework Go opinativo para construir APIs prontas para produção</em></p>
+  <p><strong>Accelerate and standardize Go projects across your team</strong></p>
+  <p><em>Agilize e padronize projetos Go em toda a sua equipe</em></p>
 
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
@@ -43,7 +43,7 @@
 
 ## What is Ginger?
 
-Ginger is a lightweight Go framework that standardizes project structure and development patterns across teams. It is not a replacement for the standard library — it is a thin, opinionated layer on top of it that enforces conventions, reduces boilerplate, and ships with a CLI to scaffold and generate code.
+Ginger is a CLI tool and set of packages that accelerates and standardizes Go projects across teams. It is not a replacement for the standard library — it is a thin layer on top of it that enforces conventions, eliminates boilerplate, and ships with a CLI to scaffold new projects and generate code.
 
 **Ginger does not hide Go from you. It organizes it.**
 
@@ -377,7 +377,7 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ## O que é o Ginger?
 
-Ginger é um framework Go leve que padroniza a estrutura de projetos e os padrões de desenvolvimento entre equipes. Ele não substitui a biblioteca padrão — é uma camada fina e opinativa sobre ela que impõe convenções, reduz boilerplate e vem com uma CLI para scaffolding e geração de código.
+Ginger é uma CLI e um conjunto de pacotes que agiliza e padroniza projetos Go entre equipes. Ele não substitui a biblioteca padrão — é uma camada fina sobre ela que impõe convenções, elimina boilerplate e vem com uma CLI para criar projetos e gerar código.
 
 **O Ginger não esconde o Go de você. Ele o organiza.**
 
