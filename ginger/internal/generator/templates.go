@@ -180,23 +180,62 @@ import (
 	"github.com/ginger-framework/ginger/pkg/testhelper"
 )
 
-func Test{{.NameTitle}}Handler_List(t *testing.T) {
-	// TODO: inject a mock service and create the handler
-	// h := New{{.NameTitle}}Handler(mockSvc)
-	// r := router.New()
-	// h.Register(r)
+// Test{{.NameTitle}}Handler uses table-driven tests as recommended by
+// The Go Programming Language (Donovan & Kernighan, §11.2).
+func Test{{.NameTitle}}Handler(t *testing.T) {
+	// TODO: replace http.NotFoundHandler() with the real handler once wired:
+	//   svc := &mock{{.NameTitle}}Service{}
+	//   h := New{{.NameTitle}}Handler(svc)
+	//   r := router.New()
+	//   h.Register(r)
 
-	rec := testhelper.NewRequest(t, http.NotFoundHandler(), http.MethodGet, "/{{.NamePlural}}").Do()
-	testhelper.AssertStatus(t, rec, http.StatusNotFound) // replace with real handler
-}
-
-func Test{{.NameTitle}}Handler_Create(t *testing.T) {
-	body := map[string]any{
-		// TODO: fill with valid fields
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		body       any
+		wantStatus int
+	}{
+		{
+			name:       "list {{.NamePlural}}",
+			method:     http.MethodGet,
+			path:       "/{{.NamePlural}}/",
+			wantStatus: http.StatusNotFound, // replace with http.StatusOK
+		},
+		{
+			name:   "create {{.Name}}",
+			method: http.MethodPost,
+			path:   "/{{.NamePlural}}/",
+			body: map[string]any{
+				// TODO: add valid fields
+			},
+			wantStatus: http.StatusNotFound, // replace with http.StatusCreated
+		},
+		{
+			name:       "get {{.Name}} by id",
+			method:     http.MethodGet,
+			path:       "/{{.NamePlural}}/123",
+			wantStatus: http.StatusNotFound, // replace with http.StatusOK
+		},
+		{
+			name:       "delete {{.Name}}",
+			method:     http.MethodDelete,
+			path:       "/{{.NamePlural}}/123",
+			wantStatus: http.StatusNotFound, // replace with http.StatusNoContent
+		},
 	}
-	rec := testhelper.NewRequest(t, http.NotFoundHandler(), http.MethodPost, "/{{.NamePlural}}").
-		WithBody(body).
-		Do()
-	testhelper.AssertStatus(t, rec, http.StatusNotFound) // replace with real handler
+
+	handler := http.NotFoundHandler() // TODO: replace with real handler
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := testhelper.NewRequest(t, handler, tt.method, tt.path)
+			if tt.body != nil {
+				req = req.WithBody(tt.body)
+			}
+			rec := req.Do()
+			testhelper.AssertStatus(t, rec, tt.wantStatus)
+		})
+	}
 }
 `

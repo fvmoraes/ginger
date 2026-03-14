@@ -1,7 +1,10 @@
 // Package middleware provides common HTTP middlewares for Ginger applications.
+// All middlewares follow the standard func(http.Handler) http.Handler signature
+// and can be composed with Chain.
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -39,14 +42,20 @@ func Logger(log *logger.Logger) Func {
 	}
 }
 
-// Recover catches panics and returns a 500.
+// Recover catches panics, logs the stack, and returns a structured JSON 500.
+// Using a structured response keeps error format consistent with router.Error.
 func Recover(log *logger.Logger) Func {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if rec := recover(); rec != nil {
 					log.Error("panic recovered", "error", rec, "path", r.URL.Path)
-					http.Error(w, "internal server error", http.StatusInternalServerError)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
+						"code":    "INTERNAL",
+						"message": "internal server error",
+					})
 				}
 			}()
 			next.ServeHTTP(w, r)

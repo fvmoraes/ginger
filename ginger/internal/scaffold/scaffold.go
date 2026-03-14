@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 )
 
@@ -113,10 +112,24 @@ func writeTemplate(path, tmplStr string, data any) error {
 	defer f.Close()
 
 	tmpl, err := template.New("").Funcs(template.FuncMap{
-		"title": strings.Title, //nolint:staticcheck
+		// titleCase capitalizes the first letter of a string.
+		// Replaces the deprecated strings.Title.
+		"title": titleCase,
 	}).Parse(tmplStr)
 	if err != nil {
 		return fmt.Errorf("scaffold: parse template: %w", err)
 	}
 	return tmpl.Execute(f, data)
+}
+
+// titleCase returns s with the first Unicode letter uppercased.
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	if r[0] >= 'a' && r[0] <= 'z' {
+		r[0] -= 32
+	}
+	return string(r)
 }

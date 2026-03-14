@@ -3,12 +3,16 @@
 package integrations
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"text/template"
 )
+
+// ErrIntegrationExists is returned when the target integration file already exists.
+var ErrIntegrationExists = errors.New("integration already exists")
 
 type integration struct {
 	name string
@@ -62,7 +66,7 @@ func Add(name string) error {
 	}
 
 	if _, err := os.Stat(intg.file); err == nil {
-		return fmt.Errorf("integration already exists: %s", intg.file)
+		return fmt.Errorf("%w: %s", ErrIntegrationExists, intg.file)
 	}
 
 	f, err := os.Create(intg.file)

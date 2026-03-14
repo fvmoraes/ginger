@@ -35,6 +35,8 @@ type Handler struct {
 	checkers []Checker
 }
 
+// New creates a new health Handler with no registered checkers.
+// Register checkers with Register before the server starts.
 func New() *Handler {
 	return &Handler{}
 }
@@ -53,7 +55,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	checkers := h.checkers
 	h.mu.RUnlock()
 
-	resp := Response{Healthy: true}
+	// Initialize Checks as empty slice so JSON serializes as [] not null.
+	// This follows the Go idiom: prefer empty slice over nil for JSON output.
+	resp := Response{Healthy: true, Checks: []Status{}}
 	ctx := r.Context()
 
 	for _, c := range checkers {

@@ -1,5 +1,14 @@
 // Package app provides the application bootstrap, dependency injection container,
 // HTTP server lifecycle, and graceful shutdown.
+//
+// The App type is the central wiring point. It owns the HTTP server, router,
+// health handler, and logger. Shutdown hooks registered via OnStop are called
+// in order during graceful shutdown, giving each component a chance to flush
+// and release resources before the process exits.
+//
+// Graceful shutdown follows the pattern described in The Go Programming Language
+// (Donovan & Kernighan): listen for SIGINT/SIGTERM, then call server.Shutdown
+// with a context deadline so in-flight requests can complete.
 package app
 
 import (
@@ -76,14 +85,18 @@ func (a *App) Run() error {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
+		close(errCh)
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
 
 	select {
-	case err := <-errCh:
-		return err
+	case err, ok := <-errCh:
+		if ok && err != nil {
+			return err
+		}
 	case sig := <-quit:
 		a.Logger.Info("shutdown signal received", "signal", sig.String())
 	}

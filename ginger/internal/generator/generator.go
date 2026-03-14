@@ -2,6 +2,7 @@
 package generator
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,9 @@ import (
 	"text/template"
 	"unicode"
 )
+
+// ErrFileExists is returned when a generate target already exists on disk.
+var ErrFileExists = errors.New("file already exists")
 
 type genData struct {
 	Name       string // e.g. "user"
@@ -93,7 +97,7 @@ func CRUD(name string) error {
 
 func generate(path, tmplStr string, data genData) error {
 	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("file already exists: %s", path)
+		return fmt.Errorf("%w: %s", ErrFileExists, path)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err

@@ -4,6 +4,7 @@ package router
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	apperrors "github.com/ginger-framework/ginger/pkg/errors"
@@ -59,7 +60,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.mux.ServeHTTP(w, req)
 }
 
-// JSON writes a JSON response.
+// JSON writes v as a JSON response with the given HTTP status code.
+// Sets Content-Type to application/json automatically.
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -67,6 +69,9 @@ func JSON(w http.ResponseWriter, status int, v any) {
 }
 
 // Error writes a standardized JSON error response.
+// If err is an *AppError it uses its Code and HTTPStatus.
+// Any other error is wrapped as a 500 Internal — the original cause is not
+// exposed to the client, following the principle of not leaking internals.
 func Error(w http.ResponseWriter, err error) {
 	if appErr, ok := apperrors.As(err); ok {
 		JSON(w, appErr.HTTPStatus(), appErr)
@@ -76,9 +81,12 @@ func Error(w http.ResponseWriter, err error) {
 }
 
 // Decode decodes a JSON request body into v.
+// Limits the body to 1 MB to prevent resource exhaustion.
+// Returns a BadRequest AppError on malformed JSON.
 func Decode(r *http.Request, v any) error {
 	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+	limited := io.LimitReader(r.Body, 1<<20) // 1 MB
+	if err := json.NewDecoder(limited).Decode(v); err != nil {
 		return apperrors.BadRequest("invalid request body")
 	}
 	return nil

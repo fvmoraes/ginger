@@ -14,7 +14,9 @@ type Logger struct {
 	*slog.Logger
 }
 
-// New creates a logger based on level and format ("json" | "text").
+// New creates a structured logger.
+// level: "debug" | "info" | "warn" | "error" (defaults to info).
+// format: "json" | "text" (defaults to json, recommended for production).
 func New(level, format string) *Logger {
 	var lvl slog.Level
 	switch level {

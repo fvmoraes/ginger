@@ -4,12 +4,16 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 	// Import your driver in main.go, e.g.:
 	//   _ "github.com/lib/pq"           // postgres
 	//   _ "github.com/mattn/go-sqlite3" // sqlite
 )
+
+// ErrNoDriver is returned when Connect is called without a driver name.
+var ErrNoDriver = errors.New("database: driver is required")
 
 // Config holds database connection settings.
 type Config struct {
@@ -20,9 +24,10 @@ type Config struct {
 }
 
 // Connect opens and validates a database connection.
+// Returns ErrNoDriver if cfg.Driver is empty.
 func Connect(cfg Config) (*sql.DB, error) {
 	if cfg.Driver == "" {
-		return nil, fmt.Errorf("database: driver is required")
+		return nil, ErrNoDriver
 	}
 	db, err := sql.Open(cfg.Driver, cfg.DSN)
 	if err != nil {

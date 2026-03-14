@@ -18,18 +18,21 @@ type Config struct {
 	Log      LogConfig      `yaml:"log"`
 }
 
+// AppConfig holds application-level metadata.
 type AppConfig struct {
 	Name    string `yaml:"name"`
 	Env     string `yaml:"env"`
 	Version string `yaml:"version"`
 }
 
+// HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
 	Host            string `yaml:"host"`
 	Port            int    `yaml:"port"`
 	ShutdownTimeout int    `yaml:"shutdown_timeout"` // seconds
 }
 
+// DatabaseConfig holds SQL database connection settings.
 type DatabaseConfig struct {
 	Driver  string `yaml:"driver"`
 	DSN     string `yaml:"dsn"`
@@ -37,6 +40,7 @@ type DatabaseConfig struct {
 	MaxIdle int    `yaml:"max_idle"`
 }
 
+// LogConfig holds logging settings.
 type LogConfig struct {
 	Level  string `yaml:"level"`
 	Format string `yaml:"format"` // json | text
