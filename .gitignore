@@ -43,3 +43,6 @@ my-local/
 # Build artifacts
 bin/
 *.exe
+
+# dwyt
+.claude/
