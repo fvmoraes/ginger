@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.8] - 2026-04-02
+
+### Fixed
+- CLI UX, scaffold minimalism, documentation, and reliability improvements
+
+### Commit Summary
+- feat: refine cli ux, minimal scaffold, docs, and manual test flows
+- fix: improve installation script to resolve install directory dynamically
+
 ## [1.2.7] - 2026-04-02
 
 ### Fixed
@@ -206,3 +215,4 @@ Verify downloads with `checksums.txt`.
 [1.2.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.5
 [1.2.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.6
 [1.2.7]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.7
+[1.2.8]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.8
