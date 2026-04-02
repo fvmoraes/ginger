@@ -1,16 +1,30 @@
-// Ginger is a CLI tool to accelerate and standardize Go projects.
+// Package ginger provides a lightweight, opinionated Go framework for building web applications and APIs.
 //
-// Install:
+// # Install
 //
-//	go install github.com/fvmoraes/ginger@latest
+//	go install github.com/fvmoraes/ginger/cmd/ginger@latest
 //
-// Create a new project:
+// # Create a new project
 //
-//	ginger new foobar -a   # API
-//	ginger new foobar -s   # Service
-//	ginger new foobar -w   # Worker
-//	ginger new foobar -c   # CLI
-//	ginger new foobar      # Generic
+//	ginger new foobar -a   # API     → cmd/foobar-api
+//	ginger new foobar -s   # Service → cmd/foobar-service
+//	ginger new foobar -w   # Worker  → cmd/foobar-worker
+//	ginger new foobar -c   # CLI     → cmd/foobar-cli
+//	ginger new foobar      # Generic → cmd/foobar
 //
-// Library packages are importable as github.com/fvmoraes/ginger/pkg/...
-package main
+// # Core Packages
+//
+// Import any package directly:
+//
+//	import "github.com/fvmoraes/ginger/pkg/app"
+//	import "github.com/fvmoraes/ginger/pkg/router"
+//	import "github.com/fvmoraes/ginger/pkg/middleware"
+//	import "github.com/fvmoraes/ginger/pkg/response"
+//	import "github.com/fvmoraes/ginger/pkg/logger"
+//	import "github.com/fvmoraes/ginger/pkg/config"
+//	import "github.com/fvmoraes/ginger/pkg/telemetry"
+//
+// # Documentation
+//
+// https://github.com/fvmoraes/ginger
+package ginger

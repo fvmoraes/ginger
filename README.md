@@ -25,7 +25,7 @@
 
 ```bash
 # Install CLI
-go install github.com/fvmoraes/ginger@latest
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 # Create and run project
 ginger new foobar && cd foobar && go mod tidy && ginger run
@@ -143,7 +143,7 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 **Option 4: Go install**
 ```bash
-go install github.com/fvmoraes/ginger@latest
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ```
 
 ### Create a new project
@@ -697,7 +697,7 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 **Opção 4: Go install**
 ```bash
-go install github.com/fvmoraes/ginger@latest
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ```
 
 ### Criar um novo projeto
