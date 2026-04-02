@@ -5,9 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
+	"strings"
 )
-
-const version = "0.1.0"
 
 // Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
@@ -33,7 +33,7 @@ func Run() {
 	case "doctor":
 		runDoctor(args)
 	case "version", "--version", "-v":
-		fmt.Println("ginger version " + version)
+		fmt.Println("ginger version " + buildVersion())
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -90,4 +90,46 @@ Examples:
 // mustFlag returns a FlagSet for a subcommand, exiting on parse error.
 func mustFlag(name string) *flag.FlagSet {
 	return flag.NewFlagSet(name, flag.ExitOnError)
+}
+
+func buildVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "devel"
+	}
+
+	revision := ""
+	modified := false
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			modified = setting.Value == "true"
+		}
+	}
+
+	mainVersion := strings.TrimPrefix(info.Main.Version, "v")
+	if mainVersion != "" && mainVersion != "(devel)" && !modified && !isPseudoVersion(mainVersion) {
+		return mainVersion
+	}
+
+	if revision == "" {
+		if mainVersion != "" && mainVersion != "(devel)" {
+			return mainVersion
+		}
+		return "devel"
+	}
+
+	if len(revision) > 7 {
+		revision = revision[:7]
+	}
+	if modified {
+		return "devel-" + revision + "-dirty"
+	}
+	return "devel-" + revision
+}
+
+func isPseudoVersion(v string) bool {
+	return strings.Contains(v, "-0.") || strings.Contains(v, "+dirty")
 }

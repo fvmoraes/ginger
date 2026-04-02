@@ -17,7 +17,7 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 **Alternativa (script de instalação):**
 ```bash
-curl -sSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 ```
 
 Verifique a instalação:
@@ -141,7 +141,7 @@ Edite `configs/app.yaml`:
 ```yaml
 database:
   driver: postgres
-  dsn: postgres://user:pass@localhost:5432/foobar-api?sslmode=disable
+  dsn: postgres://<user>:<password>@localhost:5432/foobar-api?sslmode=disable
   max_open: 25
   max_idle: 5
 ```
@@ -196,7 +196,7 @@ docker build -t loja .
 
 # Run
 docker run -p 8080:8080 \
-  -e DATABASE_DSN="postgres://user:pass@host/db" \
+  -e DATABASE_DSN="postgres://<user>:<password>@host/db" \
   loja
 ```
 

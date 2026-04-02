@@ -56,7 +56,7 @@ docker build -t foobar:latest .
 
 # Run
 docker run -p 8080:8080 \
-  -e DATABASE_DSN="postgres://user:pass@host/db" \
+  -e DATABASE_DSN="postgres://<user>:<password>@host/db" \
   -e LOG_LEVEL="info" \
   foobar:latest
 ```
@@ -113,7 +113,7 @@ services:
     environment:
       APP_ENV: development
       HTTP_PORT: 8080
-      DATABASE_DSN: postgres://user:pass@postgres:5432/foobar?sslmode=disable
+      DATABASE_DSN: postgres://<user>:<password>@postgres:5432/foobar?sslmode=disable
     depends_on:
       - postgres
       - redis
@@ -254,7 +254,7 @@ metadata:
   name: foobar-secrets
 type: Opaque
 stringData:
-  database-dsn: "postgres://user:pass@postgres:5432/foobar?sslmode=disable"
+  database-dsn: "postgres://<user>:<password>@postgres:5432/foobar?sslmode=disable"
 ```
 
 ```bash
@@ -263,7 +263,7 @@ kubectl apply -f kubernetes/secrets.yaml
 
 # Ou via CLI
 kubectl create secret generic foobar-secrets \
-  --from-literal=database-dsn="postgres://user:pass@host/db"
+  --from-literal=database-dsn="postgres://<user>:<password>@host/db"
 ```
 
 ### ConfigMap
@@ -390,7 +390,7 @@ env:
     value: "info"
 
 secrets:
-  DATABASE_DSN: "postgres://user:pass@postgres:5432/foobar"
+  DATABASE_DSN: "postgres://<user>:<password>@postgres:5432/foobar"
 ```
 
 ### Deployment Template

@@ -8,7 +8,7 @@ Histórico de atualizações da documentação do Ginger Framework.
 
 ### 🎉 Lançamento Inicial
 
-Documentação completa e profunda do Ginger Framework com 5.009 linhas distribuídas em 8 arquivos.
+Documentação inicial completa do Ginger Framework, cobrindo os principais guias, referências e exemplos práticos.
 
 ### ✨ Adicionado
 
@@ -136,12 +136,11 @@ Documentação completa e profunda do Ginger Framework com 5.009 linhas distribu
 
 ### 📊 Estatísticas
 
-- **Arquivos:** 8 documentos Markdown
-- **Linhas:** 5.009 linhas de documentação
-- **Exemplos:** 150+ snippets de código
-- **Integrações:** 20+ documentadas
-- **Pacotes:** 13 pacotes core documentados
-- **Cobertura:** 100% do framework
+- **Arquivos:** conjunto principal de documentos Markdown
+- **Exemplos:** dezenas de snippets de código
+- **Integrações:** principais integrações documentadas
+- **Pacotes:** pacotes core cobertos
+- **Cobertura:** documentação ampla do framework
 
 ### 🎯 Público-Alvo
 

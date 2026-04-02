@@ -235,7 +235,7 @@ Deploy completo do desenvolvimento à produção:
 3. Explore o [Guia de Arquitetura](./ARCHITECTURE.md) — entenda a estrutura
 4. Consulte a [Referência de Pacotes](./PACKAGES.md) conforme necessário
 
-### 2. Intermediário
+### 3. Intermediário
 1. Use [Copy-Paste Ready](./COPY_PASTE.md) para código base
 2. Adicione integrações com o [Guia de Integrações](./INTEGRATIONS.md)
 3. Implemente testes seguindo o [Guia de Testes](./TESTING.md)
@@ -337,7 +337,6 @@ Encontrou um erro na documentação? Quer adicionar exemplos?
 
 - **Issues:** [GitHub Issues](https://github.com/fvmoraes/ginger/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/fvmoraes/ginger/discussions)
-- **Email:** fvmoraes@gmail.com
 
 ---
 

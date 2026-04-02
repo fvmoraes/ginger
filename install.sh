@@ -2,9 +2,9 @@
 set -e
 
 # Ginger Framework Installation Script
-# Usage: curl -sSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 
-VERSION="${GINGER_VERSION:-v1.1.1}"
+VERSION="${GINGER_VERSION:-v1.2.4}"
 INSTALL_DIR="${GINGER_INSTALL_DIR:-/usr/local/bin}"
 
 echo "🌶️  Installing Ginger Framework ${VERSION}..."
@@ -51,7 +51,7 @@ DOWNLOAD_URL="https://github.com/fvmoraes/ginger/releases/download/${VERSION}/${
 
 echo "📦 Downloading ${BINARY}..."
 if command -v curl >/dev/null 2>&1; then
-    curl -sSL "$DOWNLOAD_URL" -o ginger
+    curl -fsSL "$DOWNLOAD_URL" -o ginger
 elif command -v wget >/dev/null 2>&1; then
     wget -q "$DOWNLOAD_URL" -O ginger
 else
@@ -95,10 +95,10 @@ fi
 
 echo ""
 echo "Quick start:"
-echo "   ginger new my-api -a      # API       → cmd/my-api-api"
-echo "   ginger new my-svc -s      # Service   → cmd/my-svc-service"
-echo "   ginger new my-job -w      # Worker    → cmd/my-job-worker"
-echo "   ginger new my-tool -c     # CLI       → cmd/my-tool-cli"
-echo "   ginger new my-app         # Generic   → cmd/my-app"
+echo "   ginger new foobar --api      # API       → cmd/foobar-api"
+echo "   ginger new foobar --service  # Service   → cmd/foobar-service"
+echo "   ginger new foobar --worker   # Worker    → cmd/foobar-worker"
+echo "   ginger new foobar --cli      # CLI       → cmd/foobar-cli"
+echo "   ginger new foobar            # Generic   → cmd/foobar"
 echo ""
 echo "Documentation: https://github.com/fvmoraes/ginger#readme"

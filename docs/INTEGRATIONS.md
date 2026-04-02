@@ -64,7 +64,7 @@ ginger add postgres
 import "yourmodule/platform/database"
 
 cfg := database.Config{
-    DSN:     "postgres://user:pass@localhost:5432/foobar?sslmode=disable",
+    DSN:     "postgres://<user>:<password>@localhost:5432/foobar?sslmode=disable",
     MaxOpen: 25,
     MaxIdle: 5,
 }
@@ -82,14 +82,13 @@ healthHandler.Register(database.NewChecker(db))
 
 **DSN Format:**
 ```
-postgres://user:password@host:port/database?sslmode=disable
+postgres://<user>:<password>@host:port/database?sslmode=disable
 ```
 
 **Variáveis de Ambiente:**
 ```bash
-DATABASE_DSN="postgres://user:pass@localhost:5432/foobar?sslmode=disable"
-DATABASE_MAX_OPEN=25
-DATABASE_MAX_IDLE=5
+DATABASE_DRIVER=postgres
+DATABASE_DSN="postgres://<user>:<password>@localhost:5432/foobar?sslmode=disable"
 ```
 
 ### MySQL
@@ -100,13 +99,13 @@ ginger add mysql
 
 **DSN Format:**
 ```
-user:password@tcp(host:3306)/database?parseTime=true
+<user>:<password>@tcp(host:3306)/database?parseTime=true
 ```
 
 **Exemplo:**
 ```go
 cfg := database.MySQLConfig{
-    DSN:     "root:password@tcp(localhost:3306)/foobar?parseTime=true",
+    DSN:     "<user>:<password>@tcp(localhost:3306)/foobar?parseTime=true",
     MaxOpen: 25,
     MaxIdle: 5,
 }
@@ -137,7 +136,7 @@ ginger add sqlserver
 
 **DSN Format:**
 ```
-sqlserver://user:password@host:1433?database=foobar
+sqlserver://<user>:<password>@host:1433?database=foobar
 ```
 
 ---

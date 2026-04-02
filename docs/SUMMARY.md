@@ -9,7 +9,7 @@
 │       Busca rápida por funcionalidade
 │       Dicas e truques
 │
-├── 🏗️ ARCHITECTURE.md (4.119 linhas totais)
+├── 🏗️ ARCHITECTURE.md
 │   ├── Visão Geral
 │   │   ├── Diagrama de componentes
 │   │   └── Três pilares fundamentais
@@ -179,10 +179,9 @@
 
 ## Estatísticas
 
-- **Total de arquivos:** 6 documentos Markdown
-- **Total de linhas:** 4.119 linhas
-- **Cobertura:** 100% do framework documentado
+- **Escopo:** documentação ampla dos fluxos principais, pacotes centrais e operação em produção
 - **Idiomas:** Português (primário) + Inglês (README principal)
+- **Manutenção:** exemplos e referências devem acompanhar a CLI e os templates atuais
 
 ## Estrutura de Links
 
@@ -225,14 +224,14 @@ docs/DEPLOYMENT.md → docs/INTEGRATIONS.md (Observability)
 
 ## Conteúdo por Documento
 
-| Documento | Linhas | Foco | Público |
-|-----------|--------|------|---------|
-| **README.md** (índice) | ~400 | Navegação e busca | Todos |
-| **ARCHITECTURE.md** | ~600 | Estrutura e padrões | Desenvolvedores |
-| **PACKAGES.md** | ~1.200 | API reference | Desenvolvedores |
-| **INTEGRATIONS.md** | ~800 | Bancos, cache, mensageria | Desenvolvedores |
-| **TESTING.md** | ~700 | Testes e qualidade | Desenvolvedores |
-| **DEPLOYMENT.md** | ~600 | Deploy e produção | DevOps |
+| Documento | Foco | Público |
+|-----------|------|---------|
+| **README.md** (índice) | Navegação e busca | Todos |
+| **ARCHITECTURE.md** | Estrutura e padrões | Desenvolvedores |
+| **PACKAGES.md** | API reference | Desenvolvedores |
+| **INTEGRATIONS.md** | Bancos, cache, mensageria | Desenvolvedores |
+| **TESTING.md** | Testes e qualidade | Desenvolvedores |
+| **DEPLOYMENT.md** | Deploy e produção | DevOps |
 
 ## Recursos Especiais
 

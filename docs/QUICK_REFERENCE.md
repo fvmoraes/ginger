@@ -217,7 +217,7 @@ http:
 
 database:
   driver: postgres
-  dsn: postgres://user:pass@localhost:5432/foobar?sslmode=disable
+  dsn: postgres://<user>:<password>@localhost:5432/foobar?sslmode=disable
   max_open: 25
   max_idle: 5
 
@@ -237,13 +237,10 @@ APP_VERSION=1.0.0
 # HTTP
 HTTP_HOST=0.0.0.0
 HTTP_PORT=8080
-HTTP_SHUTDOWN_TIMEOUT=30
 
 # Database
 DATABASE_DRIVER=postgres
-DATABASE_DSN=postgres://user:pass@host:5432/db
-DATABASE_MAX_OPEN=25
-DATABASE_MAX_IDLE=5
+DATABASE_DSN=postgres://<user>:<password>@host:5432/db
 
 # Log
 LOG_LEVEL=info
@@ -391,7 +388,7 @@ docker build -t foobar:latest .
 
 ```bash
 docker run -p 8080:8080 \
-  -e DATABASE_DSN="postgres://user:pass@host/db" \
+  -e DATABASE_DSN="postgres://<user>:<password>@host/db" \
   -e LOG_LEVEL="info" \
   foobar:latest
 ```
@@ -480,7 +477,7 @@ ginger add postgres
 
 ```go
 db, _ := database.Connect(database.Config{
-    DSN: "postgres://user:pass@localhost:5432/foobar",
+    DSN: "postgres://<user>:<password>@localhost:5432/foobar",
 })
 ```
 
