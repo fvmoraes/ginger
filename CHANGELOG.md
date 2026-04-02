@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.7] - 2026-04-02
+
+### Fixed
+- Shorter version command output
+
+### Commit Summary
+- fix: shorten version command output
+
 ## [1.2.6] - 2026-04-02
 
 ### Fixed
@@ -197,3 +205,4 @@ Verify downloads with `checksums.txt`.
 [1.2.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.4
 [1.2.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.5
 [1.2.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.6
+[1.2.7]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.7
