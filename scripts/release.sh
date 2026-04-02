@@ -192,7 +192,7 @@ for platform in "${PLATFORMS[@]}"; do
     fi
     
     log_info "Building $GOOS/$GOARCH..."
-    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "$OUTPUT" ./cmd/ginger
+    GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w" -o "$OUTPUT" .
     log_success "Built $OUTPUT"
 done
 
@@ -233,12 +233,12 @@ Download from the assets below, make executable, and move to your PATH.
 
 ### Option 3: Go install
 \`\`\`bash
-go install github.com/fvmoraes/ginger/cmd/ginger@$TAG
+go install github.com/fvmoraes/ginger@$TAG
 \`\`\`
 
 Or simply:
 \`\`\`bash
-go install github.com/fvmoraes/ginger/cmd/ginger@latest
+go install github.com/fvmoraes/ginger@latest
 \`\`\`
 
 ### Option 4: Build from source
@@ -246,7 +246,7 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 git clone https://github.com/fvmoraes/ginger
 cd ginger
 git checkout $TAG
-go build -o /usr/local/bin/ginger ./cmd/ginger
+go build -o /usr/local/bin/ginger .
 \`\`\`
 
 ## 📦 Binary Downloads
