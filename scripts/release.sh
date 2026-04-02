@@ -229,7 +229,7 @@ echo "Generating RELEASE_NOTES.md in English..."
   echo '```'
   echo
   echo "## Checksums"
-  echo "See \\`checksums.txt\\` in the release assets."
+  echo 'See `checksums.txt` in the release assets.'
 } > "$RELEASE_DIR/RELEASE_NOTES.md"
 
 echo "Committing release files..."
