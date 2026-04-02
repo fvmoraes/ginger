@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [1.2.2] - 2026-04-01
+
+### Fixed
+- Restore idiomatic cmd/ginger layout
+
 ## [1.2.1] - 2026-04-01
 
 ### Fixed
@@ -152,3 +158,5 @@ Verify downloads with `checksums.txt`.
 [1.2.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.0
 
 [1.2.1]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.1
+
+[1.2.2]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.2
