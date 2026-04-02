@@ -70,10 +70,35 @@ else
 fi
 
 echo "✅ Ginger ${VERSION} installed successfully!"
+
+if command -v go >/dev/null 2>&1; then
+    GOPATH_BIN="$(go env GOPATH)/bin"
+    SHELL_RC=""
+
+    case "$(basename "${SHELL:-}")" in
+        zsh)  SHELL_RC="$HOME/.zshrc" ;;
+        bash)
+            if [ -f "$HOME/.bash_profile" ]; then
+                SHELL_RC="$HOME/.bash_profile"
+            else
+                SHELL_RC="$HOME/.bashrc"
+            fi
+            ;;
+    esac
+
+    if [ -n "$SHELL_RC" ] && ! grep -q "$GOPATH_BIN" "$SHELL_RC" 2>/dev/null; then
+        printf '\n# Added by Ginger installer\nexport PATH="$PATH:%s"\n' "$GOPATH_BIN" >> "$SHELL_RC"
+        echo "  Added $GOPATH_BIN to PATH in $SHELL_RC"
+        echo "  Run: source $SHELL_RC"
+    fi
+fi
+
 echo ""
-echo "🚀 Quick start:"
-echo "   ginger new my-api"
-echo "   cd my-api"
-echo "   ginger run"
+echo "Quick start:"
+echo "   ginger new my-api -a      # API       → cmd/my-api-api"
+echo "   ginger new my-svc -s      # Service   → cmd/my-svc-service"
+echo "   ginger new my-job -w      # Worker    → cmd/my-job-worker"
+echo "   ginger new my-tool -c     # CLI       → cmd/my-tool-cli"
+echo "   ginger new my-app         # Generic   → cmd/my-app"
 echo ""
-echo "📚 Documentation: https://github.com/fvmoraes/ginger#readme"
+echo "Documentation: https://github.com/fvmoraes/ginger#readme"

@@ -28,7 +28,7 @@
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 # Create and run project
-ginger new my-api && cd my-api && go mod tidy && ginger run
+ginger new foobar && cd foobar && go mod tidy && ginger run
 ```
 
 **Your API is now running at** `http://localhost:8080`
@@ -95,7 +95,7 @@ Ginger is a CLI tool and set of packages that accelerates and standardizes Go pr
 Every project created with `ginger new` follows this layout:
 
 ```
-my-api/
+foobar/
 ├── cmd/
 │   └── app/
 │       └── main.go              # Application entrypoint
@@ -149,8 +149,15 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ### Create a new project
 
 ```bash
-ginger new my-api
-cd my-api
+ginger new foobar -a       # API       → cmd/foobar-api
+ginger new foobar -s       # Service   → cmd/foobar-service
+ginger new foobar -w       # Worker    → cmd/foobar-worker
+ginger new foobar -c      # CLI       → cmd/foobar-cli
+ginger new foobar          # Generic   → cmd/foobar
+```
+
+```bash
+cd foobar
 go mod tidy
 ginger run
 ```
@@ -167,7 +174,11 @@ curl http://localhost:8080/health
 ## CLI Reference
 
 ```
-ginger new <project-name>          Scaffold a new project
+ginger new <name>                  Scaffold a generic project  → cmd/<name>
+ginger new <name> -a               API project                → cmd/<name>-api
+ginger new <name> -s               Service project            → cmd/<name>-service
+ginger new <name> -w               Worker project             → cmd/<name>-worker
+ginger new <name> -c               CLI project                → cmd/<name>-cli
 ginger run                         Run the app (go run ./cmd/app)
 ginger build [output]              Build the binary
 ginger generate handler <name>     Generate an HTTP handler
@@ -342,7 +353,7 @@ provider, err := telemetry.Setup(ctx, telemetry.Config{
 })
 defer provider.Shutdown(ctx)
 
-tracer := telemetry.Tracer("my-api")
+tracer := telemetry.Tracer("foobar")
 ctx, span := tracer.Start(ctx, "operation-name")
 defer span.End()
 ```
@@ -458,7 +469,7 @@ curl http://localhost:8080/health
 
 ```yaml
 app:
-  name: my-api
+  name: foobar
   env: development
   version: 0.1.0
 
@@ -495,7 +506,7 @@ Ginger ships with OpenTelemetry integration out of the box. The default exporter
 
 ```go
 provider, _ := telemetry.Setup(ctx, telemetry.Config{
-    ServiceName: "my-api",
+    ServiceName: "foobar",
     Exporter:    "otlp", // configure OTEL_EXPORTER_OTLP_ENDPOINT env var
 })
 ```
@@ -505,8 +516,8 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 A `Dockerfile` is generated with every new project using a multi-stage build:
 
 ```bash
-docker build -t my-api:latest .
-docker run -p 8080:8080 my-api:latest
+docker build -t foobar:latest .
+docker run -p 8080:8080 foobar:latest
 ```
 
 A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/deployment.yaml`. It includes readiness and liveness probes pointed at `/health`, resource limits, and a `ClusterIP` service.
@@ -517,8 +528,8 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ### Create and Run
 ```bash
-ginger new my-api              # Create project
-cd my-api && go mod tidy       # Install deps
+ginger new foobar -a           # Create API project → cmd/foobar-api
+cd foobar && go mod tidy       # Install deps
 ginger run                     # Run (dev)
 ginger build                   # Build (prod)
 ```
@@ -547,8 +558,8 @@ go vet ./...                   # Check code
 
 ### Docker
 ```bash
-docker build -t my-api .       # Build image
-docker run -p 8080:8080 my-api # Run container
+docker build -t foobar .       # Build image
+docker run -p 8080:8080 foobar # Run container
 docker-compose up -d           # Run with deps
 ```
 
@@ -556,7 +567,7 @@ docker-compose up -d           # Run with deps
 ```bash
 kubectl apply -f kubernetes/   # Deploy
 kubectl get pods               # View pods
-kubectl logs -f deploy/my-api  # View logs
+kubectl logs -f deploy/foobar  # View logs
 ```
 
 **More commands:** [Quick Reference](./docs/QUICK_REFERENCE.md)
@@ -638,7 +649,7 @@ Ginger é uma CLI e um conjunto de pacotes que agiliza e padroniza projetos Go e
 Todo projeto criado com `ginger new` segue este layout:
 
 ```
-my-api/
+foobar/
 ├── cmd/
 │   └── app/
 │       └── main.go              # Ponto de entrada da aplicação
@@ -692,8 +703,15 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ### Criar um novo projeto
 
 ```bash
-ginger new minha-api
-cd minha-api
+ginger new foobar -a        # API       → cmd/foobar-api
+ginger new foobar -s          # Service   → cmd/foobar-service
+ginger new foobar -w          # Worker    → cmd/foobar-worker
+ginger new foobar -c         # CLI       → cmd/foobar-cli
+ginger new foobar             # Genérico  → cmd/foobar
+```
+
+```bash
+cd foobar
 go mod tidy
 ginger run
 ```
@@ -710,7 +728,11 @@ Endpoints disponíveis imediatamente:
 ## Referência da CLI
 
 ```
-ginger new <nome-do-projeto>       Cria um novo projeto com scaffold completo
+ginger new <nome>                  Scaffold genérico          → cmd/<nome>
+ginger new <nome> -a               Projeto API                → cmd/<nome>-api
+ginger new <nome> -s               Projeto Service            → cmd/<nome>-service
+ginger new <nome> -w               Projeto Worker             → cmd/<nome>-worker
+ginger new <nome> -c               Projeto CLI                → cmd/<nome>-cli
 ginger run                         Executa a aplicação (go run ./cmd/app)
 ginger build [saída]               Compila o binário
 ginger generate handler <nome>     Gera um handler HTTP
@@ -892,7 +914,7 @@ provider, err := telemetry.Setup(ctx, telemetry.Config{
 })
 defer provider.Shutdown(ctx)
 
-tracer := telemetry.Tracer("minha-api")
+tracer := telemetry.Tracer("foobar")
 ctx, span := tracer.Start(ctx, "nome-da-operacao")
 defer span.End()
 ```
@@ -1008,7 +1030,7 @@ curl http://localhost:8080/health
 
 ```yaml
 app:
-  name: minha-api
+  name: foobar
   env: development
   version: 0.1.0
 
@@ -1045,7 +1067,7 @@ O Ginger vem com integração OpenTelemetry pronta para uso. O exportador padrã
 
 ```go
 provider, _ := telemetry.Setup(ctx, telemetry.Config{
-    ServiceName: "minha-api",
+    ServiceName: "foobar",
     Exporter:    "otlp", // configure a env OTEL_EXPORTER_OTLP_ENDPOINT
 })
 ```
@@ -1055,8 +1077,8 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 Um `Dockerfile` é gerado com cada novo projeto usando build multi-stage:
 
 ```bash
-docker build -t minha-api:latest .
-docker run -p 8080:8080 minha-api:latest
+docker build -t foobar:latest .
+docker run -p 8080:8080 foobar:latest
 ```
 
 Um template de `Deployment` + `Service` Kubernetes está disponível em `templates/k8s/deployment.yaml`. Ele inclui probes de readiness e liveness apontando para `/health`, limites de recursos e um serviço `ClusterIP`.
@@ -1067,8 +1089,8 @@ Um template de `Deployment` + `Service` Kubernetes está disponível em `templat
 
 ### Criar e Rodar
 ```bash
-ginger new minha-api           # Criar projeto
-cd minha-api && go mod tidy    # Instalar deps
+ginger new foobar -a        # Criar projeto API → cmd/foobar-api
+cd foobar && go mod tidy    # Instalar deps
 ginger run                     # Rodar (dev)
 ginger build                   # Build (prod)
 ```
@@ -1097,8 +1119,8 @@ go vet ./...                   # Verificar código
 
 ### Docker
 ```bash
-docker build -t minha-api .    # Build imagem
-docker run -p 8080:8080 minha-api # Rodar container
+docker build -t foobar .    # Build imagem
+docker run -p 8080:8080 foobar # Rodar container
 docker-compose up -d           # Rodar com deps
 ```
 
@@ -1106,7 +1128,7 @@ docker-compose up -d           # Rodar com deps
 ```bash
 kubectl apply -f kubernetes/   # Deploy
 kubectl get pods               # Ver pods
-kubectl logs -f deploy/minha-api # Ver logs
+kubectl logs -f deploy/foobar # Ver logs
 ```
 
 **Mais comandos:** [Referência Rápida](./docs/QUICK_REFERENCE.md)

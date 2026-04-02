@@ -12,52 +12,72 @@ type projectData struct {
 	Name   string
 	Module string
 	Type   string
+	CmdDir string
+}
+
+// CmdDir returns the cmd subdirectory for a given project name and type.
+//
+//	generic  → cmd/<name>
+//	api      → cmd/<name>-api
+//	service  → cmd/<name>-service
+//	worker   → cmd/<name>-worker
+//	cli      → cmd/<name>-cli
+func CmdDir(name, projectType string) string {
+	switch projectType {
+	case "api", "service", "worker", "cli":
+		return "cmd/" + name + "-" + projectType
+	default: // generic
+		return "cmd/" + name
+	}
 }
 
 // NewProject scaffolds a complete project at ./<name> for the given type.
-// Supported types: api (default), microservice, cli, worker.
+// Supported types: generic (default), api, service, cli, worker.
 func NewProject(name, projectType string) error {
 	switch projectType {
-	case "api", "microservice", "cli", "worker":
+	case "generic", "api", "service", "cli", "worker":
 	default:
-		return fmt.Errorf("unknown project type: %s (api|microservice|cli|worker)", projectType)
+		return fmt.Errorf("unknown project type %q — use: generic, api, service, cli, worker", projectType)
 	}
 
-	data := projectData{Name: name, Module: name, Type: projectType}
+	cmdDir := CmdDir(name, projectType)
+	data := projectData{Name: name, Module: name, Type: projectType, CmdDir: cmdDir}
 
-	dirs := baseDirs(projectType)
+	dirs := baseDirs(data)
 	for _, d := range dirs {
 		if err := os.MkdirAll(filepath.Join(name, d), 0755); err != nil {
 			return fmt.Errorf("scaffold: mkdir %s: %w", d, err)
 		}
 	}
 
-	files := baseFiles(projectType)
+	files := baseFiles(data)
 	for path, tmplStr := range files {
 		if err := writeTemplate(filepath.Join(name, path), tmplStr, data); err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("  created %s/ (%s)\n", name, projectType)
+	fmt.Printf("  created %s/ (%s → %s)\n", name, projectType, cmdDir)
 	return nil
 }
 
-func baseDirs(t string) []string {
+func baseDirs(d projectData) []string {
 	common := []string{
 		"configs",
 		"scripts",
 		"tests",
 		"docs",
 	}
-	switch t {
+	switch d.Type {
 	case "cli":
-		return append(common, "cmd/root", "internal/config", "pkg")
+		return append(common, d.CmdDir, "internal/config", "pkg")
 	case "worker":
-		return append(common, "cmd/worker", "internal/worker", "internal/config", "platform", "pkg")
-	default: // api, microservice
+		return append(common, d.CmdDir, "internal/worker", "internal/config", "platform", "pkg")
+	case "generic":
+		return append(common, d.CmdDir, "internal/config", "pkg")
+	default: // api, service
 		return append(common,
-			"cmd/app",
+			d.CmdDir,
 			"internal/api/handlers",
 			"internal/api/services",
 			"internal/api/repositories",
@@ -70,7 +90,7 @@ func baseDirs(t string) []string {
 	}
 }
 
-func baseFiles(t string) map[string]string {
+func baseFiles(d projectData) map[string]string {
 	common := map[string]string{
 		"go.mod":           goModTmpl,
 		"configs/app.yaml": appYamlTmpl,
@@ -80,15 +100,18 @@ func baseFiles(t string) map[string]string {
 		"README.md":        readmeTmpl,
 	}
 
-	switch t {
+	mainPath := d.CmdDir + "/main.go"
+	switch d.Type {
 	case "cli":
-		common["cmd/root/main.go"] = cliMainTmpl
+		common[mainPath] = cliMainTmpl
 	case "worker":
-		common["cmd/worker/main.go"] = workerMainTmpl
+		common[mainPath] = workerMainTmpl
 		common["internal/worker/worker.go"] = workerTmpl
 		common["Dockerfile"] = dockerfileTmpl
-	default: // api, microservice
-		common["cmd/app/main.go"] = mainTmpl
+	case "generic":
+		common[mainPath] = cliMainTmpl
+	default: // api, service
+		common[mainPath] = mainTmpl
 		common["internal/config/config.go"] = internalConfigTmpl
 		common["internal/api/handlers/health.go"] = healthHandlerTmpl
 		common["Dockerfile"] = dockerfileTmpl
