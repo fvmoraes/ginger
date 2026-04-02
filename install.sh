@@ -7,6 +7,7 @@ set -e
 VERSION="${GINGER_VERSION:-}"
 INSTALL_DIR="${GINGER_INSTALL_DIR:-/usr/local/bin}"
 REPO="fvmoraes/ginger"
+TARGET_BIN=""
 
 resolve_latest_version() {
     if command -v curl >/dev/null 2>&1; then
@@ -18,6 +19,36 @@ resolve_latest_version() {
     fi
 }
 
+path_contains() {
+    case ":$PATH:" in
+        *":$1:"*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+resolve_install_dir() {
+    if [ -n "${GINGER_INSTALL_DIR:-}" ]; then
+        echo "$GINGER_INSTALL_DIR"
+        return
+    fi
+
+    existing_bin="$(command -v ginger 2>/dev/null || true)"
+    if [ -n "$existing_bin" ]; then
+        dirname "$existing_bin"
+        return
+    fi
+
+    if command -v go >/dev/null 2>&1; then
+        gopath_bin="$(go env GOPATH)/bin"
+        if path_contains "$gopath_bin"; then
+            echo "$gopath_bin"
+            return
+        fi
+    fi
+
+    echo "$INSTALL_DIR"
+}
+
 if [ -z "$VERSION" ]; then
     VERSION="$(resolve_latest_version)"
 fi
@@ -26,6 +57,9 @@ if [ -z "$VERSION" ]; then
     echo "❌ Could not resolve the latest Ginger release. Set GINGER_VERSION manually and try again."
     exit 1
 fi
+
+INSTALL_DIR="$(resolve_install_dir)"
+TARGET_BIN="${INSTALL_DIR}/ginger"
 
 echo "🌶️  Installing Ginger Framework ${VERSION}..."
 
@@ -83,10 +117,10 @@ chmod +x ginger
 
 echo "📂 Installing to ${INSTALL_DIR}..."
 if [ -w "$INSTALL_DIR" ]; then
-    mv ginger "$INSTALL_DIR/ginger"
+    mv ginger "$TARGET_BIN"
 else
     echo "🔐 Requesting sudo permissions to install to ${INSTALL_DIR}..."
-    sudo mv ginger "$INSTALL_DIR/ginger"
+    sudo mv ginger "$TARGET_BIN"
 fi
 
 echo "✅ Ginger ${VERSION} installed successfully!"
@@ -111,6 +145,10 @@ if command -v go >/dev/null 2>&1; then
         echo "  Added $GOPATH_BIN to PATH in $SHELL_RC"
         echo "  Run: source $SHELL_RC"
     fi
+fi
+
+if [ -n "${TARGET_BIN}" ]; then
+    echo "  Installed binary: ${TARGET_BIN}"
 fi
 
 echo ""
