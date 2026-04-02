@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.6] - 2026-04-02
+
+### Fixed
+- Installer latest-release resolution and semver version output fixes
+
+### Commit Summary
+- fix: default installer to latest release
+
 ## [1.2.5] - 2026-04-02
 
 ### Fixed
@@ -188,3 +196,4 @@ Verify downloads with `checksums.txt`.
 [1.2.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.3
 [1.2.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.4
 [1.2.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.5
+[1.2.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.6
