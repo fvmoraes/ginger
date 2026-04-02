@@ -9,10 +9,16 @@ import (
 
 func runNew(args []string) {
 	fs := mustFlag("new")
-	isAPI := fs.Bool("a", false, "API project      → cmd/<name>-api")
-	isSvc := fs.Bool("s", false, "service project  → cmd/<name>-service")
-	isWorker := fs.Bool("w", false, "worker project   → cmd/<name>-worker")
-	isCLI := fs.Bool("c", false, "CLI project      → cmd/<name>-cli")
+	isAPI := fs.Bool("api", false, "API project      → cmd/<name>-api")
+	isSvc := fs.Bool("service", false, "service project  → cmd/<name>-service")
+	isWorker := fs.Bool("worker", false, "worker project   → cmd/<name>-worker")
+	isCLI := fs.Bool("cli", false, "CLI project      → cmd/<name>-cli")
+
+	// Backward-compatible short aliases (legacy flags).
+	isAPIShort := fs.Bool("a", false, "alias for --api")
+	isSvcShort := fs.Bool("s", false, "alias for --service")
+	isWorkerShort := fs.Bool("w", false, "alias for --worker")
+	isCLIShort := fs.Bool("c", false, "alias for --cli")
 
 	// Reorder so flags come before positional args
 	var flags, positional []string
@@ -26,12 +32,12 @@ func runNew(args []string) {
 	fs.Parse(append(flags, positional...)) //nolint:errcheck
 
 	if fs.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: ginger new <name> [-a|-s|-w|-c]")
+		fmt.Fprintln(os.Stderr, "usage: ginger new <name> [--api|--service|--worker|--cli]")
 		fmt.Fprintln(os.Stderr, "  (no flag)  generic   → cmd/<name>")
-		fmt.Fprintln(os.Stderr, "  -a         api       → cmd/<name>-api")
-		fmt.Fprintln(os.Stderr, "  -s         service   → cmd/<name>-service")
-		fmt.Fprintln(os.Stderr, "  -w         worker    → cmd/<name>-worker")
-		fmt.Fprintln(os.Stderr, "  -c         cli       → cmd/<name>-cli")
+		fmt.Fprintln(os.Stderr, "  --api      api       → cmd/<name>-api")
+		fmt.Fprintln(os.Stderr, "  --service  service   → cmd/<name>-service")
+		fmt.Fprintln(os.Stderr, "  --worker   worker    → cmd/<name>-worker")
+		fmt.Fprintln(os.Stderr, "  --cli      cli       → cmd/<name>-cli")
 		os.Exit(1)
 	}
 
@@ -39,13 +45,13 @@ func runNew(args []string) {
 
 	projectType := "generic"
 	switch {
-	case *isAPI:
+	case *isAPI || *isAPIShort:
 		projectType = "api"
-	case *isSvc:
+	case *isSvc || *isSvcShort:
 		projectType = "service"
-	case *isWorker:
+	case *isWorker || *isWorkerShort:
 		projectType = "worker"
-	case *isCLI:
+	case *isCLI || *isCLIShort:
 		projectType = "cli"
 	}
 

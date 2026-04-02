@@ -59,7 +59,7 @@ Documentação completa e profunda do Ginger Framework com 5.009 linhas distribu
 
 - **DEPLOYMENT.md** — Guia de Deploy
   - Docker (multi-stage, otimizações, distroless)
-  - Docker Compose (app + postgres + redis)
+  - Docker Compose (foobar + postgres + redis)
   - Kubernetes (Deployment, Service, Secrets, ConfigMap)
   - Helm Charts (multi-ambiente)
   - CI/CD (GitHub Actions, GitLab CI)
@@ -118,7 +118,7 @@ Documentação completa e profunda do Ginger Framework com 5.009 linhas distribu
   - GitLab CI pipelines (stages + environments)
   - Kubernetes manifests (Deployment, Service, ConfigMap, Secrets)
   - Helm charts (Chart.yaml, values.yaml, templates)
-  - Docker Compose (app + postgres + redis)
+  - Docker Compose (foobar + postgres + redis)
   - Makefile com targets úteis
 
 #### Navegação e Links

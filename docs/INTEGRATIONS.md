@@ -64,7 +64,7 @@ ginger add postgres
 import "yourmodule/platform/database"
 
 cfg := database.Config{
-    DSN:     "postgres://user:pass@localhost:5432/mydb?sslmode=disable",
+    DSN:     "postgres://user:pass@localhost:5432/foobar?sslmode=disable",
     MaxOpen: 25,
     MaxIdle: 5,
 }
@@ -87,7 +87,7 @@ postgres://user:password@host:port/database?sslmode=disable
 
 **Variáveis de Ambiente:**
 ```bash
-DATABASE_DSN="postgres://user:pass@localhost:5432/mydb?sslmode=disable"
+DATABASE_DSN="postgres://user:pass@localhost:5432/foobar?sslmode=disable"
 DATABASE_MAX_OPEN=25
 DATABASE_MAX_IDLE=5
 ```
@@ -106,7 +106,7 @@ user:password@tcp(host:3306)/database?parseTime=true
 **Exemplo:**
 ```go
 cfg := database.MySQLConfig{
-    DSN:     "root:password@tcp(localhost:3306)/mydb?parseTime=true",
+    DSN:     "root:password@tcp(localhost:3306)/foobar?parseTime=true",
     MaxOpen: 25,
     MaxIdle: 5,
 }
@@ -137,7 +137,7 @@ ginger add sqlserver
 
 **DSN Format:**
 ```
-sqlserver://user:password@host:1433?database=mydb
+sqlserver://user:password@host:1433?database=foobar
 ```
 
 ---
@@ -221,7 +221,7 @@ import "yourmodule/platform/nosql"
 
 cfg := nosql.MongoConfig{
     URI:      "mongodb://localhost:27017",
-    Database: "mydb",
+    Database: "foobar",
 }
 
 client, db, err := nosql.ConnectMongo(cfg)
@@ -276,7 +276,7 @@ cfg := nosql.CouchbaseConfig{
     ConnectionString: "couchbase://localhost",
     Username:         "Administrator",
     Password:         "password",
-    BucketName:       "my-bucket",
+    BucketName:       "foobar",
 }
 
 cluster, bucket, err := nosql.ConnectCouchbase(cfg)
@@ -302,7 +302,7 @@ _, err = collection.Replace("user::1", user, nil)
 _, err = collection.Remove("user::1", nil)
 
 // N1QL query
-rows, err := cluster.Query("SELECT * FROM `my-bucket` WHERE type = 'user'", nil)
+rows, err := cluster.Query("SELECT * FROM `foobar` WHERE type = 'user'", nil)
 defer rows.Close()
 
 // Health check
@@ -384,7 +384,7 @@ err := messaging.Publish(ctx, writer, []byte("key"), []byte(`{"event":"user.crea
 cfg := messaging.ConsumerConfig{
     Brokers: []string{"localhost:9092"},
     Topic:   "events",
-    GroupID: "my-service",
+    GroupID: "foobar",
 }
 
 reader := messaging.NewReader(cfg)
@@ -468,17 +468,17 @@ ginger add pubsub
 **Uso:**
 
 ```go
-client, err := messaging.ConnectPubSub(ctx, "my-gcp-project")
+client, err := messaging.ConnectPubSub(ctx, "foobar")
 if err != nil {
     log.Fatal(err)
 }
 defer client.Close()
 
 // Publish
-msgID, err := client.Publish(ctx, "my-topic", []byte(`{"event":"user.created"}`))
+msgID, err := client.Publish(ctx, "foobar", []byte(`{"event":"user.created"}`))
 
 // Subscribe
-err = client.Subscribe(ctx, "my-subscription", func(ctx context.Context, msg *pubsub.Message) {
+err = client.Subscribe(ctx, "foobar", func(ctx context.Context, msg *pubsub.Message) {
     fmt.Printf("Received: %s\n", msg.Data)
     msg.Ack()
 })
@@ -577,7 +577,7 @@ app.Router.HandleRaw("/mcp", mcpServer.Handler())
 ```json
 {
   "mcpServers": {
-    "my-api": {
+    "foobar": {
       "url": "http://localhost:8080/mcp"
     }
   }
@@ -599,14 +599,14 @@ ginger add otel
 ```go
 import "yourmodule/platform/telemetry"
 
-shutdown, err := telemetry.Setup(ctx, "my-api", "1.0.0")
+shutdown, err := telemetry.Setup(ctx, "foobar", "1.0.0")
 if err != nil {
     log.Fatal(err)
 }
 app.OnStop(shutdown)
 
 // Create tracer
-tracer := telemetry.Tracer("my-api")
+tracer := telemetry.Tracer("foobar")
 
 // Trace operation
 ctx, span := tracer.Start(ctx, "create-user")

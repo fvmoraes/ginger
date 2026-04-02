@@ -26,7 +26,7 @@
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 # 2. Create a project
-ginger new foobar -a    # API → cmd/foobar-api
+ginger new foobar --api    # API → cmd/foobar-api
 cd foobar
 go mod tidy
 
@@ -100,7 +100,7 @@ Ginger is a CLI tool and set of packages that accelerates and standardizes Go pr
 Every project created with `ginger new` follows this layout:
 
 ```
-foobar/                          # ginger new foobar -a
+foobar/                          # ginger new foobar --api
 ├── cmd/
 │   └── foobar-api/              # cmd dir name = <name>-<type>
 │       └── main.go              # Application entrypoint
@@ -154,10 +154,10 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ### Create a new project
 
 ```bash
-ginger new foobar -a       # API       → cmd/foobar-api
-ginger new foobar -s       # Service   → cmd/foobar-service
-ginger new foobar -w       # Worker    → cmd/foobar-worker
-ginger new foobar -c      # CLI       → cmd/foobar-cli
+ginger new foobar --api       # API       → cmd/foobar-api
+ginger new foobar --service       # Service   → cmd/foobar-service
+ginger new foobar --worker       # Worker    → cmd/foobar-worker
+ginger new foobar --cli      # CLI       → cmd/foobar-cli
 ginger new foobar          # Generic   → cmd/foobar
 ```
 
@@ -180,11 +180,11 @@ curl http://localhost:8080/health
 
 ```
 ginger new <name>                  Scaffold a generic project  → cmd/<name>
-ginger new <name> -a               API project                → cmd/<name>-api
-ginger new <name> -s               Service project            → cmd/<name>-service
-ginger new <name> -w               Worker project             → cmd/<name>-worker
-ginger new <name> -c               CLI project                → cmd/<name>-cli
-ginger run                         Run the app (go run ./cmd/app)
+ginger new <name> --api               API project                → cmd/<name>-api
+ginger new <name> --service               Service project            → cmd/<name>-service
+ginger new <name> --worker               Worker project             → cmd/<name>-worker
+ginger new <name> --cli               CLI project                → cmd/<name>-cli
+ginger run                         Run the app in dev mode
 ginger build [output]              Build the binary
 ginger generate handler <name>     Generate an HTTP handler
 ginger generate service <name>     Generate a service
@@ -439,7 +439,7 @@ The `example/` directory contains a complete User CRUD API demonstrating the ful
 
 ```
 example/
-├── cmd/app/main.go                          # wires everything together
+├── cmd/foobar/main.go                       # wires everything together
 ├── internal/
 │   ├── models/user.go                       # User, CreateUserInput, UpdateUserInput
 │   └── api/
@@ -452,7 +452,7 @@ example/
 ```bash
 cd example
 go mod tidy
-go run ./cmd/app
+go run ./cmd/foobar
 ```
 
 ```bash
@@ -485,7 +485,7 @@ http:
 
 database:
   driver: postgres
-  dsn: postgres://user:pass@localhost:5432/mydb?sslmode=disable
+  dsn: postgres://user:pass@localhost:5432/foobar?sslmode=disable
   max_open: 25
   max_idle: 5
 
@@ -533,7 +533,7 @@ A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/de
 
 ### Create and Run
 ```bash
-ginger new foobar -a           # Create API project → cmd/foobar-api
+ginger new foobar --api           # Create API project → cmd/foobar-api
 cd foobar && go mod tidy       # Install deps
 ginger run                     # Run (dev)
 ginger build                   # Build (prod)
@@ -565,7 +565,7 @@ go vet ./...                   # Check code
 ```bash
 docker build -t foobar .       # Build image
 docker run -p 8080:8080 foobar # Run container
-docker-compose up -d           # Run with deps
+docker compose up -d           # Run with deps
 ```
 
 ### Kubernetes
@@ -656,7 +656,7 @@ Todo projeto criado com `ginger new` segue este layout:
 ```
 foobar/
 ├── cmd/
-│   └── app/
+│   └── foobar/
 │       └── main.go              # Ponto de entrada da aplicação
 ├── internal/
 │   ├── api/
@@ -708,10 +708,10 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 ### Criar um novo projeto
 
 ```bash
-ginger new foobar -a        # API       → cmd/foobar-api
-ginger new foobar -s          # Service   → cmd/foobar-service
-ginger new foobar -w          # Worker    → cmd/foobar-worker
-ginger new foobar -c         # CLI       → cmd/foobar-cli
+ginger new foobar --api        # API       → cmd/foobar-api
+ginger new foobar --service          # Service   → cmd/foobar-service
+ginger new foobar --worker          # Worker    → cmd/foobar-worker
+ginger new foobar --cli         # CLI       → cmd/foobar-cli
 ginger new foobar             # Genérico  → cmd/foobar
 ```
 
@@ -734,11 +734,11 @@ Endpoints disponíveis imediatamente:
 
 ```
 ginger new <nome>                  Scaffold genérico          → cmd/<nome>
-ginger new <nome> -a               Projeto API                → cmd/<nome>-api
-ginger new <nome> -s               Projeto Service            → cmd/<nome>-service
-ginger new <nome> -w               Projeto Worker             → cmd/<nome>-worker
-ginger new <nome> -c               Projeto CLI                → cmd/<nome>-cli
-ginger run                         Executa a aplicação (go run ./cmd/app)
+ginger new <nome> --api               Projeto API                → cmd/<nome>-api
+ginger new <nome> --service               Projeto Service            → cmd/<nome>-service
+ginger new <nome> --worker               Projeto Worker             → cmd/<nome>-worker
+ginger new <nome> --cli               Projeto CLI                → cmd/<nome>-cli
+ginger run                         Executa a aplicação em modo dev
 ginger build [saída]               Compila o binário
 ginger generate handler <nome>     Gera um handler HTTP
 ginger generate service <nome>     Gera um service
@@ -1000,7 +1000,7 @@ O diretório `example/` contém uma API CRUD completa de usuários demonstrando 
 
 ```
 example/
-├── cmd/app/main.go                               # conecta tudo
+├── cmd/foobar/main.go                            # conecta tudo
 ├── internal/
 │   ├── models/user.go                            # User, CreateUserInput, UpdateUserInput
 │   └── api/
@@ -1013,7 +1013,7 @@ example/
 ```bash
 cd example
 go mod tidy
-go run ./cmd/app
+go run ./cmd/foobar
 ```
 
 ```bash
@@ -1046,7 +1046,7 @@ http:
 
 database:
   driver: postgres
-  dsn: postgres://user:senha@localhost:5432/meubanco?sslmode=disable
+  dsn: postgres://user:senha@localhost:5432/foobar-banco?sslmode=disable
   max_open: 25
   max_idle: 5
 
@@ -1094,7 +1094,7 @@ Um template de `Deployment` + `Service` Kubernetes está disponível em `templat
 
 ### Criar e Rodar
 ```bash
-ginger new foobar -a        # Criar projeto API → cmd/foobar-api
+ginger new foobar --api        # Criar projeto API → cmd/foobar-api
 cd foobar && go mod tidy    # Instalar deps
 ginger run                     # Rodar (dev)
 ginger build                   # Build (prod)
@@ -1126,7 +1126,7 @@ go vet ./...                   # Verificar código
 ```bash
 docker build -t foobar .    # Build imagem
 docker run -p 8080:8080 foobar # Rodar container
-docker-compose up -d           # Rodar com deps
+docker compose up -d           # Rodar com deps
 ```
 
 ### Kubernetes

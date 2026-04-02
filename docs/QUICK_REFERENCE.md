@@ -10,16 +10,18 @@ Guia de consulta rápida com os comandos e padrões mais usados.
 
 ```bash
 # Criar novo projeto
-ginger new my-api
-ginger new my-worker --type worker
-ginger new my-cli --type cli
+ginger new foobar            # genérico  -> cmd/foobar
+ginger new foobar --api         # api       -> cmd/foobar-api
+ginger new foobar --service         # service   -> cmd/foobar-service
+ginger new foobar --worker         # worker    -> cmd/foobar-worker
+ginger new foobar --cli         # cli       -> cmd/foobar-cli
 
 # Executar
 ginger run
 
 # Build
 ginger build
-ginger build ./bin/my-api
+ginger build ./bin/foobar
 
 # Gerar código
 ginger generate handler user
@@ -204,7 +206,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*User, 
 
 ```yaml
 app:
-  name: my-api
+  name: foobar
   env: development
   version: 0.1.0
 
@@ -215,7 +217,7 @@ http:
 
 database:
   driver: postgres
-  dsn: postgres://user:pass@localhost:5432/mydb?sslmode=disable
+  dsn: postgres://user:pass@localhost:5432/foobar?sslmode=disable
   max_open: 25
   max_idle: 5
 
@@ -228,7 +230,7 @@ log:
 
 ```bash
 # App
-APP_NAME=my-api
+APP_NAME=foobar
 APP_ENV=production
 APP_VERSION=1.0.0
 
@@ -382,7 +384,7 @@ func TestUserService_Create(t *testing.T) {
 ### Build
 
 ```bash
-docker build -t my-api:latest .
+docker build -t foobar:latest .
 ```
 
 ### Run
@@ -391,15 +393,15 @@ docker build -t my-api:latest .
 docker run -p 8080:8080 \
   -e DATABASE_DSN="postgres://user:pass@host/db" \
   -e LOG_LEVEL="info" \
-  my-api:latest
+  foobar:latest
 ```
 
 ### Docker Compose
 
 ```bash
-docker-compose up -d
-docker-compose logs -f app
-docker-compose down
+docker compose up -d
+docker compose logs -f foobar
+docker compose down
 ```
 
 ---
@@ -410,28 +412,28 @@ docker-compose down
 
 ```bash
 kubectl apply -f kubernetes/
-kubectl get pods -l app=my-api
-kubectl logs -f deployment/my-api
+kubectl get pods -l app=foobar
+kubectl logs -f deployment/foobar
 ```
 
 ### Scale
 
 ```bash
-kubectl scale deployment my-api --replicas=5
+kubectl scale deployment foobar --replicas=5
 ```
 
 ### Rollout
 
 ```bash
-kubectl set image deployment/my-api my-api=my-api:v2
-kubectl rollout status deployment/my-api
-kubectl rollout undo deployment/my-api
+kubectl set image deployment/foobar foobar=foobar:v2
+kubectl rollout status deployment/foobar
+kubectl rollout undo deployment/foobar
 ```
 
 ### Port Forward
 
 ```bash
-kubectl port-forward svc/my-api 8080:80
+kubectl port-forward svc/foobar 8080:80
 ```
 
 ---
@@ -458,10 +460,10 @@ app.Router.HandleRaw("/metrics", metrics.Handler())
 ### OpenTelemetry
 
 ```go
-shutdown, _ := telemetry.Setup(ctx, "my-api", "1.0.0")
+shutdown, _ := telemetry.Setup(ctx, "foobar", "1.0.0")
 app.OnStop(shutdown)
 
-tracer := telemetry.Tracer("my-api")
+tracer := telemetry.Tracer("foobar")
 ctx, span := tracer.Start(ctx, "operation")
 defer span.End()
 ```
@@ -478,7 +480,7 @@ ginger add postgres
 
 ```go
 db, _ := database.Connect(database.Config{
-    DSN: "postgres://user:pass@localhost:5432/mydb",
+    DSN: "postgres://user:pass@localhost:5432/foobar",
 })
 ```
 
@@ -548,13 +550,16 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 ## 📝 Makefile Útil
 
 ```makefile
+BIN=bin/foobar
+CMD_DIR=cmd/foobar
+
 .PHONY: run build test lint docker-build docker-run
 
 run:
-	go run ./cmd/app
+	go run ./$(CMD_DIR)
 
 build:
-	go build -o bin/app ./cmd/app
+	go build -o $(BIN) ./$(CMD_DIR)
 
 test:
 	go test -v -race ./...
@@ -567,16 +572,16 @@ lint:
 	golangci-lint run
 
 docker-build:
-	docker build -t my-api:latest .
+	docker build -t foobar:latest .
 
 docker-run:
-	docker run -p 8080:8080 my-api:latest
+	docker run -p 8080:8080 foobar:latest
 
 k8s-deploy:
 	kubectl apply -f kubernetes/
 
 k8s-logs:
-	kubectl logs -f deployment/my-api
+	kubectl logs -f deployment/foobar
 ```
 
 ---
@@ -587,21 +592,21 @@ k8s-logs:
 
 ```bash
 # Docker
-docker logs -f my-api
+docker logs -f foobar
 
 # Kubernetes
-kubectl logs -f deployment/my-api
-kubectl logs -f deployment/my-api --previous
+kubectl logs -f deployment/foobar
+kubectl logs -f deployment/foobar --previous
 ```
 
 ### Debug
 
 ```bash
 # Exec into container
-kubectl exec -it deployment/my-api -- sh
+kubectl exec -it deployment/foobar -- sh
 
 # Port forward
-kubectl port-forward svc/my-api 8080:80
+kubectl port-forward svc/foobar 8080:80
 ```
 
 ### Health Check

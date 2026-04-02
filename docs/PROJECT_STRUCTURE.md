@@ -80,8 +80,6 @@ ginger/                          # Raiz do projeto
 │   ├── TESTING.md               # Guia de testes
 │   ├── DEPLOYMENT.md            # Guia de deploy
 │   ├── QUICK_REFERENCE.md       # Referência rápida
-│   ├── QUALITY_CHECKLIST.md     # Checklist de qualidade
-│   ├── VALIDATION_REPORT.md     # Relatório de validação
 │   ├── SUMMARY.md               # Sumário visual
 │   └── CHANGELOG.md             # Histórico
 │
@@ -91,7 +89,7 @@ ginger/                          # Raiz do projeto
 │   └── project/                 # Templates de scaffold
 │
 ├── example/                     # Projeto de exemplo
-│   ├── cmd/app/main.go          # Entrypoint
+│   ├── cmd/foobar/main.go       # Entrypoint
 │   ├── internal/                # Código da aplicação
 │   │   ├── api/
 │   │   │   ├── handlers/
@@ -105,7 +103,7 @@ ginger/                          # Raiz do projeto
 ├── bin/                         # Binários compilados
 │   └── ginger                   # CLI compilada
 │
-└── my-local/                    # Arquivos locais (gitignored)
+└── foobar/                    # Arquivos locais (gitignored)
     ├── análises/
     ├── livros/
     └── documentação/
@@ -207,16 +205,25 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 ```bash
 cd example
-go build -o bin/app ./cmd/app
+go build -o bin/foobar ./cmd/foobar
 ```
 
 ### Estrutura de Projeto Gerado
 
-Quando você executa `ginger new my-api`, a estrutura criada é:
+O conteúdo varia por tipo de projeto:
+
+- sem flag: `cmd/<nome>`
+- `-a`: `cmd/<nome>-api`
+- `-s`: `cmd/<nome>-service`
+- `-w`: `cmd/<nome>-worker`
+- `-c`: `cmd/<nome>-cli`
+
+Exemplo para `ginger new foobar --api`:
 
 ```
-my-api/
-├── cmd/app/main.go
+foobar/
+├── cmd/foobar
+│   └── main.go
 ├── internal/
 │   ├── api/
 │   │   ├── handlers/

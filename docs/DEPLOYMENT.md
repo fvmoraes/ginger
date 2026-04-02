@@ -19,7 +19,7 @@
 
 ### Dockerfile Gerado
 
-Todo projeto Ginger vem com um `Dockerfile` multi-stage otimizado:
+Projetos `api`, `service` e `worker` gerados pelo Ginger vêm com um `Dockerfile` multi-stage otimizado:
 
 ```dockerfile
 # Build stage
@@ -31,36 +31,34 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build
+# Build (example for API project type)
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/app
+RUN go build -o bin/foobar ./cmd/foobar
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.19
 
-RUN apk --no-cache add ca-certificates
+WORKDIR /app
 
-WORKDIR /root/
-
-COPY --from=builder /app/main .
+COPY --from=builder /app/bin/foobar .
 COPY --from=builder /app/configs ./configs
 
 EXPOSE 8080
 
-CMD ["./main"]
+ENTRYPOINT ["./foobar"]
 ```
 
 ### Build e Run
 
 ```bash
 # Build
-docker build -t my-api:latest .
+docker build -t foobar:latest .
 
 # Run
 docker run -p 8080:8080 \
   -e DATABASE_DSN="postgres://user:pass@host/db" \
   -e LOG_LEVEL="info" \
-  my-api:latest
+  foobar:latest
 ```
 
 ### Otimizações
@@ -79,7 +77,7 @@ COPY . .
 #### 2. Multi-Platform Build
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t my-api:latest .
+docker buildx build --platform linux/amd64,linux/arm64 -t foobar:latest .
 ```
 
 #### 3. Distroless Image
@@ -102,85 +100,75 @@ CMD ["/main"]
 
 ## Docker Compose
 
-### docker-compose.yml Gerado
+### docker-compose.yml Gerado (projetos API/service)
 
 ```yaml
-version: '3.8'
+version: "3.9"
 
 services:
-  app:
+  foobar:
     build: .
     ports:
       - "8080:8080"
     environment:
-      - APP_ENV=development
-      - DATABASE_DSN=postgres://postgres:postgres@db:5432/mydb?sslmode=disable
-      - REDIS_ADDR=redis:6379
-      - LOG_LEVEL=debug
+      APP_ENV: development
+      HTTP_PORT: 8080
+      DATABASE_DSN: postgres://user:pass@postgres:5432/foobar?sslmode=disable
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - app-network
+      - postgres
+      - redis
 
-  db:
-    image: postgres:15-alpine
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=mydb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: foobar
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
+      - pgdata:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:latest
     volumes:
-      - redis-data:/data
-    networks:
-      - app-network
+      - ./scripts/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
 volumes:
-  postgres-data:
-  redis-data:
-
-networks:
-  app-network:
-    driver: bridge
+  pgdata:
 ```
 
 ### Comandos
 
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f app
+docker compose logs -f foobar
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # Rebuild and restart
-docker-compose up -d --build
-
-# Run migrations
-docker-compose exec app ./scripts/migrate.sh
+docker compose up -d --build
 
 # Access database
-docker-compose exec db psql -U postgres -d mydb
+docker compose exec postgres psql -U user -d foobar
 ```
 
 ---
@@ -194,22 +182,22 @@ docker-compose exec db psql -U postgres -d mydb
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-api
+  name: foobar
   labels:
-    app: my-api
+    app: foobar
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: my-api
+      app: foobar
   template:
     metadata:
       labels:
-        app: my-api
+        app: foobar
     spec:
       containers:
-      - name: my-api
-        image: my-api:latest
+      - name: foobar
+        image: foobar:latest
         ports:
         - containerPort: 8080
         env:
@@ -218,7 +206,7 @@ spec:
         - name: DATABASE_DSN
           valueFrom:
             secretKeyRef:
-              name: my-api-secrets
+              name: foobar-secrets
               key: database-dsn
         - name: LOG_LEVEL
           value: "info"
@@ -245,10 +233,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-api
+  name: foobar
 spec:
   selector:
-    app: my-api
+    app: foobar
   ports:
   - protocol: TCP
     port: 80
@@ -263,10 +251,10 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: my-api-secrets
+  name: foobar-secrets
 type: Opaque
 stringData:
-  database-dsn: "postgres://user:pass@postgres:5432/mydb?sslmode=disable"
+  database-dsn: "postgres://user:pass@postgres:5432/foobar?sslmode=disable"
 ```
 
 ```bash
@@ -274,7 +262,7 @@ stringData:
 kubectl apply -f kubernetes/secrets.yaml
 
 # Ou via CLI
-kubectl create secret generic my-api-secrets \
+kubectl create secret generic foobar-secrets \
   --from-literal=database-dsn="postgres://user:pass@host/db"
 ```
 
@@ -285,11 +273,11 @@ kubectl create secret generic my-api-secrets \
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: my-api-config
+  name: foobar-config
 data:
   app.yaml: |
     app:
-      name: my-api
+      name: foobar
       env: production
     http:
       port: 8080
@@ -303,14 +291,14 @@ data:
 # Montar ConfigMap no Deployment
 spec:
   containers:
-  - name: my-api
+  - name: foobar
     volumeMounts:
     - name: config
       mountPath: /configs
   volumes:
   - name: config
     configMap:
-      name: my-api-config
+      name: foobar-config
 ```
 
 ### Deploy
@@ -320,22 +308,22 @@ spec:
 kubectl apply -f kubernetes/
 
 # Check status
-kubectl get pods -l app=my-api
-kubectl get svc my-api
+kubectl get pods -l app=foobar
+kubectl get svc foobar
 
 # View logs
-kubectl logs -f deployment/my-api
+kubectl logs -f deployment/foobar
 
 # Scale
-kubectl scale deployment my-api --replicas=5
+kubectl scale deployment foobar --replicas=5
 
 # Rollout
-kubectl rollout status deployment/my-api
-kubectl rollout history deployment/my-api
-kubectl rollout undo deployment/my-api
+kubectl rollout status deployment/foobar
+kubectl rollout history deployment/foobar
+kubectl rollout undo deployment/foobar
 
 # Port forward (local testing)
-kubectl port-forward svc/my-api 8080:80
+kubectl port-forward svc/foobar 8080:80
 ```
 
 ---
@@ -347,7 +335,7 @@ kubectl port-forward svc/my-api 8080:80
 ```yaml
 # helm/Chart.yaml
 apiVersion: v2
-name: my-api
+name: foobar
 description: A Ginger-based API
 type: application
 version: 0.1.0
@@ -361,7 +349,7 @@ appVersion: "1.0.0"
 replicaCount: 3
 
 image:
-  repository: my-api
+  repository: foobar
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -402,7 +390,7 @@ env:
     value: "info"
 
 secrets:
-  DATABASE_DSN: "postgres://user:pass@postgres:5432/mydb"
+  DATABASE_DSN: "postgres://user:pass@postgres:5432/foobar"
 ```
 
 ### Deployment Template
@@ -412,18 +400,18 @@ secrets:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "my-api.fullname" . }}
+  name: {{ include "foobar.fullname" . }}
   labels:
-    {{- include "my-api.labels" . | nindent 4 }}
+    {{- include "foobar.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "my-api.selectorLabels" . | nindent 6 }}
+      {{- include "foobar.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "my-api.selectorLabels" . | nindent 8 }}
+        {{- include "foobar.selectorLabels" . | nindent 8 }}
     spec:
       containers:
       - name: {{ .Chart.Name }}
@@ -442,7 +430,7 @@ spec:
         - name: {{ $key }}
           valueFrom:
             secretKeyRef:
-              name: {{ include "my-api.fullname" $ }}-secrets
+              name: {{ include "foobar.fullname" $ }}-secrets
               key: {{ $key }}
         {{- end }}
         livenessProbe:
@@ -461,25 +449,25 @@ spec:
 
 ```bash
 # Install
-helm install my-api ./helm
+helm install foobar ./helm
 
 # Install with custom values
-helm install my-api ./helm -f values-prod.yaml
+helm install foobar ./helm -f values-prod.yaml
 
 # Upgrade
-helm upgrade my-api ./helm
+helm upgrade foobar ./helm
 
 # Rollback
-helm rollback my-api 1
+helm rollback foobar 1
 
 # Uninstall
-helm uninstall my-api
+helm uninstall foobar
 
 # Dry run
-helm install my-api ./helm --dry-run --debug
+helm install foobar ./helm --dry-run --debug
 
 # Template (render locally)
-helm template my-api ./helm
+helm template foobar ./helm
 ```
 
 ### Ambientes Múltiplos
@@ -511,9 +499,9 @@ env:
 ```
 
 ```bash
-helm install my-api-dev ./helm -f values-dev.yaml
-helm install my-api-staging ./helm -f values-staging.yaml
-helm install my-api-prod ./helm -f values-prod.yaml
+helm install foobar-dev ./helm -f values-dev.yaml
+helm install foobar-staging ./helm -f values-staging.yaml
+helm install foobar-prod ./helm -f values-prod.yaml
 ```
 
 ---
@@ -594,9 +582,9 @@ jobs:
       
       - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/my-api \
-            my-api=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
-          kubectl rollout status deployment/my-api
+          kubectl set image deployment/foobar \
+            foobar=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
+          kubectl rollout status deployment/foobar
 ```
 
 ### GitLab CI
@@ -632,8 +620,8 @@ deploy:production:
     - echo "$KUBECONFIG" | base64 -d > /tmp/kubeconfig
     - export KUBECONFIG=/tmp/kubeconfig
   script:
-    - kubectl set image deployment/my-api my-api=$IMAGE_TAG
-    - kubectl rollout status deployment/my-api
+    - kubectl set image deployment/foobar foobar=$IMAGE_TAG
+    - kubectl rollout status deployment/foobar
   only:
     - main
   environment:
@@ -686,17 +674,17 @@ cfg, err := config.Load(configPath)
 ```bash
 # .env.dev
 APP_ENV=development
-DATABASE_DSN=postgres://localhost:5432/mydb_dev
+DATABASE_DSN=postgres://localhost:5432/foobar
 LOG_LEVEL=debug
 
 # .env.staging
 APP_ENV=staging
-DATABASE_DSN=postgres://staging-db:5432/mydb
+DATABASE_DSN=postgres://staging-db:5432/foobar
 LOG_LEVEL=info
 
 # .env.prod
 APP_ENV=production
-DATABASE_DSN=postgres://prod-db:5432/mydb
+DATABASE_DSN=postgres://prod-db:5432/foobar
 LOG_LEVEL=warn
 ```
 
@@ -752,11 +740,11 @@ app.Router.HandleRaw("/metrics", metrics.Handler())
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: my-api
+  name: foobar
 spec:
   selector:
     matchLabels:
-      app: my-api
+      app: foobar
   endpoints:
   - port: http
     path: /metrics
@@ -767,7 +755,7 @@ spec:
 
 ```go
 // Setup telemetry
-shutdown, err := telemetry.Setup(ctx, "my-api", "1.0.0")
+shutdown, err := telemetry.Setup(ctx, "foobar", "1.0.0")
 if err != nil {
     log.Fatal(err)
 }
@@ -789,34 +777,34 @@ OTEL_EXPORTER_OTLP_HEADERS="x-api-key=secret"
 
 ```bash
 # Docker
-docker logs -f my-api
+docker logs -f foobar
 
 # Docker Compose
-docker-compose logs -f app
+docker compose logs -f foobar
 
 # Kubernetes
-kubectl logs -f deployment/my-api
-kubectl logs -f deployment/my-api --previous  # logs do container anterior
+kubectl logs -f deployment/foobar
+kubectl logs -f deployment/foobar --previous  # logs do container anterior
 
 # Logs de múltiplos pods
-kubectl logs -l app=my-api --tail=100 -f
+kubectl logs -l app=foobar --tail=100 -f
 ```
 
 ### Debug Container
 
 ```bash
 # Kubernetes — exec into pod
-kubectl exec -it deployment/my-api -- sh
+kubectl exec -it deployment/foobar -- sh
 
 # Docker
-docker exec -it my-api sh
+docker exec -it foobar sh
 ```
 
 ### Port Forward
 
 ```bash
 # Kubernetes
-kubectl port-forward svc/my-api 8080:80
+kubectl port-forward svc/foobar 8080:80
 
 # Docker Compose
 # Já exposto via ports: no docker-compose.yml
@@ -826,7 +814,7 @@ kubectl port-forward svc/my-api 8080:80
 
 ```bash
 # Test connection from pod
-kubectl exec -it deployment/my-api -- sh
+kubectl exec -it deployment/foobar -- sh
 apk add postgresql-client
 psql $DATABASE_DSN
 ```
@@ -837,7 +825,7 @@ psql $DATABASE_DSN
 
 ```bash
 # Ver logs
-kubectl logs deployment/my-api
+kubectl logs deployment/foobar
 
 # Verificar eventos
 kubectl describe pod <pod-name>
@@ -870,7 +858,7 @@ spec:
 
 ```bash
 # Verificar health endpoint
-kubectl port-forward svc/my-api 8080:80
+kubectl port-forward svc/foobar 8080:80
 curl http://localhost:8080/health
 
 # Ajustar probe timing

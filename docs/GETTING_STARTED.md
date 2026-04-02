@@ -8,10 +8,16 @@ Comece a usar o Ginger em 5 minutos.
 
 ## 1. Instalar o Ginger
 
+> Requer **Go 1.25+**.
+
+**Opção recomendada (Go install):**
 ```bash
-git clone https://github.com/fvmoraes/ginger
-cd ginger
-go build -o /usr/local/bin/ginger ./cmd/ginger
+go install github.com/fvmoraes/ginger/cmd/ginger@latest
+```
+
+**Alternativa (script de instalação):**
+```bash
+curl -sSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 ```
 
 Verifique a instalação:
@@ -24,15 +30,15 @@ ginger version
 ## 2. Criar Seu Primeiro Projeto
 
 ```bash
-ginger new minha-api
-cd minha-api
+ginger new loja --api
+cd loja
 go mod tidy
 ```
 
 Estrutura criada:
 ```
-minha-api/
-├── cmd/app/main.go          # Ponto de entrada
+loja/
+├── cmd/loja-api/main.go      # Ponto de entrada
 ├── internal/api/            # Seu código
 ├── configs/app.yaml         # Configuração
 └── Dockerfile               # Deploy
@@ -67,7 +73,7 @@ Isso cria:
 
 ### Registrar no Router
 
-Edite `cmd/app/main.go`:
+Edite `cmd/loja-api/main.go`:
 
 ```go
 package main
@@ -77,7 +83,7 @@ import (
     "github.com/fvmoraes/ginger/pkg/config"
     "github.com/fvmoraes/ginger/pkg/middleware"
     
-    "minha-api/internal/api/handlers"
+    "loja/internal/api/handlers"
 )
 
 func main() {
@@ -135,18 +141,18 @@ Edite `configs/app.yaml`:
 ```yaml
 database:
   driver: postgres
-  dsn: postgres://user:pass@localhost:5432/minha_api?sslmode=disable
+  dsn: postgres://user:pass@localhost:5432/foobar-api?sslmode=disable
   max_open: 25
   max_idle: 5
 ```
 
 ### Conectar
 
-Edite `cmd/app/main.go`:
+Edite `cmd/loja-api/main.go`:
 
 ```go
 import (
-    "minha-api/platform/database"
+    "loja/platform/database"
 )
 
 func main() {
@@ -186,18 +192,18 @@ func main() {
 
 ```bash
 # Build
-docker build -t minha-api .
+docker build -t loja .
 
 # Run
 docker run -p 8080:8080 \
   -e DATABASE_DSN="postgres://user:pass@host/db" \
-  minha-api
+  loja
 ```
 
 Ou use Docker Compose:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
@@ -239,7 +245,7 @@ go test ./...
 kubectl apply -f kubernetes/
 
 # Helm
-helm install minha-api ./helm
+helm install loja ./helm
 ```
 
 ---
@@ -248,7 +254,11 @@ helm install minha-api ./helm
 
 ```bash
 # Criar projeto
-ginger new <nome>
+ginger new <nome>            # genérico -> cmd/<nome>
+ginger new <nome> --api         # API      -> cmd/<nome>-api
+ginger new <nome> --service         # service  -> cmd/<nome>-service
+ginger new <nome> --worker         # worker   -> cmd/<nome>-worker
+ginger new <nome> --cli         # CLI      -> cmd/<nome>-cli
 
 # Gerar código
 ginger generate crud <recurso>

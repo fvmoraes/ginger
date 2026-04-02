@@ -339,7 +339,8 @@ import (
     "net/http/httptest"
     "testing"
     
-    "yourmodule/cmd/app"
+    // Ajuste para o diretório real do seu comando em cmd/<nome[-tipo]>
+    "yourmodule/cmd/foobar"
 )
 
 func setupTestServer(t *testing.T) *httptest.Server {

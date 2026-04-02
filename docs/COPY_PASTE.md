@@ -44,7 +44,7 @@ func main() {
 
 ```yaml
 app:
-  name: my-api
+  name: foobar
   env: development
   version: 0.1.0
 
@@ -627,20 +627,16 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/app
+RUN go build -o bin/foobar ./cmd/foobar
 
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates
-
-WORKDIR /root/
-
-COPY --from=builder /app/main .
+FROM alpine:3.19
+WORKDIR /app
+COPY --from=builder /app/bin/foobar .
 COPY --from=builder /app/configs ./configs
 
 EXPOSE 8080
 
-CMD ["./main"]
+ENTRYPOINT ["./foobar"]
 ```
 
 ---
@@ -651,12 +647,12 @@ CMD ["./main"]
 version: '3.8'
 
 services:
-  app:
+  foobar:
     build: .
     ports:
       - "8080:8080"
     environment:
-      - DATABASE_DSN=postgres://postgres:postgres@db:5432/mydb?sslmode=disable
+      - DATABASE_DSN=postgres://postgres:postgres@db:5432/foobar?sslmode=disable
       - REDIS_ADDR=redis:6379
     depends_on:
       - db
@@ -666,7 +662,7 @@ services:
     image: postgres:15-alpine
     environment:
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=mydb
+      - POSTGRES_DB=foobar
     ports:
       - "5432:5432"
     volumes:
@@ -689,27 +685,27 @@ volumes:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-api
+  name: foobar
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: my-api
+      app: foobar
   template:
     metadata:
       labels:
-        app: my-api
+        app: foobar
     spec:
       containers:
-      - name: my-api
-        image: my-api:latest
+      - name: foobar
+        image: foobar:latest
         ports:
         - containerPort: 8080
         env:
         - name: DATABASE_DSN
           valueFrom:
             secretKeyRef:
-              name: my-api-secrets
+              name: foobar-secrets
               key: database-dsn
         resources:
           requests:
@@ -734,10 +730,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-api
+  name: foobar
 spec:
   selector:
-    app: my-api
+    app: foobar
   ports:
   - port: 80
     targetPort: 8080

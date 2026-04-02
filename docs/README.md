@@ -181,7 +181,7 @@ Deploy completo do desenvolvimento à produção:
 - Build e run local
 
 #### Docker Compose
-- docker-compose.yml com app + postgres + redis
+- `docker-compose.yml` com serviço da aplicação + postgres + redis (+ prometheus/grafana no scaffold API/service)
 - Health checks
 - Volumes persistentes
 - Comandos úteis
@@ -225,7 +225,7 @@ Deploy completo do desenvolvimento à produção:
 ## 🎯 Fluxo de Aprendizado Recomendado
 
 ### 1. Iniciante (Preguiçoso)
-1. Veja o [TL;DR no README](../README.md#-tldr--para-preguiçosos) — 3 comandos
+1. Veja o [Quick Start no README](../README.md#-quick-start) — 3 comandos
 2. Copie código do [Copy-Paste Ready](./COPY_PASTE.md) — código pronto
 3. Rode e teste — funciona imediatamente
 
@@ -281,7 +281,7 @@ Deploy completo do desenvolvimento à produção:
 | Comando | Descrição | Documento |
 |---------|-----------|-----------|
 | `ginger new <name>` | Criar projeto | README |
-| `ginger run` | Executar app | README |
+| `ginger run` | Executar foobar | README |
 | `ginger build` | Compilar binário | README |
 | `ginger generate handler <name>` | Gerar handler | README, ARCHITECTURE |
 | `ginger generate service <name>` | Gerar service | README, ARCHITECTURE |
@@ -325,10 +325,10 @@ Deploy completo do desenvolvimento à produção:
 Encontrou um erro na documentação? Quer adicionar exemplos?
 
 1. Fork o repositório
-2. Crie uma branch: `git checkout -b docs/minha-melhoria`
+2. Crie uma branch: `git checkout -b docs/foobar-melhoria`
 3. Faça suas alterações
 4. Commit: `git commit -m "docs: adiciona exemplo de X"`
-5. Push: `git push origin docs/minha-melhoria`
+5. Push: `git push origin docs/foobar-melhoria`
 6. Abra um Pull Request
 
 ---

@@ -127,9 +127,9 @@ O router converte automaticamente para JSON:
 ### Layout Completo
 
 ```
-my-api/
+foobar/
 ├── cmd/
-│   └── app/
+│   └── foobar/
 │       └── main.go              # Entrypoint — wiring de dependências
 │
 ├── internal/                    # Código privado da aplicação

@@ -50,12 +50,13 @@ Usage:
   ginger <command> [arguments]
 
 Commands:
-  new <name> [-a|-s|-w|-c]    Scaffold a new project
+  new <name> [--api|--service|--worker|--cli]
+                              Scaffold a new project
                                 (no flag)  generic   → cmd/<name>
-                                -a         api       → cmd/<name>-api
-                                -s         service   → cmd/<name>-service
-                                -w         worker    → cmd/<name>-worker
-                                -c         cli       → cmd/<name>-cli
+                                --api      api       → cmd/<name>-api
+                                --service  service   → cmd/<name>-service
+                                --worker   worker    → cmd/<name>-worker
+                                --cli      cli       → cmd/<name>-cli
   run                         Run the app in dev mode
   build [output]              Build the binary
   generate handler  <name>    Generate an HTTP handler
@@ -76,8 +77,8 @@ Commands:
   help                        Show this help
 
 Examples:
-  ginger new foobar -a
-  ginger new foobar -w
+  ginger new foobar --api
+  ginger new foobar --worker
   ginger generate crud user
   ginger add postgres
   ginger add grpc
