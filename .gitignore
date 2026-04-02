@@ -46,3 +46,4 @@ bin/
 
 # dwyt
 .claude/
+.mcp.json
