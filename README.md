@@ -6,7 +6,7 @@
 
   [![Go Reference](https://pkg.go.dev/badge/github.com/fvmoraes/ginger.svg)](https://pkg.go.dev/github.com/fvmoraes/ginger)
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
-  ![Version](https://img.shields.io/badge/version-1.1.4-blue?style=flat)
+  ![Version](https://img.shields.io/badge/version-1.2.2-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
@@ -21,22 +21,27 @@
 
 ## ⚡ Quick Start
 
-**3 commands to get started:**
-
 ```bash
-# Install CLI
+# 1. Install
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
-# Create and run project
-ginger new foobar && cd foobar && go mod tidy && ginger run
+# 2. Create a project
+ginger new foobar -a    # API → cmd/foobar-api
+cd foobar
+go mod tidy
+
+# 3. Run
+ginger run
 ```
 
 **Your API is now running at** `http://localhost:8080`
 
-**Next steps:**
 ```bash
-ginger generate crud product    # Generate complete CRUD
-ginger add postgres             # Add PostgreSQL integration
+# Next steps
+ginger generate crud product    # Generate CRUD (handler + service + repository)
+ginger add postgres             # Add PostgreSQL
+ginger add redis                # Add Redis
+ginger build                    # Compile → bin/foobar-api
 ```
 
 📖 **Full guide:** [Getting Started (5 min)](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
@@ -95,9 +100,9 @@ Ginger is a CLI tool and set of packages that accelerates and standardizes Go pr
 Every project created with `ginger new` follows this layout:
 
 ```
-foobar/
+foobar/                          # ginger new foobar -a
 ├── cmd/
-│   └── app/
+│   └── foobar-api/              # cmd dir name = <name>-<type>
 │       └── main.go              # Application entrypoint
 ├── internal/
 │   ├── api/

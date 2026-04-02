@@ -152,20 +152,20 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o bin/app ./cmd/app
+RUN go build -o bin/{{.Name}} ./{{.CmdDir}}
 
 FROM alpine:3.19
 WORKDIR /app
-COPY --from=builder /app/bin/app .
+COPY --from=builder /app/bin/{{.Name}} .
 COPY --from=builder /app/configs ./configs
 EXPOSE 8080
-ENTRYPOINT ["./app"]
+ENTRYPOINT ["./{{.Name}}"]
 `
 
 const dockerComposeTmpl = `version: "3.9"
 
 services:
-  app:
+  {{.Name}}:
     build: .
     ports:
       - "8080:8080"
@@ -328,15 +328,15 @@ spec:
             {{- "{{" }} toYaml .Values.resources | nindent 12 {{ "}}" }}
 `
 
-const makefileTmpl = `BIN=bin/app
+const makefileTmpl = `BIN=bin/{{.Name}}
 
 .PHONY: run build test lint tidy docker up down
 
 run:
-	go run ./cmd/app
+	go run ./{{.CmdDir}}
 
 build:
-	go build -o $(BIN) ./cmd/app
+	go build -o $(BIN) ./{{.CmdDir}}
 
 test:
 	go test ./...
@@ -387,7 +387,7 @@ make down  # stops everything
 ## Project structure
 
 ` + "```" + `
-cmd/app/          # Application entrypoint
+{{.CmdDir}}/       # Application entrypoint
 internal/
   api/
     handlers/     # HTTP handlers

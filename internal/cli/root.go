@@ -44,15 +44,19 @@ func Run() {
 }
 
 func printUsage() {
-	fmt.Print(`Ginger — Agilize e padronize projetos Go
+	fmt.Print(`Ginger — Accelerate and standardize Go projects
 
 Usage:
   ginger <command> [arguments]
 
 Commands:
-  new <name> [--type api|microservice|cli|worker]
-                              Scaffold a new project
-  run                         Run the app  (go run ./cmd/app)
+  new <name> [-a|-s|-w|-c]    Scaffold a new project
+                                (no flag)  generic   → cmd/<name>
+                                -a         api       → cmd/<name>-api
+                                -s         service   → cmd/<name>-service
+                                -w         worker    → cmd/<name>-worker
+                                -c         cli       → cmd/<name>-cli
+  run                         Run the app in dev mode
   build [output]              Build the binary
   generate handler  <name>    Generate an HTTP handler
   generate service  <name>    Generate a service
@@ -72,8 +76,8 @@ Commands:
   help                        Show this help
 
 Examples:
-  ginger new my-api
-  ginger new my-worker --type worker
+  ginger new foobar -a
+  ginger new foobar -w
   ginger generate crud user
   ginger add postgres
   ginger add grpc
