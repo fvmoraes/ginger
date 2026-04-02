@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.5] - 2026-04-02
+
+### Fixed
+- Documentation, installer, and versioning fixes
+
+### Commit Summary
+- fix: align docs, installer, and dynamic versioning
+- fix(release): escape checksums note in release notes generation
+
 ## [1.2.4] - 2026-04-02
 
 ### Fixed
@@ -178,3 +187,4 @@ Verify downloads with `checksums.txt`.
 
 [1.2.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.3
 [1.2.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.4
+[1.2.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.5
