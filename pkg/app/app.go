@@ -81,7 +81,7 @@ func (a *App) Run() error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		a.Logger.Info("server starting", "addr", addr, "env", a.Config.App.Env)
+		a.Logger.Info("app_started", "addr", addr, "env", a.Config.App.Env)
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
@@ -98,7 +98,7 @@ func (a *App) Run() error {
 			return err
 		}
 	case sig := <-quit:
-		a.Logger.Info("shutdown signal received", "signal", sig.String())
+		a.Logger.Info("shutdown_signal_received", "signal", sig.String())
 	}
 
 	return a.shutdown()
@@ -109,7 +109,7 @@ func (a *App) shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	a.Logger.Info("shutting down server", "timeout", timeout.String())
+	a.Logger.Info("app_stopping", "timeout", timeout.String())
 
 	if err := a.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("app: server shutdown: %w", err)
@@ -117,10 +117,10 @@ func (a *App) shutdown() error {
 
 	for _, fn := range a.onStop {
 		if err := fn(ctx); err != nil {
-			a.Logger.Error("shutdown hook error", "error", err)
+			a.Logger.Error("shutdown_hook_error", "error", err)
 		}
 	}
 
-	a.Logger.Info("server stopped")
+	a.Logger.Info("app_stopped")
 	return nil
 }

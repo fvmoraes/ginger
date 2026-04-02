@@ -43,11 +43,8 @@ func NewProject(name, projectType string) error {
 	cmdDir := CmdDir(name, projectType)
 	data := projectData{Name: name, Module: name, Type: projectType, CmdDir: cmdDir}
 
-	dirs := baseDirs(data)
-	for _, d := range dirs {
-		if err := os.MkdirAll(filepath.Join(name, d), 0755); err != nil {
-			return fmt.Errorf("scaffold: mkdir %s: %w", d, err)
-		}
+	if err := os.MkdirAll(name, 0755); err != nil {
+		return fmt.Errorf("scaffold: mkdir %s: %w", name, err)
 	}
 
 	files := baseFiles(data)
@@ -61,43 +58,12 @@ func NewProject(name, projectType string) error {
 	return nil
 }
 
-func baseDirs(d projectData) []string {
-	common := []string{
-		"configs",
-		"scripts",
-		"tests",
-		"docs",
-	}
-	switch d.Type {
-	case "cli":
-		return append(common, d.CmdDir, "internal/config", "pkg")
-	case "worker":
-		return append(common, d.CmdDir, "internal/worker", "internal/config", "platform", "pkg")
-	case "generic":
-		return append(common, d.CmdDir, "internal/config", "pkg")
-	default: // api, service
-		return append(common,
-			d.CmdDir,
-			"internal/api/handlers",
-			"internal/api/services",
-			"internal/api/repositories",
-			"internal/api/middlewares",
-			"internal/models",
-			"internal/config",
-			"pkg",
-			"platform",
-		)
-	}
-}
-
 func baseFiles(d projectData) map[string]string {
 	common := map[string]string{
-		"go.mod":           goModTmpl,
-		"configs/app.yaml": appYamlTmpl,
-		".env.example":     envExampleTmpl,
-		"Makefile":         makefileTmpl,
-		".gitignore":       gitignoreTmpl,
-		"README.md":        readmeTmpl,
+		"go.mod":     goModTmpl,
+		"Makefile":   makefileTmpl,
+		".gitignore": gitignoreTmpl,
+		"README.md":  readmeTmpl,
 	}
 
 	mainPath := d.CmdDir + "/main.go"
@@ -105,21 +71,28 @@ func baseFiles(d projectData) map[string]string {
 	case "cli":
 		common[mainPath] = cliMainTmpl
 	case "worker":
+		common["configs/app.yaml"] = appYamlTmpl
+		common[".env.example"] = envExampleTmpl
 		common[mainPath] = workerMainTmpl
 		common["internal/worker/worker.go"] = workerTmpl
-		common["Dockerfile"] = dockerfileTmpl
+		common["devops/docker/Dockerfile"] = dockerfileTmpl
+		common["devops/pipelines/ci.yaml"] = pipelineTmpl
 	case "generic":
 		common[mainPath] = cliMainTmpl
 	default: // api, service
+		common["configs/app.yaml"] = appYamlTmpl
+		common[".env.example"] = envExampleTmpl
 		common[mainPath] = mainTmpl
 		common["internal/config/config.go"] = internalConfigTmpl
 		common["internal/api/handlers/health.go"] = healthHandlerTmpl
-		common["Dockerfile"] = dockerfileTmpl
-		common["docker-compose.yml"] = dockerComposeTmpl
-		common["kubernetes/deployment.yaml"] = k8sDeploymentTmpl
-		common["helm/Chart.yaml"] = helmChartTmpl
-		common["helm/values.yaml"] = helmValuesTmpl
-		common["helm/templates/deployment.yaml"] = helmDeploymentTmpl
+		common["devops/docker/Dockerfile"] = dockerfileTmpl
+		common["devops/docker/docker-compose.yml"] = dockerComposeTmpl
+		common["devops/docker/prometheus.yml"] = prometheusConfigTmpl
+		common["devops/kubernetes/deployment.yaml"] = k8sDeploymentTmpl
+		common["devops/helm/Chart.yaml"] = helmChartTmpl
+		common["devops/helm/values.yaml"] = helmValuesTmpl
+		common["devops/helm/templates/deployment.yaml"] = helmDeploymentTmpl
+		common["devops/pipelines/ci.yaml"] = pipelineTmpl
 	}
 	return common
 }

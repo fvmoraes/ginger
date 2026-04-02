@@ -19,7 +19,7 @@
 
 ### Dockerfile Gerado
 
-Projetos `api`, `service` e `worker` gerados pelo Ginger vêm com um `Dockerfile` multi-stage otimizado:
+Projetos `api`, `service` e `worker` gerados pelo Ginger vêm com um `Dockerfile` multi-stage otimizado em `devops/docker/Dockerfile`:
 
 ```dockerfile
 # Build stage
@@ -33,7 +33,7 @@ RUN go mod download
 
 # Build (example for API project type)
 COPY . .
-RUN go build -o bin/foobar ./cmd/foobar
+RUN go build -o bin/foobar ./cmd/foobar-api
 
 # Runtime stage
 FROM alpine:3.19
@@ -52,7 +52,7 @@ ENTRYPOINT ["./foobar"]
 
 ```bash
 # Build
-docker build -t foobar:latest .
+docker build -f devops/docker/Dockerfile -t foobar:latest .
 
 # Run
 docker run -p 8080:8080 \
@@ -102,12 +102,16 @@ CMD ["/main"]
 
 ### docker-compose.yml Gerado (projetos API/service)
 
+Localização: `devops/docker/docker-compose.yml`
+
 ```yaml
 version: "3.9"
 
 services:
   foobar:
-    build: .
+    build:
+      context: ../..
+      dockerfile: devops/docker/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -137,7 +141,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./scripts/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
@@ -156,7 +160,7 @@ volumes:
 
 ```bash
 # Start all services
-docker compose up -d
+docker compose -f devops/docker/docker-compose.yml up -d
 
 # View logs
 docker compose logs -f foobar
@@ -165,7 +169,7 @@ docker compose logs -f foobar
 docker compose down
 
 # Rebuild and restart
-docker compose up -d --build
+docker compose -f devops/docker/docker-compose.yml up -d --build
 
 # Access database
 docker compose exec postgres psql -U user -d foobar
@@ -178,7 +182,7 @@ docker compose exec postgres psql -U user -d foobar
 ### Deployment YAML Gerado
 
 ```yaml
-# kubernetes/deployment.yaml
+# devops/kubernetes/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -247,7 +251,7 @@ spec:
 ### Secrets
 
 ```yaml
-# kubernetes/secrets.yaml
+# devops/kubernetes/secrets.yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -259,7 +263,7 @@ stringData:
 
 ```bash
 # Criar secret
-kubectl apply -f kubernetes/secrets.yaml
+kubectl apply -f devops/kubernetes/secrets.yaml
 
 # Ou via CLI
 kubectl create secret generic foobar-secrets \
@@ -269,7 +273,7 @@ kubectl create secret generic foobar-secrets \
 ### ConfigMap
 
 ```yaml
-# kubernetes/configmap.yaml
+# devops/kubernetes/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -305,7 +309,7 @@ spec:
 
 ```bash
 # Apply all manifests
-kubectl apply -f kubernetes/
+kubectl apply -f devops/kubernetes/
 
 # Check status
 kubectl get pods -l app=foobar
@@ -333,7 +337,7 @@ kubectl port-forward svc/foobar 8080:80
 ### Chart.yaml Gerado
 
 ```yaml
-# helm/Chart.yaml
+# devops/helm/Chart.yaml
 apiVersion: v2
 name: foobar
 description: A Ginger-based API
@@ -345,7 +349,7 @@ appVersion: "1.0.0"
 ### values.yaml Gerado
 
 ```yaml
-# helm/values.yaml
+# devops/helm/values.yaml
 replicaCount: 3
 
 image:
@@ -396,7 +400,7 @@ secrets:
 ### Deployment Template
 
 ```yaml
-# helm/templates/deployment.yaml
+# devops/helm/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -449,10 +453,10 @@ spec:
 
 ```bash
 # Install
-helm install foobar ./helm
+helm install foobar ./devops/helm
 
 # Install with custom values
-helm install foobar ./helm -f values-prod.yaml
+helm install foobar ./devops/helm -f values-prod.yaml
 
 # Upgrade
 helm upgrade foobar ./helm
@@ -464,7 +468,7 @@ helm rollback foobar 1
 helm uninstall foobar
 
 # Dry run
-helm install foobar ./helm --dry-run --debug
+helm install foobar ./devops/helm --dry-run --debug
 
 # Template (render locally)
 helm template foobar ./helm
@@ -499,9 +503,9 @@ env:
 ```
 
 ```bash
-helm install foobar-dev ./helm -f values-dev.yaml
-helm install foobar-staging ./helm -f values-staging.yaml
-helm install foobar-prod ./helm -f values-prod.yaml
+helm install foobar-dev ./devops/helm -f values-dev.yaml
+helm install foobar-staging ./devops/helm -f values-staging.yaml
+helm install foobar-prod ./devops/helm -f values-prod.yaml
 ```
 
 ---
@@ -641,7 +645,7 @@ app:
   env: development
 log:
   level: debug
-  format: text
+  format: json
 
 # configs/app.staging.yaml
 app:

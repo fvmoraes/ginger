@@ -176,12 +176,12 @@ Cobertura completa de testes:
 Deploy completo do desenvolvimento à produção:
 
 #### Docker
-- Dockerfile multi-stage gerado automaticamente
+- `devops/docker/Dockerfile` multi-stage gerado automaticamente
 - Otimizações (build cache, multi-platform, distroless)
 - Build e run local
 
 #### Docker Compose
-- `docker-compose.yml` com serviço da aplicação + postgres + redis (+ prometheus/grafana no scaffold API/service)
+- `devops/docker/docker-compose.yml` com serviço da aplicação + postgres + redis (+ prometheus/grafana no scaffold API/service)
 - Health checks
 - Volumes persistentes
 - Comandos úteis

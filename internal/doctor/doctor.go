@@ -21,10 +21,10 @@ func Run() {
 	checks := []check{
 		{"valid project structure", checkStructure},
 		{"go.mod present", checkGoMod},
-		{"configs/app.yaml present", checkConfig},
-		{"Dockerfile present", checkDockerfile},
-		{"health check endpoint", checkHealthEndpoint},
-		{"graceful shutdown configured", checkGracefulShutdown},
+		{"configs/app.yaml present when applicable", checkConfig},
+		{"DevOps Dockerfile present when applicable", checkDockerfile},
+		{"health check endpoint when applicable", checkHealthEndpoint},
+		{"graceful shutdown configured when applicable", checkGracefulShutdown},
 		{"tests present", checkTests},
 		{"go vet passes", checkGoVet},
 		{"lint (golangci-lint)", checkLint},
@@ -50,7 +50,7 @@ func Run() {
 }
 
 func checkStructure() bool {
-	for _, d := range []string{"cmd", "internal", "configs"} {
+	for _, d := range []string{"cmd"} {
 		if _, err := os.Stat(d); os.IsNotExist(err) {
 			return false
 		}
@@ -64,22 +64,34 @@ func checkGoMod() bool {
 }
 
 func checkConfig() bool {
+	if !needsConfig() {
+		return true
+	}
 	_, err := os.Stat(filepath.Join("configs", "app.yaml"))
 	return err == nil
 }
 
 func checkDockerfile() bool {
-	_, err := os.Stat("Dockerfile")
+	if !needsDockerfile() {
+		return true
+	}
+	_, err := os.Stat(filepath.Join("devops", "docker", "Dockerfile"))
 	return err == nil
 }
 
 func checkHealthEndpoint() bool {
+	if !isHTTPProject() {
+		return true
+	}
 	return grepInDir(".", "/health") ||
 		grepInDir(".", "health.New") ||
 		grepInDir(".", "gingerapp.New")
 }
 
 func checkGracefulShutdown() bool {
+	if !isHTTPProject() {
+		return true
+	}
 	return grepInDir(".", "Shutdown") ||
 		grepInDir(".", "SIGTERM") ||
 		grepInDir(".", "gingerapp.New") ||
@@ -146,4 +158,31 @@ func hasFileWithSuffix(dir, suffix string) bool {
 		return nil
 	})
 	return found
+}
+
+func needsConfig() bool {
+	if _, err := os.Stat(filepath.Join("configs", "app.yaml")); err == nil {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join("internal", "config", "config.go")); err == nil {
+		return true
+	}
+	return false
+}
+
+func needsDockerfile() bool {
+	if _, err := os.Stat(filepath.Join("devops", "docker", "Dockerfile")); err == nil {
+		return true
+	}
+	if _, err := os.Stat("devops"); err == nil {
+		return true
+	}
+	return false
+}
+
+func isHTTPProject() bool {
+	if _, err := os.Stat(filepath.Join("internal", "api", "handlers")); err == nil {
+		return true
+	}
+	return grepInDir(".", "gingerapp.New")
 }

@@ -38,7 +38,9 @@ ginger run
 
 ```bash
 # Next steps
-ginger generate crud product    # Generate CRUD (handler + service + repository)
+ginger generate crud foobar     # Generate CRUD (handler + service + repository + tests)
+ginger generate test foobar     # Generate unit tests for handler/service/repository
+ginger generate test app        # Generate app smoke test
 ginger add postgres             # Add PostgreSQL
 ginger add redis                # Add Redis
 ginger build                    # Compile → bin/foobar-api
@@ -97,7 +99,7 @@ Ginger is a CLI tool and set of packages that accelerates and standardizes Go pr
 
 ## Project Structure
 
-Every project created with `ginger new` follows this layout:
+Every project created with `ginger new` starts minimal and grows on demand:
 
 ```
 foobar/                          # ginger new foobar --api
@@ -105,24 +107,20 @@ foobar/                          # ginger new foobar --api
 │   └── foobar-api/              # cmd dir name = <name>-<type>
 │       └── main.go              # Application entrypoint
 ├── internal/
-│   ├── api/
-│   │   ├── handlers/            # HTTP handlers
-│   │   ├── services/            # Business logic
-│   │   ├── repositories/        # Data access layer
-│   │   └── middlewares/         # App-specific middlewares
-│   ├── models/                  # Domain models
+│   ├── api/handlers/            # Starts with health.go
 │   └── config/                  # Config loader wrapper
-├── pkg/                         # Reusable internal packages
-├── platform/                    # External integrations (DB, cache, messaging)
 ├── configs/
 │   └── app.yaml                 # Application configuration
-├── scripts/                     # Dev and CI scripts
-├── tests/                       # Integration tests
-├── docs/                        # Documentation
-├── Dockerfile
+├── devops/
+│   ├── docker/                  # Dockerfile, compose, Prometheus config
+│   ├── kubernetes/              # Deployment samples
+│   ├── helm/                    # Helm chart
+│   └── pipelines/               # CI/CD samples
 ├── Makefile
 └── .env.example
 ```
+
+Extra directories such as `platform/`, `tests/`, `docs/`, additional `internal/api/...` layers, and more `devops/` assets are created only when a flow actually needs them, such as `ginger generate` or `ginger add`.
 
 ## Getting Started
 
@@ -137,6 +135,7 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 **Option 2: One-line install script**
 ```bash
+# installs the latest release by default
 curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 ```
 
@@ -189,10 +188,14 @@ ginger build [output]              Build the binary
 ginger generate handler <name>     Generate an HTTP handler
 ginger generate service <name>     Generate a service
 ginger generate repository <name>  Generate a repository
-ginger generate crud <name>        Generate full CRUD (model+handler+service+repo+test)
+ginger generate crud <name>        Generate full CRUD (model+handler+service+repo+tests)
+ginger generate test <name>        Generate handler+service+repository tests
+ginger generate test <name> all    Generate resource tests + app smoke test
+ginger generate test app           Generate app smoke test under tests/integration
+ginger generate swagger [name]     Generate docs/openapi.json starter or CRUD example
 ginger add <integration>           Add an integration to the project
 ginger doctor                      Run project health diagnostics
-ginger version                     Print Ginger version
+ginger version                     Print ginger x.y.z
 ginger help                        Show help
 ```
 
@@ -207,6 +210,8 @@ ginger help                        Show help
 | NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
 |             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
 | Analytical  | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
+| Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
+| Messaging   | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
 |             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
 |             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
@@ -216,17 +221,34 @@ ginger help                        Show help
 |             | `ginger add websocket`     | stdlib only                          |
 | Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
 |             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
+| Docs        | `ginger add swagger`       | stdlib + Swagger UI CDN              |
 
 ### Code generation example
 
 ```bash
-ginger generate crud product
+ginger generate crud foobar
+ginger generate swagger foobar
 ```
 
 This creates a complete CRUD with:
 - Model, Handler, Service, Repository
-- Tests included
+- Handler, service, and repository tests included
 - Ready to wire in your router
+
+For API docs, you can also generate an OpenAPI example file:
+
+```bash
+ginger add swagger
+ginger generate swagger foobar
+```
+
+You can also generate tests separately:
+
+```bash
+ginger generate test foobar
+ginger generate test foobar all
+ginger generate test app
+```
 
 **Learn more:** [Getting Started Guide](./docs/GETTING_STARTED.md)
 
@@ -336,12 +358,12 @@ cfg, err := config.Load("configs/app.yaml")
 
 ### `pkg/logger` — Structured logging
 
-Built on `log/slog`. JSON by default, text for local dev.
+Built on `log/slog`. Ginger always emits structured multi-line JSON logs.
 
 ```go
 log := logger.New("info", "json")
-log.Info("user created", "id", user.ID)
-log.Error("db error", "error", err)
+log.Info("user_created", "id", user.ID)
+log.Error("db_error", "error", err)
 
 // Context-aware
 ctx = logger.WithContext(ctx, log)
@@ -397,7 +419,7 @@ One-way server→client streaming over plain HTTP. Ideal for live feeds, notific
 func streamHandler(w http.ResponseWriter, r *http.Request) {
     stream, err := sse.New(w)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+        http.Error(w, "internal server error", http.StatusInternalServerError)
         return
     }
     for {
@@ -439,7 +461,7 @@ The `example/` directory contains a complete User CRUD API demonstrating the ful
 
 ```
 example/
-├── cmd/foobar/main.go                       # wires everything together
+├── cmd/app/main.go                          # wires everything together
 ├── internal/
 │   ├── models/user.go                       # User, CreateUserInput, UpdateUserInput
 │   └── api/
@@ -452,7 +474,7 @@ example/
 ```bash
 cd example
 go mod tidy
-go run ./cmd/foobar
+go run ./cmd/app
 ```
 
 ```bash
@@ -491,7 +513,7 @@ database:
 
 log:
   level: info    # debug | info | warn | error
-  format: json   # json | text
+  format: json   # compatibility field; Ginger logs JSON only
 ```
 
 All fields can be overridden with environment variables:
@@ -506,7 +528,7 @@ All fields can be overridden with environment variables:
 | `DATABASE_DRIVER` | `database.driver`         |
 | `DATABASE_DSN`    | `database.dsn`            |
 | `LOG_LEVEL`       | `log.level`               |
-| `LOG_FORMAT`      | `log.format`              |
+| `LOG_FORMAT`      | `log.format` (compatibility only) |
 
 ## Observability
 
@@ -521,14 +543,22 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 
 ## Docker & Kubernetes
 
-A `Dockerfile` is generated with every new project using a multi-stage build:
+A DevOps bundle is generated only for project types that need it. For `api` and `service`, Ginger creates:
+
+- `devops/docker/Dockerfile`
+- `devops/docker/docker-compose.yml`
+- `devops/kubernetes/deployment.yaml`
+- `devops/helm/...`
+- `devops/pipelines/ci.yaml`
+
+The generated Dockerfile uses a multi-stage build:
 
 ```bash
-docker build -t foobar:latest .
+docker build -f devops/docker/Dockerfile -t foobar:latest .
 docker run -p 8080:8080 foobar:latest
 ```
 
-A Kubernetes `Deployment` + `Service` template is available at `templates/k8s/deployment.yaml`. It includes readiness and liveness probes pointed at `/health`, resource limits, and a `ClusterIP` service.
+A Kubernetes `Deployment` + `Service` template is available at `devops/kubernetes/deployment.yaml`. It includes readiness and liveness probes pointed at `/health`, resource limits, and a `ClusterIP` service.
 
 ---
 
@@ -544,9 +574,9 @@ ginger build                   # Build (prod)
 
 ### Generate Code
 ```bash
-ginger generate crud user      # Complete CRUD
-ginger generate handler auth   # Handler only
-ginger generate service email  # Service only
+ginger generate crud foobar        # Complete CRUD
+ginger generate handler foobar     # Handler only
+ginger generate service foobar     # Service only
 ```
 
 ### Add Integrations
@@ -566,14 +596,14 @@ go vet ./...                   # Check code
 
 ### Docker
 ```bash
-docker build -t foobar .       # Build image
+docker build -f devops/docker/Dockerfile -t foobar . # Build image
 docker run -p 8080:8080 foobar # Run container
-docker compose up -d           # Run with deps
+docker compose -f devops/docker/docker-compose.yml up -d # Run with deps
 ```
 
 ### Kubernetes
 ```bash
-kubectl apply -f kubernetes/   # Deploy
+kubectl apply -f devops/kubernetes/   # Deploy
 kubectl get pods               # View pods
 kubectl logs -f deploy/foobar  # View logs
 ```
@@ -657,29 +687,25 @@ Ginger é uma CLI e um conjunto de pacotes que agiliza e padroniza projetos Go e
 Todo projeto criado com `ginger new` segue este layout:
 
 ```
-foobar/
+foobar/                          # ginger new foobar --api
 ├── cmd/
-│   └── foobar/
+│   └── foobar-api/              # nome do cmd = <nome>-<tipo>
 │       └── main.go              # Ponto de entrada da aplicação
 ├── internal/
-│   ├── api/
-│   │   ├── handlers/            # Handlers HTTP
-│   │   ├── services/            # Lógica de negócio
-│   │   ├── repositories/        # Camada de acesso a dados
-│   │   └── middlewares/         # Middlewares específicos da aplicação
-│   ├── models/                  # Modelos de domínio
+│   ├── api/handlers/            # Começa com health.go
 │   └── config/                  # Wrapper do carregador de configuração
-├── pkg/                         # Pacotes internos reutilizáveis
-├── platform/                    # Integrações externas (DB, cache, mensageria)
 ├── configs/
 │   └── app.yaml                 # Configuração da aplicação
-├── scripts/                     # Scripts de dev e CI
-├── tests/                       # Testes de integração
-├── docs/                        # Documentação
-├── Dockerfile
+├── devops/
+│   ├── docker/                  # Dockerfile, compose, Prometheus config
+│   ├── kubernetes/              # Samples de Deployment
+│   ├── helm/                    # Helm chart
+│   └── pipelines/               # Samples de CI/CD
 ├── Makefile
 └── .env.example
 ```
+
+Diretórios como `platform/`, `tests/`, `docs/`, camadas extras em `internal/api/...` e mais assets em `devops/` surgem sob demanda, conforme você usa `ginger generate` e `ginger add`.
 
 ## Começando
 
@@ -694,6 +720,7 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 **Opção 2: Script de instalação**
 ```bash
+# instala a latest release por padrão
 curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 ```
 
@@ -749,7 +776,7 @@ ginger generate repository <nome>  Gera um repository
 ginger generate crud <nome>        Gera CRUD completo (model+handler+service+repo+test)
 ginger add <integração>            Adiciona uma integração ao projeto
 ginger doctor                      Diagnóstico de saúde do projeto
-ginger version                     Exibe a versão do Ginger
+ginger version                     Exibe ginger x.y.z
 ginger help                        Exibe a ajuda
 ```
 
@@ -764,6 +791,7 @@ ginger help                        Exibe a ajuda
 | NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
 |             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
 | Analítico   | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
+| Docs        | `ginger add swagger`       | stdlib + Swagger UI CDN              |
 | Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
 | Mensageria  | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
@@ -779,17 +807,17 @@ ginger help                        Exibe a ajuda
 ### Exemplo de geração de código
 
 ```bash
-ginger generate handler  produto
-ginger generate service  produto
-ginger generate repository produto
+ginger generate handler  foobar
+ginger generate service  foobar
+ginger generate repository foobar
 ```
 
 Isso cria:
 
 ```
-internal/api/handlers/produto_handler.go
-internal/api/services/produto_service.go
-internal/api/repositories/produto_repository.go
+internal/api/handlers/foobar_handler.go
+internal/api/services/foobar_service.go
+internal/api/repositories/foobar_repository.go
 ```
 
 Cada arquivo já vem com a interface correta, construtor e stubs de métodos — pronto para preencher.
@@ -900,12 +928,12 @@ cfg, err := config.Load("configs/app.yaml")
 
 ### `pkg/logger` — Log estruturado
 
-Construído sobre `log/slog`. JSON por padrão, texto para dev local.
+Construído sobre `log/slog`. O Ginger sempre emite logs estruturados em JSON multilinha.
 
 ```go
 log := logger.New("info", "json")
-log.Info("usuário criado", "id", usuario.ID)
-log.Error("erro no banco", "error", err)
+log.Info("usuario_criado", "id", usuario.ID)
+log.Error("erro_banco", "error", err)
 
 // Com contexto
 ctx = logger.WithContext(ctx, log)
@@ -961,7 +989,7 @@ Streaming unidirecional servidor→cliente sobre HTTP puro. Ideal para feeds ao 
 func streamHandler(w http.ResponseWriter, r *http.Request) {
     stream, err := sse.New(w)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+        http.Error(w, "internal server error", http.StatusInternalServerError)
         return
     }
     for {
@@ -1003,7 +1031,7 @@ O diretório `example/` contém uma API CRUD completa de usuários demonstrando 
 
 ```
 example/
-├── cmd/foobar/main.go                            # conecta tudo
+├── cmd/app/main.go                               # conecta tudo
 ├── internal/
 │   ├── models/user.go                            # User, CreateUserInput, UpdateUserInput
 │   └── api/
@@ -1016,7 +1044,7 @@ example/
 ```bash
 cd example
 go mod tidy
-go run ./cmd/foobar
+go run ./cmd/app
 ```
 
 ```bash
@@ -1055,7 +1083,7 @@ database:
 
 log:
   level: info    # debug | info | warn | error
-  format: json   # json | text
+  format: json   # campo de compatibilidade; Ginger usa apenas JSON
 ```
 
 Todos os campos podem ser sobrescritos por variáveis de ambiente:
@@ -1070,7 +1098,7 @@ Todos os campos podem ser sobrescritos por variáveis de ambiente:
 | `DATABASE_DRIVER`    | `database.driver`         |
 | `DATABASE_DSN`       | `database.dsn`            |
 | `LOG_LEVEL`          | `log.level`               |
-| `LOG_FORMAT`         | `log.format`              |
+| `LOG_FORMAT`         | `log.format` (compatibilidade apenas) |
 
 ## Observabilidade
 
@@ -1085,14 +1113,22 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 
 ## Docker e Kubernetes
 
-Um `Dockerfile` é gerado com cada novo projeto usando build multi-stage:
+Um pacote DevOps é gerado apenas para tipos de projeto que precisam dele. Em `api` e `service`, o Ginger cria:
+
+- `devops/docker/Dockerfile`
+- `devops/docker/docker-compose.yml`
+- `devops/kubernetes/deployment.yaml`
+- `devops/helm/...`
+- `devops/pipelines/ci.yaml`
+
+O Dockerfile gerado usa build multi-stage:
 
 ```bash
-docker build -t foobar:latest .
+docker build -f devops/docker/Dockerfile -t foobar:latest .
 docker run -p 8080:8080 foobar:latest
 ```
 
-Um template de `Deployment` + `Service` Kubernetes está disponível em `templates/k8s/deployment.yaml`. Ele inclui probes de readiness e liveness apontando para `/health`, limites de recursos e um serviço `ClusterIP`.
+Um template de `Deployment` + `Service` Kubernetes está disponível em `devops/kubernetes/deployment.yaml`. Ele inclui probes de readiness e liveness apontando para `/health`, limites de recursos e um serviço `ClusterIP`.
 
 ---
 
@@ -1108,9 +1144,9 @@ ginger build                   # Build (prod)
 
 ### Gerar Código
 ```bash
-ginger generate crud usuario   # CRUD completo
-ginger generate handler auth   # Apenas handler
-ginger generate service email  # Apenas service
+ginger generate crud foobar      # CRUD completo
+ginger generate handler foobar   # Apenas handler
+ginger generate service foobar   # Apenas service
 ```
 
 ### Adicionar Integrações
@@ -1130,14 +1166,14 @@ go vet ./...                   # Verificar código
 
 ### Docker
 ```bash
-docker build -t foobar .    # Build imagem
+docker build -f devops/docker/Dockerfile -t foobar . # Build imagem
 docker run -p 8080:8080 foobar # Rodar container
-docker compose up -d           # Rodar com deps
+docker compose -f devops/docker/docker-compose.yml up -d # Rodar com deps
 ```
 
 ### Kubernetes
 ```bash
-kubectl apply -f kubernetes/   # Deploy
+kubectl apply -f devops/kubernetes/   # Deploy
 kubectl get pods               # Ver pods
 kubectl logs -f deploy/foobar # Ver logs
 ```

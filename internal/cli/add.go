@@ -9,13 +9,19 @@ import (
 
 const addUsage = `usage: ginger add <integration>
 
+Storage convention:
+  platform/...              external infrastructure adapters
+  internal/api/handlers/... ready-to-mount HTTP endpoints
+
 databases  : postgres, mysql, sqlite, sqlserver
 nosql      : couchbase, mongodb
 analytical : clickhouse
 cache      : redis
 messaging  : kafka, rabbitmq, nats, pubsub
 protocols  : grpc, mcp
-observ.    : otel, prometheus`
+realtime   : sse, websocket
+observ.    : otel, prometheus
+docs       : swagger`
 
 func runAdd(args []string) {
 	if len(args) < 1 {

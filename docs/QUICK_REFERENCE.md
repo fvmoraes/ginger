@@ -24,16 +24,22 @@ ginger build
 ginger build ./bin/foobar
 
 # Gerar código
-ginger generate handler user
-ginger generate service user
-ginger generate repository user
-ginger generate crud user
+ginger generate handler foobar
+ginger generate service foobar
+ginger generate repository foobar
+ginger generate crud foobar
+ginger generate test foobar
+ginger generate test app
+ginger generate swagger
+ginger generate swagger foobar
 
 # Adicionar integrações
 ginger add postgres
+ginger add mongodb
 ginger add redis
 ginger add kafka
 ginger add grpc
+ginger add swagger
 
 # Diagnosticar
 ginger doctor
@@ -41,6 +47,7 @@ ginger doctor
 # Ajuda
 ginger help
 ginger version
+# output: ginger x.y.z
 ```
 
 ---
@@ -117,27 +124,27 @@ func main() {
 
 ```go
 type UserHandler struct {
-    service UserService
+    // svc UserService
 }
 
-func NewUserHandler(service UserService) *UserHandler {
-    return &UserHandler{service: service}
+func NewUserHandler() *UserHandler {
+    return &UserHandler{}
 }
 
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
-    var input CreateUserInput
-    if err := router.Decode(r, &input); err != nil {
+func (h *UserHandler) Register(r *router.Router) {
+    g := r.Group("/users")
+    g.GET("/", h.list)
+    g.POST("/", h.create)
+}
+
+func (h *UserHandler) create(w http.ResponseWriter, r *http.Request) {
+    var body map[string]any
+    if err := router.Decode(r, &body); err != nil {
         router.Error(w, err)
         return
     }
-    
-    user, err := h.service.Create(r.Context(), input)
-    if err != nil {
-        router.Error(w, err)
-        return
-    }
-    
-    response.Created(w, user)
+
+    router.JSON(w, http.StatusCreated, body)
 }
 ```
 
@@ -319,15 +326,14 @@ admin.GET("/stats", getStats)
 
 ```go
 func TestUserHandler_Create(t *testing.T) {
-    mockService := &mockUserService{
-        user: &User{ID: 1, Name: "Alice"},
-    }
-    handler := NewUserHandler(mockService)
-    
-    rec := testhelper.NewRequest(t, handler.Create, http.MethodPost, "/users").
-        WithBody(map[string]string{"name": "Alice", "email": "alice@example.com"}).
+    handler := NewUserHandler()
+    r := router.New()
+    handler.Register(r)
+
+    rec := testhelper.NewRequest(t, r, http.MethodPost, "/users/").
+        WithBody(map[string]string{"name": "Alice"}).
         Do()
-    
+
     testhelper.AssertStatus(t, rec, http.StatusCreated)
 }
 ```
@@ -381,7 +387,7 @@ func TestUserService_Create(t *testing.T) {
 ### Build
 
 ```bash
-docker build -t foobar:latest .
+docker build -f devops/docker/Dockerfile -t foobar:latest .
 ```
 
 ### Run
@@ -396,7 +402,7 @@ docker run -p 8080:8080 \
 ### Docker Compose
 
 ```bash
-docker compose up -d
+docker compose -f devops/docker/docker-compose.yml up -d
 docker compose logs -f foobar
 docker compose down
 ```
@@ -408,7 +414,7 @@ docker compose down
 ### Deploy
 
 ```bash
-kubectl apply -f kubernetes/
+kubectl apply -f devops/kubernetes/
 kubectl get pods -l app=foobar
 kubectl logs -f deployment/foobar
 ```
@@ -548,7 +554,7 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 
 ```makefile
 BIN=bin/foobar
-CMD_DIR=cmd/foobar
+CMD_DIR=cmd/foobar-api
 
 .PHONY: run build test lint docker-build docker-run
 
@@ -569,13 +575,13 @@ lint:
 	golangci-lint run
 
 docker-build:
-	docker build -t foobar:latest .
+	docker build -f devops/docker/Dockerfile -t foobar:latest .
 
 docker-run:
 	docker run -p 8080:8080 foobar:latest
 
 k8s-deploy:
-	kubectl apply -f kubernetes/
+	kubectl apply -f devops/kubernetes/
 
 k8s-logs:
 	kubectl logs -f deployment/foobar

@@ -142,11 +142,11 @@
 │
 └── 🚀 DEPLOYMENT.md
     ├── Docker
-    │   ├── Dockerfile gerado
+    │   ├── devops/docker/Dockerfile
     │   ├── Build e run
     │   └── Otimizações (cache, multi-platform, distroless)
     ├── Docker Compose
-    │   ├── docker-compose.yml gerado
+    │   ├── devops/docker/docker-compose.yml
     │   └── Comandos úteis
     ├── Kubernetes
     │   ├── Deployment YAML

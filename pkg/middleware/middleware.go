@@ -30,15 +30,21 @@ func Chain(middlewares ...Func) Func {
 func Logger(log *logger.Logger) Func {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestLog := log.With(
+				"request_id", RequestIDFromContext(r.Context()),
+				"http.method", r.Method,
+				"http.path", r.URL.Path,
+				"http.remote_addr", r.RemoteAddr,
+				"http.user_agent", r.UserAgent(),
+			)
+			ctx := logger.WithContext(r.Context(), requestLog)
+
 			start := time.Now()
 			rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
-			next.ServeHTTP(rw, r)
-			log.Info("request",
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", rw.status,
-				"duration", time.Since(start).String(),
-				"remote_addr", r.RemoteAddr,
+			next.ServeHTTP(rw, r.WithContext(ctx))
+			logger.FromContext(ctx).Info("request_finished",
+				"http.status", rw.status,
+				"http.duration", time.Since(start).String(),
 			)
 		})
 	}
@@ -51,7 +57,14 @@ func Recover(log *logger.Logger) Func {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if rec := recover(); rec != nil {
-					log.Error("panic recovered", "error", rec, "path", r.URL.Path)
+					requestLog := log.With(
+						"request_id", RequestIDFromContext(r.Context()),
+						"http.method", r.Method,
+						"http.path", r.URL.Path,
+						"http.remote_addr", r.RemoteAddr,
+						"http.user_agent", r.UserAgent(),
+					)
+					requestLog.Error("panic_recovered", "error", rec, "http.path", r.URL.Path)
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusInternalServerError)
 					json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
@@ -74,9 +87,7 @@ func RequestID() Func {
 				id = generateID()
 			}
 			w.Header().Set("X-Request-ID", id)
-			next.ServeHTTP(w, r.WithContext(
-				withRequestID(r.Context(), id),
-			))
+			next.ServeHTTP(w, r.WithContext(withRequestID(r.Context(), id)))
 		})
 	}
 }

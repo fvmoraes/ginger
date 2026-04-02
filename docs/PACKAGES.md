@@ -680,7 +680,7 @@ func (s *Stream) SendComment(comment string)
 func streamHandler(w http.ResponseWriter, r *http.Request) {
     stream, err := sse.New(w)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+        http.Error(w, "internal server error", http.StatusInternalServerError)
         return
     }
     

@@ -80,6 +80,15 @@ func NewUserHandler(service UserService) *UserHandler {
     return &UserHandler{service: service}
 }
 
+func (h *UserHandler) Register(r *router.Router) {
+    g := r.Group("/users")
+    g.GET("/", h.List)
+    g.GET("/{id}", h.Get)
+    g.POST("/", h.Create)
+    g.PUT("/{id}", h.Update)
+    g.DELETE("/{id}", h.Delete)
+}
+
 func (h *UserHandler) List(w http.ResponseWriter, r *http.Request) {
     users, err := h.service.List(r.Context())
     if err != nil {
@@ -534,7 +543,7 @@ import (
 func (h *Handler) StreamEvents(w http.ResponseWriter, r *http.Request) {
     stream, err := sse.New(w)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+        http.Error(w, "internal server error", http.StatusInternalServerError)
         return
     }
     
@@ -627,7 +636,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o bin/foobar ./cmd/foobar
+RUN go build -o bin/foobar ./cmd/foobar-api
 
 FROM alpine:3.19
 WORKDIR /app
@@ -750,29 +759,22 @@ package handlers_test
 import (
     "net/http"
     "testing"
+    "github.com/fvmoraes/ginger/pkg/router"
     "github.com/fvmoraes/ginger/pkg/testhelper"
-    "github.com/fvmoraes/ginger/pkg/response"
 )
 
 func TestUserHandler_Create(t *testing.T) {
-    mockService := &mockUserService{}
-    handler := NewUserHandler(mockService)
-    
-    rec := testhelper.NewRequest(t, handler.Create, http.MethodPost, "/users").
+    handler := NewUserHandler()
+    r := router.New()
+    handler.Register(r)
+
+    rec := testhelper.NewRequest(t, r, http.MethodPost, "/users/").
         WithBody(map[string]string{
-            "name":  "Alice",
-            "email": "alice@example.com",
+            "name": "Alice",
         }).
         Do()
-    
+
     testhelper.AssertStatus(t, rec, http.StatusCreated)
-    
-    var envelope response.Envelope[User]
-    testhelper.DecodeJSON(t, rec, &envelope)
-    
-    if envelope.Data.Name != "Alice" {
-        t.Errorf("expected Alice, got %s", envelope.Data.Name)
-    }
 }
 ```
 

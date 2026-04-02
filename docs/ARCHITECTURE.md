@@ -126,10 +126,10 @@ O router converte automaticamente para JSON:
 
 ### Layout Completo
 
-```
+```text
 foobar/
 ├── cmd/
-│   └── foobar/
+│   └── foobar-api/
 │       └── main.go              # Entrypoint — wiring de dependências
 │
 ├── internal/                    # Código privado da aplicação
@@ -174,13 +174,30 @@ foobar/
 │   ├── API.md
 │   └── DEPLOYMENT.md
 │
-├── Dockerfile                   # Multi-stage build
-├── docker-compose.yml           # Dev environment
+├── devops/
+│   ├── docker/                  # Dockerfile, compose, Prometheus config
+│   ├── kubernetes/              # Deployment samples
+│   ├── helm/                    # Helm chart
+│   └── pipelines/               # CI/CD samples
 ├── Makefile                     # Comandos comuns
 ├── .env.example                 # Template de env vars
 ├── go.mod
 └── README.md
 ```
+
+Observação: esta é uma visão de um projeto já expandido. O `ginger new` começa menor, e diretórios como `platform/`, `tests/`, `docs/` e camadas extras em `internal/api/...` só aparecem quando algum fluxo realmente gera arquivos neles.
+
+### Regra de Organização das Integrações
+
+- `platform/...` concentra adapters de infraestrutura externa
+- `internal/api/handlers/...` concentra integrações que já expõem handlers HTTP finais
+
+Exemplos:
+
+- `platform/database`, `platform/cache`, `platform/messaging`, `platform/telemetry`
+- `internal/api/handlers/sse_handler.go`
+- `internal/api/handlers/ws_handler.go`
+- `internal/api/handlers/swagger.go`
 
 ### Convenções de Nomenclatura
 

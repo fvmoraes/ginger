@@ -76,7 +76,10 @@ func main() {
 
 const workerTmpl = `package worker
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Worker is the background job processor.
 type Worker struct{}
@@ -85,11 +88,16 @@ func New() *Worker { return &Worker{} }
 
 // Run starts the worker loop and blocks until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		// TODO: add job processing logic here
+		case <-ticker.C:
+			// Keep this blocked by default to avoid a hot loop.
+			// TODO: add job processing logic here
 		}
 	}
 }
@@ -166,7 +174,9 @@ const dockerComposeTmpl = `version: "3.9"
 
 services:
   {{.Name}}:
-    build: .
+    build:
+      context: ../..
+      dockerfile: devops/docker/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -196,7 +206,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./scripts/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
@@ -209,6 +219,15 @@ services:
 
 volumes:
   pgdata:
+`
+
+const prometheusConfigTmpl = `global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "{{.Name}}"
+    static_configs:
+      - targets: ["{{.Name}}:8080"]
 `
 
 const k8sDeploymentTmpl = `apiVersion: apps/v1
@@ -330,7 +349,7 @@ spec:
 
 const makefileTmpl = `BIN=bin/{{.Name}}
 
-.PHONY: run build test lint tidy docker up down
+.PHONY: run build test lint tidy{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}} docker{{end}}{{if or (eq .Type "api") (eq .Type "service")}} up down{{end}}
 
 run:
 	go run ./{{.CmdDir}}
@@ -346,15 +365,43 @@ lint:
 
 tidy:
 	go mod tidy
-
+{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
 docker:
-	docker build -t {{.Name}}:latest .
-
+	docker build -f devops/docker/Dockerfile -t {{.Name}}:latest .
+{{end}}{{if or (eq .Type "api") (eq .Type "service")}}
 up:
-	docker compose up -d
+	docker compose -f devops/docker/docker-compose.yml up -d
 
 down:
-	docker compose down
+	docker compose -f devops/docker/docker-compose.yml down
+{{end}}
+`
+
+const pipelineTmpl = `name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -o bin/{{.Name}} ./{{.CmdDir}}
 `
 
 const gitignoreTmpl = `bin/
@@ -376,30 +423,39 @@ A Ginger-powered Go application (type: {{.Type}}).
 go mod tidy
 make run
 ` + "```" + `
-
-## Docker
+{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+## DevOps
 
 ` + "```" + `bash
-make up    # starts app + postgres + redis + prometheus + grafana
-make down  # stops everything
+make docker  # builds using devops/docker/Dockerfile
+{{if or (eq .Type "api") (eq .Type "service")}}
+make up      # starts app + postgres + redis + prometheus + grafana
+make down    # stops everything
+{{end}}
 ` + "```" + `
-
+{{end}}
 ## Project structure
 
 ` + "```" + `
-{{.CmdDir}}/       # Application entrypoint
+{{.CmdDir}}/       # Application entrypoint{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+configs/          # YAML config files{{end}}{{if or (eq .Type "api") (eq .Type "service")}}
+
 internal/
   api/
-    handlers/     # HTTP handlers
-    services/     # Business logic
-    repositories/ # Data access
-    middlewares/  # App-specific middlewares
-  models/         # Domain models
-  config/         # Config loader
-configs/          # YAML config files
-platform/         # External integrations
-kubernetes/       # K8s manifests
-helm/             # Helm chart
-tests/            # Integration tests
+    handlers/     # Starts with health.go
+  config/         # Config loader{{end}}{{if eq .Type "worker"}}
+
+internal/
+  worker/         # Worker loop{{end}}{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+
+devops/
+  docker/         # Dockerfile{{if or (eq .Type "api") (eq .Type "service")}}, compose and Prometheus config{{end}}
+{{if or (eq .Type "api") (eq .Type "service")}}  kubernetes/     # K8s manifests
+  helm/           # Helm chart
+{{end}}  pipelines/      # CI/CD sample
+{{end}}
 ` + "```" + `
+
+Ginger keeps new projects minimal.
+Directories like ` + "`platform/`" + `, ` + "`tests/`" + `, extra ` + "`internal/api/...`" + ` layers, and additional ` + "`devops/`" + ` assets appear only when you generate or add them.
 `

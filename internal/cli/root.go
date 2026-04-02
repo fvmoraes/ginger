@@ -46,44 +46,69 @@ func Run() {
 }
 
 func printUsage() {
-	fmt.Print(`Ginger — Accelerate and standardize Go projects
+	fmt.Print(`Ginger
+Minimal Go scaffolding that starts small and grows on demand.
 
 Usage:
   ginger <command> [arguments]
 
-Commands:
-  new <name> [--api|--service|--worker|--cli]
-                              Scaffold a new project
-                                (no flag)  generic   → cmd/<name>
-                                --api      api       → cmd/<name>-api
-                                --service  service   → cmd/<name>-service
-                                --worker   worker    → cmd/<name>-worker
-                                --cli      cli       → cmd/<name>-cli
-  run                         Run the app in dev mode
-  build [output]              Build the binary
-  generate handler  <name>    Generate an HTTP handler
-  generate service  <name>    Generate a service
-  generate repository <name>  Generate a repository
-  generate crud <name>        Generate full CRUD (model+handler+service+repo+test)
-  add <integration>           Add an integration:
-                                databases  : postgres, mysql, sqlite, sqlserver
-                                nosql      : couchbase, mongodb
-                                analytical : clickhouse
-                                cache      : redis
-                                messaging  : kafka, rabbitmq, nats, pubsub
-                                protocols  : grpc, mcp
-                                realtime   : sse, websocket
-                                observ.    : otel, prometheus
-  doctor                      Diagnose project health
-  version                     Print Ginger version
-  help                        Show this help
+Project Commands:
+  new <name> [--api|--service|--worker|--cli]  Create a new project
+    default   generic  -> cmd/<name>
+    --api     api      -> cmd/<name>-api
+    --service service  -> cmd/<name>-service
+    --worker  worker   -> cmd/<name>-worker
+    --cli     cli      -> cmd/<name>-cli
+
+  run [args...]                                Run the detected app entrypoint
+  build [output]                               Build the detected app entrypoint
+  doctor                                       Diagnose project health
+
+Generation Commands:
+  generate crud <name>                         Generate model, handler, service, repository, and tests
+  generate handler <name>                      Generate an HTTP handler
+  generate service <name>                      Generate a service
+  generate repository <name>                   Generate a repository
+  generate test <name>                         Generate handler, service, and repository tests
+  generate test <name> all                     Generate resource tests plus app smoke test
+  generate test app                            Generate app smoke test under tests/integration
+  generate swagger [name]                      Generate docs/openapi.json
+                                               no name = starter spec
+                                               name    = CRUD example for that resource
+
+Integration Commands:
+  add <integration>                            Add an integration file to the current project
+    infrastructure adapters -> platform/...
+    ready-to-mount HTTP endpoints -> internal/api/handlers/...
+
+    databases   : postgres, mysql, sqlite, sqlserver
+    nosql       : couchbase, mongodb
+    analytical  : clickhouse
+    cache       : redis
+    messaging   : kafka, rabbitmq, nats, pubsub
+    protocols   : grpc, mcp
+    realtime    : sse, websocket
+    observ.     : otel, prometheus
+    docs        : swagger
+
+Other Commands:
+  version                                      Print ginger x.y.z
+  help                                         Show this help
+
+Aliases:
+  generate = g
+  version  = -v, --version
+  help     = -h, --help
 
 Examples:
   ginger new foobar --api
   ginger new foobar --worker
-  ginger generate crud user
+  ginger generate crud foobar
+  ginger generate test foobar all
+  ginger generate swagger
+  ginger generate swagger foobar
   ginger add postgres
-  ginger add grpc
+  ginger add swagger
   ginger doctor
   ginger run
 `)

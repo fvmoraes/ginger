@@ -17,12 +17,14 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
 **Alternativa (script de instalação):**
 ```bash
+# instala a latest release por padrão
 curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 ```
 
 Verifique a instalação:
 ```bash
 ginger version
+# output: ginger x.y.z
 ```
 
 ---
@@ -30,19 +32,21 @@ ginger version
 ## 2. Criar Seu Primeiro Projeto
 
 ```bash
-ginger new loja --api
-cd loja
+ginger new foobar --api
+cd foobar
 go mod tidy
 ```
 
 Estrutura criada:
 ```
-loja/
-├── cmd/loja-api/main.go      # Ponto de entrada
-├── internal/api/            # Seu código
+foobar/
+├── cmd/foobar-api/main.go      # Ponto de entrada
+├── internal/api/handlers/health.go
 ├── configs/app.yaml         # Configuração
-└── Dockerfile               # Deploy
+└── devops/                  # Build, deploy e CI/CD
 ```
+
+O restante da estrutura aparece conforme você usa `ginger generate` e `ginger add`.
 
 ---
 
@@ -61,67 +65,55 @@ Acesse: http://localhost:8080/health
 ### Gerar CRUD completo
 
 ```bash
-ginger generate crud produto
+ginger generate crud foobar
 ```
 
 Isso cria:
-- `internal/models/produto.go` — Modelo
-- `internal/api/handlers/produto_handler.go` — HTTP
-- `internal/api/services/produto_service.go` — Lógica
-- `internal/api/repositories/produto_repository.go` — Dados
-- `internal/api/handlers/produto_handler_test.go` — Testes
+- `internal/models/foobar.go` — Modelo
+- `internal/api/handlers/foobar_handler.go` — HTTP
+- `internal/api/services/foobar_service.go` — Lógica
+- `internal/api/repositories/foobar_repository.go` — Dados
+- `internal/api/handlers/foobar_handler_test.go` — Testes
 
 ### Registrar no Router
 
-Edite `cmd/loja-api/main.go`:
+Edite `cmd/foobar-api/main.go`:
 
 ```go
 package main
 
 import (
+    "log"
+
+    "foobar/internal/api/handlers"
+    "foobar/internal/config"
     gingerapp "github.com/fvmoraes/ginger/pkg/app"
-    "github.com/fvmoraes/ginger/pkg/config"
-    "github.com/fvmoraes/ginger/pkg/middleware"
-    
-    "loja/internal/api/handlers"
 )
 
 func main() {
-    cfg, _ := config.Load("configs/app.yaml")
+    cfg, _ := config.Load()
     app := gingerapp.New(cfg)
-    
-    // Middlewares
-    app.Router.Use(
-        middleware.Logger(app.Logger),
-        middleware.RequestID(),
-        middleware.Recover(app.Logger),
-        middleware.CORS(),
-    )
-    
-    // Rotas
+
     v1 := app.Router.Group("/api/v1")
-    
-    produtoHandler := handlers.NewProdutoHandler(nil) // TODO: injetar service
-    v1.GET("/produtos", produtoHandler.List)
-    v1.POST("/produtos", produtoHandler.Create)
-    v1.GET("/produtos/{id}", produtoHandler.Get)
-    v1.PUT("/produtos/{id}", produtoHandler.Update)
-    v1.DELETE("/produtos/{id}", produtoHandler.Delete)
-    
-    app.Run()
+    foobarHandler := handlers.NewFoobarHandler()
+    foobarHandler.Register(v1)
+
+    if err := app.Run(); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
 ### Testar
 
 ```bash
-# Criar produto
-curl -X POST http://localhost:8080/api/v1/produtos \
+# Criar foobar
+curl -X POST http://localhost:8080/api/v1/foobars \
   -H "Content-Type: application/json" \
-  -d '{"nome":"Notebook","preco":2500}'
+  -d '{"name":"foobar"}'
 
-# Listar produtos
-curl http://localhost:8080/api/v1/produtos
+# Listar foobars
+curl http://localhost:8080/api/v1/foobars
 ```
 
 ---
@@ -148,15 +140,21 @@ database:
 
 ### Conectar
 
-Edite `cmd/loja-api/main.go`:
+Edite `cmd/foobar-api/main.go`:
 
 ```go
 import (
-    "loja/platform/database"
+    "context"
+    "log"
+
+    "foobar/internal/api/handlers"
+    "foobar/internal/config"
+    "foobar/platform/database"
+    gingerapp "github.com/fvmoraes/ginger/pkg/app"
 )
 
 func main() {
-    cfg, _ := config.Load("configs/app.yaml")
+    cfg, _ := config.Load()
     
     // Conectar banco
     db, err := database.Connect(database.Config{
@@ -174,15 +172,13 @@ func main() {
     app.OnStop(func(ctx context.Context) error {
         return db.Close()
     })
-    
-    // Injetar dependências
-    produtoRepo := repositories.NewProdutoRepository(db)
-    produtoService := services.NewProdutoService(produtoRepo)
-    produtoHandler := handlers.NewProdutoHandler(produtoService)
-    
-    // Rotas...
-    
-    app.Run()
+
+    foobarHandler := handlers.NewFoobarHandler()
+    foobarHandler.Register(app.Router.Group("/api/v1"))
+
+    if err := app.Run(); err != nil {
+        log.Fatal(err)
+    }
 }
 ```
 
@@ -192,18 +188,18 @@ func main() {
 
 ```bash
 # Build
-docker build -t loja .
+docker build -f devops/docker/Dockerfile -t foobar .
 
 # Run
 docker run -p 8080:8080 \
   -e DATABASE_DSN="postgres://<user>:<password>@host/db" \
-  loja
+  foobar
 ```
 
 Ou use Docker Compose:
 
 ```bash
-docker compose up -d
+docker compose -f devops/docker/docker-compose.yml up -d
 ```
 
 ---
@@ -242,10 +238,10 @@ go test ./...
 
 ```bash
 # Kubernetes
-kubectl apply -f kubernetes/
+kubectl apply -f devops/kubernetes/
 
 # Helm
-helm install loja ./helm
+helm install foobar ./devops/helm
 ```
 
 ---
@@ -283,31 +279,27 @@ ginger doctor
 ## Estrutura Básica de um Handler
 
 ```go
-type ProdutoHandler struct {
-    service ProdutoService
+type FoobarHandler struct {
+    // svc FoobarService
 }
 
-func NewProdutoHandler(service ProdutoService) *ProdutoHandler {
-    return &ProdutoHandler{service: service}
+func NewFoobarHandler() *FoobarHandler {
+    return &FoobarHandler{}
 }
 
-func (h *ProdutoHandler) Create(w http.ResponseWriter, r *http.Request) {
-    // 1. Parse input
-    var input CreateProdutoInput
-    if err := router.Decode(r, &input); err != nil {
+func (h *FoobarHandler) Register(r *router.Router) {
+    g := r.Group("/foobars")
+    g.GET("/", h.list)
+    g.POST("/", h.create)
+}
+
+func (h *FoobarHandler) create(w http.ResponseWriter, r *http.Request) {
+    var body map[string]any
+    if err := router.Decode(r, &body); err != nil {
         router.Error(w, err)
         return
     }
-    
-    // 2. Call service
-    produto, err := h.service.Create(r.Context(), input)
-    if err != nil {
-        router.Error(w, err)
-        return
-    }
-    
-    // 3. Return response
-    response.Created(w, produto)
+    router.JSON(w, http.StatusCreated, body)
 }
 ```
 
@@ -316,32 +308,31 @@ func (h *ProdutoHandler) Create(w http.ResponseWriter, r *http.Request) {
 ## Estrutura Básica de um Service
 
 ```go
-type ProdutoService struct {
-    repo ProdutoRepository
+type FoobarService struct {
+    repo FoobarRepository
 }
 
-func NewProdutoService(repo ProdutoRepository) *ProdutoService {
-    return &ProdutoService{repo: repo}
+func NewFoobarService(repo FoobarRepository) *FoobarService {
+    return &FoobarService{repo: repo}
 }
 
-func (s *ProdutoService) Create(ctx context.Context, input CreateProdutoInput) (*Produto, error) {
+func (s *FoobarService) Create(ctx context.Context, input CreateFoobarInput) (*Foobar, error) {
     // 1. Validar
-    if input.Nome == "" {
-        return nil, apperrors.BadRequest("nome é obrigatório")
+    if input.Name == "" {
+        return nil, apperrors.BadRequest("name is required")
     }
     
     // 2. Criar
-    produto := &Produto{
-        Nome:  input.Nome,
-        Preco: input.Preco,
+    foobar := &Foobar{
+        Name: input.Name,
     }
     
     // 3. Persistir
-    if err := s.repo.Create(ctx, produto); err != nil {
+    if err := s.repo.Create(ctx, foobar); err != nil {
         return nil, apperrors.Internal(err)
     }
     
-    return produto, nil
+    return foobar, nil
 }
 ```
 
@@ -350,27 +341,27 @@ func (s *ProdutoService) Create(ctx context.Context, input CreateProdutoInput) (
 ## Estrutura Básica de um Repository
 
 ```go
-type ProdutoRepository struct {
+type FoobarRepository struct {
     db *sql.DB
 }
 
-func NewProdutoRepository(db *sql.DB) *ProdutoRepository {
-    return &ProdutoRepository{db: db}
+func NewFoobarRepository(db *sql.DB) *FoobarRepository {
+    return &FoobarRepository{db: db}
 }
 
-func (r *ProdutoRepository) Create(ctx context.Context, produto *Produto) error {
-    query := `INSERT INTO produtos (nome, preco) VALUES ($1, $2) RETURNING id`
-    return r.db.QueryRowContext(ctx, query, produto.Nome, produto.Preco).Scan(&produto.ID)
+func (r *FoobarRepository) Create(ctx context.Context, foobar *Foobar) error {
+    query := `INSERT INTO foobars (name) VALUES ($1) RETURNING id`
+    return r.db.QueryRowContext(ctx, query, foobar.Name).Scan(&foobar.ID)
 }
 
-func (r *ProdutoRepository) FindByID(ctx context.Context, id int) (*Produto, error) {
-    query := `SELECT id, nome, preco FROM produtos WHERE id = $1`
-    var p Produto
-    err := r.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.Nome, &p.Preco)
+func (r *FoobarRepository) FindByID(ctx context.Context, id int) (*Foobar, error) {
+    query := `SELECT id, name FROM foobars WHERE id = $1`
+    var f Foobar
+    err := r.db.QueryRowContext(ctx, query, id).Scan(&f.ID, &f.Name)
     if err == sql.ErrNoRows {
         return nil, nil
     }
-    return &p, err
+    return &f, err
 }
 ```
 

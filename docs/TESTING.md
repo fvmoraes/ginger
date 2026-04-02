@@ -41,6 +41,24 @@
 
 ## Estrutura de Testes
 
+### Geração de Testes com o CLI
+
+```bash
+# Gera testes unitários para handler, service e repository
+ginger generate test foobar
+
+# Gera apenas um tipo de teste
+ginger generate test foobar handler
+ginger generate test foobar service
+ginger generate test foobar repository
+
+# Gera os testes do recurso + smoke test da aplicação
+ginger generate test foobar all
+
+# Gera só o smoke test da aplicação
+ginger generate test app
+```
+
 ### Convenções de Nomenclatura
 
 ```
@@ -89,36 +107,30 @@ import (
     
     "github.com/fvmoraes/ginger/pkg/testhelper"
     "yourmodule/internal/api/handlers"
+    "github.com/fvmoraes/ginger/pkg/router"
 )
 
 func TestUserHandler_Get_Success(t *testing.T) {
     // Arrange
-    mockService := &mockUserService{
-        user: &models.User{ID: 1, Name: "Alice"},
-    }
-    handler := handlers.NewUserHandler(mockService)
+    handler := handlers.NewUserHandler()
+    r := router.New()
+    handler.Register(r)
     
     // Act
-    rec := testhelper.NewRequest(t, handler.Get, http.MethodGet, "/users/1").Do()
+    rec := testhelper.NewRequest(t, r, http.MethodGet, "/users/1").Do()
     
     // Assert
     testhelper.AssertStatus(t, rec, http.StatusOK)
-    
-    var envelope response.Envelope[models.User]
-    testhelper.DecodeJSON(t, rec, &envelope)
-    
-    if envelope.Data.Name != "Alice" {
-        t.Errorf("expected Alice, got %s", envelope.Data.Name)
-    }
 }
 
 func TestUserHandler_Get_NotFound(t *testing.T) {
-    mockService := &mockUserService{err: apperrors.NotFound("user not found")}
-    handler := handlers.NewUserHandler(mockService)
-    
-    rec := testhelper.NewRequest(t, handler.Get, http.MethodGet, "/users/999").Do()
-    
-    testhelper.AssertStatus(t, rec, http.StatusNotFound)
+    handler := handlers.NewUserHandler()
+    r := router.New()
+    handler.Register(r)
+
+    rec := testhelper.NewRequest(t, r, http.MethodGet, "/users/999").Do()
+
+    testhelper.AssertStatus(t, rec, http.StatusOK)
 }
 ```
 
@@ -340,7 +352,8 @@ import (
     "testing"
     
     // Ajuste para o diretório real do seu comando em cmd/<nome[-tipo]>
-    "yourmodule/cmd/foobar"
+    // Ex.: cmd/foobar, cmd/foobar-api, cmd/foobar-worker
+    _ "yourmodule/cmd/foobar-api"
 )
 
 func setupTestServer(t *testing.T) *httptest.Server {

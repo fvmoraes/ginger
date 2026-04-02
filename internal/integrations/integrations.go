@@ -67,6 +67,12 @@ var registry = map[string]integration{
 		file: "platform/nosql/mongo.go",
 		tmpl: mongoTmpl,
 	},
+	"swagger": {
+		name: "swagger",
+		pkg:  "",
+		file: "internal/api/handlers/swagger.go",
+		tmpl: swaggerTmpl,
+	},
 	"clickhouse": {
 		name: "clickhouse",
 		pkg:  "github.com/ClickHouse/clickhouse-go/v2",
@@ -152,7 +158,8 @@ func Add(name string) error {
 				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
 				"  protocols  : grpc, mcp\n"+
 				"  realtime   : sse, websocket\n"+
-				"  observ.    : otel, prometheus",
+				"  observ.    : otel, prometheus\n"+
+				"  docs       : swagger",
 			name,
 		)
 	}

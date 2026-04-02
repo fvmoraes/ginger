@@ -12,12 +12,30 @@
 - [Protocolos](#protocolos)
 - [Observabilidade](#observabilidade)
 - [Real-time](#real-time)
+- [Docs](#docs)
 
 ---
 
 ## Visão Geral
 
 O comando `ginger add <integration>` gera código boilerplate e adiciona dependências automaticamente.
+
+### Convenção de Localização
+
+O Ginger separa integrações por responsabilidade:
+
+- `platform/...`: adapters de infraestrutura externa, como banco, cache, mensageria, protocolos e observabilidade
+- `internal/api/handlers/...`: endpoints HTTP prontos para montagem no router
+
+Regra prática:
+
+- Se a integração gera cliente, conexão, bootstrap ou adapter para serviço externo, ela vai para `platform/...`
+- Se a integração já gera um endpoint HTTP final, ela vai para `internal/api/handlers/...`
+
+Por isso:
+
+- `mongodb`, `redis`, `grpc`, `otel` e afins ficam em `platform/...`
+- `sse`, `websocket` e `swagger` ficam em `internal/api/handlers/...`
 
 ### Comando
 
@@ -47,6 +65,7 @@ ginger add <integration>
 | | `websocket` | stdlib only | `internal/api/handlers/ws_handler.go` |
 | **Observability** | `otel` | `go.opentelemetry.io/otel` | `platform/telemetry/otel.go` |
 | | `prometheus` | `github.com/prometheus/client_golang` | `platform/metrics/prometheus.go` |
+| **Docs** | `swagger` | stdlib + Swagger UI CDN | `internal/api/handlers/swagger.go` |
 
 ---
 
@@ -212,6 +231,8 @@ client.ZRange(ctx, "leaderboard", 0, 9)
 ```bash
 ginger add mongodb
 ```
+
+Gera `platform/nosql/mongo.go` com helper de conexão e health check.
 
 **Uso:**
 
@@ -696,7 +717,41 @@ ginger add websocket
 
 Gera `internal/api/handlers/ws_handler.go` com exemplo completo.
 
-**Uso:** Ver [pkg/ws](./PACKAGES.md#pkgws)
+## Docs
+
+### Swagger / OpenAPI
+
+```bash
+ginger add swagger
+```
+
+Gera `internal/api/handlers/swagger.go` com:
+
+- `GET /swagger`
+- `GET /swagger/openapi.json`
+
+Exemplo de uso:
+
+```go
+handlers.RegisterSwagger(app.Router)
+```
+
+Para gerar a especificação OpenAPI editável:
+
+```bash
+ginger generate swagger
+ginger generate swagger foobar
+```
+
+Isso cria `docs/openapi.json`. Quando o arquivo existir, o handler Swagger passa a servi-lo automaticamente em `GET /swagger/openapi.json`.
+
+Fluxo recomendado:
+
+1. `ginger add swagger`
+2. `ginger generate swagger foobar`
+3. `handlers.RegisterSwagger(app.Router)`
+
+O handler serve uma página Swagger UI via CDN e usa `docs/openapi.json` como fonte principal da especificação.
 
 ---
 

@@ -46,7 +46,7 @@ type DatabaseConfig struct {
 // LogConfig holds logging settings.
 type LogConfig struct {
 	Level  string `yaml:"level"`
-	Format string `yaml:"format"` // json | text
+	Format string `yaml:"format"` // retained for compatibility; Ginger always emits JSON
 }
 
 // Load reads config from path (YAML), then overrides with environment variables.

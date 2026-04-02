@@ -89,7 +89,7 @@ ginger/                          # Raiz do projeto
 │   └── project/                 # Templates de scaffold
 │
 ├── example/                     # Projeto de exemplo
-│   ├── cmd/foobar/main.go       # Entrypoint
+│   ├── cmd/app/main.go          # Entrypoint
 │   ├── internal/                # Código da aplicação
 │   │   ├── api/
 │   │   │   ├── handlers/
@@ -103,10 +103,6 @@ ginger/                          # Raiz do projeto
 ├── bin/                         # Binários compilados
 │   └── ginger                   # CLI compilada
 │
-└── foobar/                    # Arquivos locais (gitignored)
-    ├── análises/
-    ├── livros/
-    └── documentação/
 ```
 
 ---
@@ -205,7 +201,7 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 ```bash
 cd example
-go build -o bin/foobar ./cmd/foobar
+go build -o bin/app ./cmd/app
 ```
 
 ### Estrutura de Projeto Gerado
@@ -222,32 +218,38 @@ Exemplo para `ginger new foobar --api`:
 
 ```
 foobar/
-├── cmd/foobar
+├── cmd/foobar-api
 │   └── main.go
 ├── internal/
 │   ├── api/
-│   │   ├── handlers/
-│   │   ├── services/
-│   │   ├── repositories/
-│   │   └── middlewares/
-│   ├── models/
+│   │   └── handlers/
 │   └── config/
-├── pkg/
-├── platform/
 ├── configs/app.yaml
-├── scripts/
-├── tests/
-├── docs/
-├── Dockerfile
-├── docker-compose.yml
-├── kubernetes/
-├── helm/
+├── devops/
+│   ├── docker/
+│   ├── kubernetes/
+│   ├── helm/
+│   └── pipelines/
 ├── Makefile
 ├── .env.example
 ├── .gitignore
 ├── go.mod
 └── README.md
 ```
+
+Pastas como `platform/`, `tests/`, `docs/`, `scripts/`, `internal/api/services/`, `internal/api/repositories/` e outras surgem sob demanda, quando algum fluxo do Ginger realmente gera arquivos nelas.
+
+## Convenção Para `ginger add`
+
+O comando `ginger add` usa duas localizações padrão:
+
+- `platform/...` para integrações de infraestrutura externa
+- `internal/api/handlers/...` para integrações que já geram endpoints HTTP prontos
+
+Na prática:
+
+- bancos, cache, mensageria, protocolos e observabilidade vão para `platform/...`
+- `sse`, `websocket` e `swagger` vão para `internal/api/handlers/...`
 
 ---
 

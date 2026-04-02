@@ -171,23 +171,20 @@ type Update{{.NameTitle}}Input struct {
 }
 `
 
-const handlerTestTmpl = `package handlers_test
+const handlerTestTmpl = `package handlers
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/fvmoraes/ginger/pkg/router"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
 
-// Test{{.NameTitle}}Handler uses table-driven tests as recommended by
-// The Go Programming Language (Donovan & Kernighan, §11.2).
-func Test{{.NameTitle}}Handler(t *testing.T) {
-	// TODO: replace http.NotFoundHandler() with the real handler once wired:
-	//   svc := &mock{{.NameTitle}}Service{}
-	//   h := New{{.NameTitle}}Handler(svc)
-	//   r := router.New()
-	//   h.Register(r)
+func Test{{.NameTitle}}Handler_Register(t *testing.T) {
+	h := New{{.NameTitle}}Handler()
+	r := router.New()
+	h.Register(r)
 
 	tests := []struct {
 		name       string
@@ -200,36 +197,39 @@ func Test{{.NameTitle}}Handler(t *testing.T) {
 			name:       "list {{.NamePlural}}",
 			method:     http.MethodGet,
 			path:       "/{{.NamePlural}}/",
-			wantStatus: http.StatusNotFound, // replace with http.StatusOK
+			wantStatus: http.StatusOK,
 		},
 		{
 			name:   "create {{.Name}}",
 			method: http.MethodPost,
 			path:   "/{{.NamePlural}}/",
-			body: map[string]any{
-				// TODO: add valid fields
-			},
-			wantStatus: http.StatusNotFound, // replace with http.StatusCreated
+			body:       map[string]any{"name": "{{.Name}}"},
+			wantStatus: http.StatusCreated,
 		},
 		{
 			name:       "get {{.Name}} by id",
 			method:     http.MethodGet,
 			path:       "/{{.NamePlural}}/123",
-			wantStatus: http.StatusNotFound, // replace with http.StatusOK
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:   "update {{.Name}}",
+			method: http.MethodPut,
+			path:   "/{{.NamePlural}}/123",
+			body:   map[string]any{"name": "{{.Name}} updated"},
+			wantStatus: http.StatusOK,
 		},
 		{
 			name:       "delete {{.Name}}",
 			method:     http.MethodDelete,
 			path:       "/{{.NamePlural}}/123",
-			wantStatus: http.StatusNotFound, // replace with http.StatusNoContent
+			wantStatus: http.StatusNoContent,
 		},
 	}
 
-	handler := http.NotFoundHandler() // TODO: replace with real handler
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := testhelper.NewRequest(t, handler, tt.method, tt.path)
+			req := testhelper.NewRequest(t, r, tt.method, tt.path)
 			if tt.body != nil {
 				req = req.WithBody(tt.body)
 			}
@@ -237,5 +237,318 @@ func Test{{.NameTitle}}Handler(t *testing.T) {
 			testhelper.AssertStatus(t, rec, tt.wantStatus)
 		})
 	}
+}
+`
+
+const serviceTestTmpl = `package services
+
+import (
+	"context"
+	"reflect"
+	"testing"
+)
+
+func Test{{.NameTitle}}Service_CRUD(t *testing.T) {
+	svc := New{{.NameTitle}}Service()
+	ctx := context.Background()
+
+	list, err := svc.List(ctx)
+	if err != nil {
+		t.Fatalf("List returned error: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(list))
+	}
+
+	got, err := svc.Get(ctx, "123")
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	entity, ok := got.(map[string]string)
+	if !ok {
+		t.Fatalf("expected map[string]string, got %T", got)
+	}
+	if entity["id"] != "123" {
+		t.Fatalf("expected id 123, got %q", entity["id"])
+	}
+
+	input := map[string]any{"name": "{{.Name}}"}
+
+	created, err := svc.Create(ctx, input)
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	if !reflect.DeepEqual(created, input) {
+		t.Fatalf("expected Create to return input, got %#v", created)
+	}
+
+	updated, err := svc.Update(ctx, "123", input)
+	if err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+	if !reflect.DeepEqual(updated, input) {
+		t.Fatalf("expected Update to return input, got %#v", updated)
+	}
+
+	if err := svc.Delete(ctx, "123"); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+}
+`
+
+const repositoryTestTmpl = `package repositories
+
+import (
+	"context"
+	"reflect"
+	"testing"
+)
+
+func Test{{.NameTitle}}Repository_CRUD(t *testing.T) {
+	repo := New{{.NameTitle}}Repository(nil)
+	ctx := context.Background()
+
+	list, err := repo.FindAll(ctx)
+	if err != nil {
+		t.Fatalf("FindAll returned error: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty list, got %d items", len(list))
+	}
+
+	got, err := repo.FindByID(ctx, "123")
+	if err != nil {
+		t.Fatalf("FindByID returned error: %v", err)
+	}
+	entity, ok := got.(map[string]string)
+	if !ok {
+		t.Fatalf("expected map[string]string, got %T", got)
+	}
+	if entity["id"] != "123" {
+		t.Fatalf("expected id 123, got %q", entity["id"])
+	}
+
+	input := map[string]any{"name": "{{.Name}}"}
+
+	saved, err := repo.Save(ctx, input)
+	if err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+	if !reflect.DeepEqual(saved, input) {
+		t.Fatalf("expected Save to return input, got %#v", saved)
+	}
+
+	updated, err := repo.Update(ctx, "123", input)
+	if err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+	if !reflect.DeepEqual(updated, input) {
+		t.Fatalf("expected Update to return input, got %#v", updated)
+	}
+
+	if err := repo.Delete(ctx, "123"); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+}
+`
+
+const appTestTmpl = `package integration_test
+
+import (
+	"net/http"
+	"testing"
+
+	"{{.Module}}/internal/api/handlers"
+	"{{.Module}}/internal/config"
+	gingerapp "github.com/fvmoraes/ginger/pkg/app"
+	"github.com/fvmoraes/ginger/pkg/testhelper"
+)
+
+func TestApp_Smoke(t *testing.T) {
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load returned error: %v", err)
+	}
+
+	app := gingerapp.New(cfg)
+	handlers.Register(app.Router)
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		wantStatus int
+	}{
+		{
+			name:       "health endpoint",
+			method:     http.MethodGet,
+			path:       "/health",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "root endpoint",
+			method:     http.MethodGet,
+			path:       "/",
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := testhelper.NewRequest(t, app.Router, tt.method, tt.path).Do()
+			testhelper.AssertStatus(t, rec, tt.wantStatus)
+		})
+	}
+}
+`
+
+const openAPITmpl = `{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Ginger API",
+    "version": "1.0.0",
+    "description": "Starter OpenAPI document generated by Ginger"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    }{{if .Name}},
+    "/{{.NamePlural}}/": {
+      "get": {
+        "summary": "List {{.NamePlural}}",
+        "tags": ["{{.NameTitle}}"],
+        "responses": {
+          "200": {
+            "description": "List of {{.NamePlural}}"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create {{.Name}}",
+        "tags": ["{{.NameTitle}}"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Create{{.NameTitle}}Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "{{.NameTitle}} created"
+          }
+        }
+      }
+    },
+    "/{{.NamePlural}}/{id}": {
+      "get": {
+        "summary": "Get {{.Name}} by ID",
+        "tags": ["{{.NameTitle}}"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{{.NameTitle}} details"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update {{.Name}}",
+        "tags": ["{{.NameTitle}}"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Update{{.NameTitle}}Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{{.NameTitle}} updated"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete {{.Name}}",
+        "tags": ["{{.NameTitle}}"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "{{.NameTitle}} deleted"
+          }
+        }
+      }
+    }{{end}}
+  }{{if .Name}},
+  "components": {
+    "schemas": {
+      "{{.NameTitle}}": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string", "example": "{{.Name}}" }
+        }
+      },
+      "Create{{.NameTitle}}Input": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "{{.Name}}" }
+        },
+        "required": ["name"]
+      },
+      "Update{{.NameTitle}}Input": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "example": "{{.Name}} updated" }
+        }
+      }
+    }
+  }{{end}}
 }
 `
