@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.4] - 2026-04-02
+
+### Fixed
+- New features and developer experience improvements
+
+### Commit Summary
+- feat(cli): add long flags for ginger new and align docs examples
+- chore: remove outdated scripts and documentation
+
 ## [1.2.3] - 2026-04-01
 
 ### Fixed
@@ -168,3 +177,4 @@ Verify downloads with `checksums.txt`.
 [1.2.2]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.2
 
 [1.2.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.3
+[1.2.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.4
