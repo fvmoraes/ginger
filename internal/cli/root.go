@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+const fallbackVersion = "1.2.5"
+
 // Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
 	if len(os.Args) < 2 {
@@ -95,39 +97,19 @@ func mustFlag(name string) *flag.FlagSet {
 func buildVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "devel"
-	}
-
-	revision := ""
-	modified := false
-	for _, setting := range info.Settings {
-		switch setting.Key {
-		case "vcs.revision":
-			revision = setting.Value
-		case "vcs.modified":
-			modified = setting.Value == "true"
-		}
+		return fallbackVersion
 	}
 
 	mainVersion := strings.TrimPrefix(info.Main.Version, "v")
-	if mainVersion != "" && mainVersion != "(devel)" && !modified && !isPseudoVersion(mainVersion) {
+	if mainVersion != "" && mainVersion != "(devel)" && !isPseudoVersion(mainVersion) {
 		return mainVersion
 	}
 
-	if revision == "" {
-		if mainVersion != "" && mainVersion != "(devel)" {
-			return mainVersion
-		}
-		return "devel"
+	if mainVersion != "" && mainVersion != "(devel)" && isPseudoVersion(mainVersion) {
+		return fallbackVersion
 	}
 
-	if len(revision) > 7 {
-		revision = revision[:7]
-	}
-	if modified {
-		return "devel-" + revision + "-dirty"
-	}
-	return "devel-" + revision
+	return fallbackVersion
 }
 
 func isPseudoVersion(v string) bool {

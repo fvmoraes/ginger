@@ -4,8 +4,28 @@ set -e
 # Ginger Framework Installation Script
 # Usage: curl -fsSL https://raw.githubusercontent.com/fvmoraes/ginger/main/install.sh | bash
 
-VERSION="${GINGER_VERSION:-v1.2.4}"
+VERSION="${GINGER_VERSION:-}"
 INSTALL_DIR="${GINGER_INSTALL_DIR:-/usr/local/bin}"
+REPO="fvmoraes/ginger"
+
+resolve_latest_version() {
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | \
+            sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO- "https://api.github.com/repos/${REPO}/releases/latest" | \
+            sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
+    fi
+}
+
+if [ -z "$VERSION" ]; then
+    VERSION="$(resolve_latest_version)"
+fi
+
+if [ -z "$VERSION" ]; then
+    echo "❌ Could not resolve the latest Ginger release. Set GINGER_VERSION manually and try again."
+    exit 1
+fi
 
 echo "🌶️  Installing Ginger Framework ${VERSION}..."
 
@@ -47,7 +67,7 @@ if [ "$OS" = "windows" ]; then
     BINARY="${BINARY}.exe"
 fi
 
-DOWNLOAD_URL="https://github.com/fvmoraes/ginger/releases/download/${VERSION}/${BINARY}"
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY}"
 
 echo "📦 Downloading ${BINARY}..."
 if command -v curl >/dev/null 2>&1; then
