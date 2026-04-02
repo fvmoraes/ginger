@@ -35,7 +35,7 @@ func Run() {
 	case "doctor":
 		runDoctor(args)
 	case "version", "--version", "-v":
-		fmt.Println("ginger version " + buildVersion())
+		fmt.Println("ginger " + buildVersion())
 	case "help", "--help", "-h":
 		printUsage()
 	default:
