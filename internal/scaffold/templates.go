@@ -8,6 +8,10 @@ const generatedGoFileHeader = `// PT-BR: Arquivo gerado pelo Ginger. Ajuste conf
 const goModTmpl = `module {{.Module}}
 
 go {{.GoVersion}}
+{{if .UsesGinger}}
+
+require github.com/fvmoraes/ginger v{{.GingerVersion}}
+{{end}}
 `
 
 const mainTmpl = generatedGoFileHeader + `package main

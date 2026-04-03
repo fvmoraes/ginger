@@ -141,9 +141,9 @@ echo "Updating README version badge..."
 sed -E -i.bak "s/version-[0-9]+\.[0-9]+\.[0-9]+-blue/version-$NEW_VERSION-blue/g" README.md
 rm -f README.md.bak
 
-echo "Updating fallback CLI version..."
-sed -E -i.bak "s/const fallbackVersion = \"[0-9]+\.[0-9]+\.[0-9]+\"/const fallbackVersion = \"$NEW_VERSION\"/g" internal/cli/root.go
-rm -f internal/cli/root.go.bak
+echo "Updating fallback Ginger version..."
+sed -E -i.bak "s/const FallbackVersion = \"[0-9]+\.[0-9]+\.[0-9]+\"/const FallbackVersion = \"$NEW_VERSION\"/g" internal/buildinfo/version.go
+rm -f internal/buildinfo/version.go.bak
 
 echo "Updating CHANGELOG.md..."
 CHANGELOG_SECTION_TITLE="Changed"
@@ -237,7 +237,7 @@ echo "Generating RELEASE_NOTES.md in English..."
 } > "$RELEASE_DIR/RELEASE_NOTES.md"
 
 echo "Committing release files..."
-git add README.md CHANGELOG.md internal/cli/root.go "$RELEASE_DIR"
+git add README.md CHANGELOG.md internal/buildinfo/version.go "$RELEASE_DIR"
 git commit -m "release: $NEW_TAG - $RELEASE_MESSAGE"
 
 echo "Creating tag $NEW_TAG..."

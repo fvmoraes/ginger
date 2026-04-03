@@ -121,3 +121,35 @@ func TestNewProjectWorkerIncludesConfigLoader(t *testing.T) {
 		t.Fatalf("expected worker scaffold config loader, got %s", string(data))
 	}
 }
+
+func TestNewProjectServicePinsStableGingerVersionInGoMod(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	originalVersion := gingerVersion
+	gingerVersion = func() string { return "9.9.9" }
+	defer func() { gingerVersion = originalVersion }()
+
+	if err := NewProject("demo", "service"); err != nil {
+		t.Fatalf("NewProject returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("demo", "go.mod"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	if !strings.Contains(string(data), "require github.com/fvmoraes/ginger v9.9.9") {
+		t.Fatalf("expected pinned Ginger version in go.mod, got %s", string(data))
+	}
+}

@@ -5,11 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime/debug"
-	"strings"
-)
 
-const fallbackVersion = "1.3.1"
+	"github.com/fvmoraes/ginger/internal/buildinfo"
+)
 
 // Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
@@ -124,23 +122,5 @@ func mustFlag(name string) *flag.FlagSet {
 }
 
 func buildVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return fallbackVersion
-	}
-
-	mainVersion := strings.TrimPrefix(info.Main.Version, "v")
-	if mainVersion != "" && mainVersion != "(devel)" && !isPseudoVersion(mainVersion) {
-		return mainVersion
-	}
-
-	if mainVersion != "" && mainVersion != "(devel)" && isPseudoVersion(mainVersion) {
-		return fallbackVersion
-	}
-
-	return fallbackVersion
-}
-
-func isPseudoVersion(v string) bool {
-	return strings.Contains(v, "-0.") || strings.Contains(v, "+dirty")
+	return buildinfo.Version()
 }

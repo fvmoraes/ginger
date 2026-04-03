@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/fvmoraes/ginger/internal/buildinfo"
 )
 
 // ErrProjectExists is returned when the target project directory already exists.
@@ -19,16 +21,20 @@ var ErrProjectExists = errors.New("project directory already exists")
 var ErrInvalidProjectName = errors.New("invalid project name")
 
 type projectData struct {
-	Name      string
-	Module    string
-	Type      string
-	CmdDir    string
-	GoVersion string
+	Name          string
+	Module        string
+	Type          string
+	CmdDir        string
+	GoVersion     string
+	GingerVersion string
+	UsesGinger    bool
 }
 
 var goVersionOutput = func() ([]byte, error) {
 	return exec.Command("go", "version").Output()
 }
+
+var gingerVersion = buildinfo.Version
 
 // CmdDir returns the cmd subdirectory for a given project name and type.
 //
@@ -65,7 +71,16 @@ func NewProject(name, projectType string) error {
 	}
 
 	cmdDir := CmdDir(name, projectType)
-	data := projectData{Name: name, Module: name, Type: projectType, CmdDir: cmdDir, GoVersion: detectGoVersion()}
+	usesGinger := projectType == "service" || projectType == "worker"
+	data := projectData{
+		Name:          name,
+		Module:        name,
+		Type:          projectType,
+		CmdDir:        cmdDir,
+		GoVersion:     detectGoVersion(),
+		GingerVersion: gingerVersion(),
+		UsesGinger:    usesGinger,
+	}
 
 	if err := os.MkdirAll(name, 0755); err != nil {
 		return fmt.Errorf("scaffold: mkdir %s: %w", name, err)
