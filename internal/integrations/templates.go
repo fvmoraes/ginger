@@ -506,6 +506,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -1245,7 +1246,7 @@ type MongoChecker struct{ client *mongo.Client }
 func NewMongoChecker(c *mongo.Client) *MongoChecker { return &MongoChecker{client: c} }
 func (c *MongoChecker) Name() string                { return "mongodb" }
 func (c *MongoChecker) Check(ctx context.Context) error {
-	return c.client.Database("admin").RunCommand(ctx, bson.D{{ Key: "ping", Value: 1 }}).Err()
+	return c.client.Database("admin").RunCommand(ctx, bson.D{bson.E{Key: "ping", Value: 1}}).Err()
 }
 `
 

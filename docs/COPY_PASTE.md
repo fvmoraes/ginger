@@ -768,7 +768,7 @@ func TestUserHandler_Create(t *testing.T) {
     r := router.New()
     handler.Register(r)
 
-    rec := testhelper.NewRequest(t, r, http.MethodPost, "/users/").
+rec := testhelper.NewRequest(t, r, http.MethodPost, "/users").
         WithBody(map[string]string{
             "name": "Alice",
         }).

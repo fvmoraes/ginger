@@ -168,12 +168,12 @@ v1 := r.Group("/api/v1")
 v1.GET("/users", listUsers)
 v1.POST("/users", createUser)
 
-// API v2 com middleware adicional
-v2 := r.Group("/api/v2", middleware.RateLimit())
+// API v2 com middleware adicional da aplicação
+v2 := r.Group("/api/v2", rateLimit())
 v2.GET("/users", listUsersV2)
 
-// Admin com autenticação
-admin := r.Group("/admin", middleware.RequireAuth())
+// Admin com autenticação da aplicação
+admin := r.Group("/admin", requireAuth())
 admin.GET("/stats", getStats)
 admin.POST("/users/{id}/ban", banUser)
 ```

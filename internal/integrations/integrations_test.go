@@ -151,3 +151,73 @@ func TestAddSkipsComposeUpdateWhenComposeFileDoesNotExist(t *testing.T) {
 		t.Fatalf("expected generated integration file to exist: %v", err)
 	}
 }
+
+func TestAddMongoDBGeneratesValidTemplateOutput(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	originalExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+	defer func() {
+		execCommand = originalExecCommand
+	}()
+
+	if err := Add("mongodb"); err != nil {
+		t.Fatalf("Add returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("platform", "nosql", "mongo.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(data), `bson.D{bson.E{Key: "ping", Value: 1}}`) {
+		t.Fatalf("expected escaped bson command in generated file, got:\n%s", string(data))
+	}
+}
+
+func TestAddSQLiteTemplateIncludesTimeImport(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	originalExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+	defer func() {
+		execCommand = originalExecCommand
+	}()
+
+	if err := Add("sqlite"); err != nil {
+		t.Fatalf("Add returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("platform", "database", "sqlite.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(data), `"time"`) {
+		t.Fatalf("expected sqlite template to import time, got:\n%s", string(data))
+	}
+}

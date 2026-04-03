@@ -316,7 +316,7 @@ v1 := app.Router.Group("/api/v1")
 v1.GET("/users", listUsers)
 v1.POST("/users", createUser)
 
-admin := app.Router.Group("/admin", middleware.RequireAuth())
+admin := app.Router.Group("/admin", requireAuth()) // custom middleware
 admin.GET("/stats", getStats)
 ```
 
@@ -332,7 +332,7 @@ func TestUserHandler_Create(t *testing.T) {
     r := router.New()
     handler.Register(r)
 
-    rec := testhelper.NewRequest(t, r, http.MethodPost, "/users/").
+rec := testhelper.NewRequest(t, r, http.MethodPost, "/users").
         WithBody(map[string]string{"name": "Alice"}).
         Do()
 

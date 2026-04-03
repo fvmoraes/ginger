@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/fvmoraes/ginger/example/internal/api/services"
 	"github.com/fvmoraes/ginger/example/internal/models"
 	apperrors "github.com/fvmoraes/ginger/pkg/errors"
@@ -21,9 +23,9 @@ func NewUserHandler(svc services.UserService) *UserHandler {
 // Register mounts user routes on the given router group.
 func (h *UserHandler) Register(r *router.Router) {
 	g := r.Group("/users")
-	g.GET("/", h.list)
+	g.GET("", h.list)
 	g.GET("/{id}", h.get)
-	g.POST("/", h.create)
+	g.POST("", h.create)
 	g.PUT("/{id}", h.update)
 	g.DELETE("/{id}", h.delete)
 }

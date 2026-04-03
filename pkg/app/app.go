@@ -115,8 +115,8 @@ func (a *App) shutdown() error {
 		return fmt.Errorf("app: server shutdown: %w", err)
 	}
 
-	for _, fn := range a.onStop {
-		if err := fn(ctx); err != nil {
+	for i := len(a.onStop) - 1; i >= 0; i-- {
+		if err := a.onStop[i](ctx); err != nil {
 			a.Logger.Error("shutdown_hook_error", "error", err)
 		}
 	}

@@ -26,9 +26,9 @@ func New{{.NameTitle}}Handler(svc services.{{.NameTitle}}Service) *{{.NameTitle}
 
 func (h *{{.NameTitle}}Handler) Register(r *router.Router) {
 	g := r.Group("/{{.NamePlural}}")
-	g.GET("/", h.list)
+	g.GET("", h.list)
 	g.GET("/{id}", h.get)
-	g.POST("/", h.create)
+	g.POST("", h.create)
 	g.PUT("/{id}", h.update)
 	g.DELETE("/{id}", h.delete)
 }
@@ -278,8 +278,8 @@ func Test{{.NameTitle}}Handler_Register(t *testing.T) {
 		body       any
 		wantStatus int
 	}{
-		{name: "list", method: http.MethodGet, path: "/{{.NamePlural}}/", wantStatus: http.StatusOK},
-		{name: "create", method: http.MethodPost, path: "/{{.NamePlural}}/", body: map[string]any{"name": "{{.Slug}}"}, wantStatus: http.StatusCreated},
+		{name: "list", method: http.MethodGet, path: "/{{.NamePlural}}", wantStatus: http.StatusOK},
+		{name: "create", method: http.MethodPost, path: "/{{.NamePlural}}", body: map[string]any{"name": "{{.Slug}}"}, wantStatus: http.StatusCreated},
 		{name: "get", method: http.MethodGet, path: "/{{.NamePlural}}/{{.Slug}}", wantStatus: http.StatusOK},
 		{name: "update", method: http.MethodPut, path: "/{{.NamePlural}}/{{.Slug}}", body: map[string]any{"name": "{{.Slug}} updated"}, wantStatus: http.StatusOK},
 		{name: "delete", method: http.MethodDelete, path: "/{{.NamePlural}}/{{.Slug}}", wantStatus: http.StatusNoContent},
@@ -386,12 +386,12 @@ func Test{{.NameTitle}}CRUDFlow(t *testing.T) {
 	v1 := r.Group("/api/v1")
 	h.Register(v1)
 
-	create := testhelper.NewRequest(t, r, http.MethodPost, "/api/v1/{{.NamePlural}}/").
+	create := testhelper.NewRequest(t, r, http.MethodPost, "/api/v1/{{.NamePlural}}").
 		WithBody(map[string]any{"name": "{{.Slug}}"}).
 		Do()
 	testhelper.AssertStatus(t, create, http.StatusCreated)
 
-	list := testhelper.NewRequest(t, r, http.MethodGet, "/api/v1/{{.NamePlural}}/").Do()
+	list := testhelper.NewRequest(t, r, http.MethodGet, "/api/v1/{{.NamePlural}}").Do()
 	testhelper.AssertStatus(t, list, http.StatusOK)
 }
 `

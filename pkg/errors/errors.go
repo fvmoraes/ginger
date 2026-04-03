@@ -38,6 +38,8 @@ const (
 	CodeUnprocessable Code = "UNPROCESSABLE"
 	// CodeServiceUnavailable indicates a downstream dependency is down.
 	CodeServiceUnavailable Code = "SERVICE_UNAVAILABLE"
+	// CodeTooManyRequests indicates the caller exceeded a rate limit.
+	CodeTooManyRequests Code = "TOO_MANY_REQUESTS"
 )
 
 // AppError is the standard structured error for Ginger applications.
@@ -92,6 +94,8 @@ func (e *AppError) HTTPStatus() int {
 		return http.StatusUnprocessableEntity
 	case CodeServiceUnavailable:
 		return http.StatusServiceUnavailable
+	case CodeTooManyRequests:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}
@@ -112,13 +116,14 @@ func Wrap(code Code, message string, err error) *AppError {
 
 // Sentinel errors for use with errors.Is comparisons.
 var (
-	ErrNotFound      = New(CodeNotFound, "not found", nil)
-	ErrBadRequest    = New(CodeBadRequest, "bad request", nil)
-	ErrUnauthorized  = New(CodeUnauthorized, "unauthorized", nil)
-	ErrForbidden     = New(CodeForbidden, "forbidden", nil)
-	ErrConflict      = New(CodeConflict, "conflict", nil)
-	ErrInternal      = New(CodeInternal, "internal server error", nil)
-	ErrUnprocessable = New(CodeUnprocessable, "unprocessable entity", nil)
+	ErrNotFound        = New(CodeNotFound, "not found", nil)
+	ErrBadRequest      = New(CodeBadRequest, "bad request", nil)
+	ErrUnauthorized    = New(CodeUnauthorized, "unauthorized", nil)
+	ErrForbidden       = New(CodeForbidden, "forbidden", nil)
+	ErrConflict        = New(CodeConflict, "conflict", nil)
+	ErrInternal        = New(CodeInternal, "internal server error", nil)
+	ErrUnprocessable   = New(CodeUnprocessable, "unprocessable entity", nil)
+	ErrTooManyRequests = New(CodeTooManyRequests, "too many requests", nil)
 )
 
 // NotFound returns a 404 AppError with the given message.
@@ -142,6 +147,9 @@ func Internal(err error) *AppError { return New(CodeInternal, "internal server e
 
 // Unprocessable returns a 422 AppError with the given message.
 func Unprocessable(msg string) *AppError { return New(CodeUnprocessable, msg, nil) }
+
+// TooManyRequests returns a 429 AppError with the given message.
+func TooManyRequests(msg string) *AppError { return New(CodeTooManyRequests, msg, nil) }
 
 // As unwraps err to *AppError using errors.As from the standard library.
 // This is the idiomatic way to check and extract AppError from an error chain.

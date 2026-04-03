@@ -82,3 +82,11 @@ func AssertStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 		t.Errorf("expected status %d, got %d\nbody: %s", want, rec.Code, rec.Body.String())
 	}
 }
+
+// AssertHeader fails the test if the response header doesn't match.
+func AssertHeader(t *testing.T, rec *httptest.ResponseRecorder, key, want string) {
+	t.Helper()
+	if got := rec.Header().Get(key); got != want {
+		t.Errorf("expected header %s=%q, got %q", key, want, got)
+	}
+}
