@@ -6,7 +6,7 @@
 
   [![Go Reference](https://pkg.go.dev/badge/github.com/fvmoraes/ginger.svg)](https://pkg.go.dev/github.com/fvmoraes/ginger)
   ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
-  ![Version](https://img.shields.io/badge/version-1.2.10-blue?style=flat)
+  ![Version](https://img.shields.io/badge/version-1.3.0-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>

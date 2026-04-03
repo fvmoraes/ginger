@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const fallbackVersion = "1.2.10"
+const fallbackVersion = "1.3.0"
 
 // Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
