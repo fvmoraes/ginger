@@ -13,6 +13,9 @@ Storage convention:
   platform/...              external infrastructure adapters
   internal/api/handlers/... ready-to-mount HTTP endpoints
 
+If devops/docker/docker-compose.yml exists, Ginger also updates it with the
+local infrastructure needed by the added integration when applicable.
+
 databases  : postgres, mysql, sqlite, sqlserver
 nosql      : couchbase, mongodb
 analytical : clickhouse

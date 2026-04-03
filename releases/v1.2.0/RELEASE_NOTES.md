@@ -6,7 +6,7 @@
 
 ## 🎯 Release
 
-Add short flags (-a/-s/-w/-c) for ginger new and auto PATH setup in install.sh
+Add short flags (-s/-w/-c) for ginger new and auto PATH setup in install.sh
 
 ## 🚀 Installation
 

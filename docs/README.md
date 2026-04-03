@@ -125,6 +125,7 @@ Cada integração inclui:
 - Configuração de health check
 - Variáveis de ambiente
 - Comandos comuns
+- Atualização automática do `devops/docker/docker-compose.yml` quando a integração tem infraestrutura local suportada
 
 **Ideal para:** Adicionar novas funcionalidades ao projeto.
 
@@ -181,7 +182,7 @@ Deploy completo do desenvolvimento à produção:
 - Build e run local
 
 #### Docker Compose
-- `devops/docker/docker-compose.yml` com serviço da aplicação + postgres + redis (+ prometheus/grafana no scaffold API/service)
+- `devops/docker/docker-compose.yml` gerado no scaffold e atualizado por `ginger add` para serviços locais como postgres, redis, rabbitmq, kafka e nats
 - Health checks
 - Volumes persistentes
 - Comandos úteis
@@ -283,10 +284,9 @@ Deploy completo do desenvolvimento à produção:
 | `ginger new <name>` | Criar projeto | README |
 | `ginger run` | Executar foobar | README |
 | `ginger build` | Compilar binário | README |
-| `ginger generate handler <name>` | Gerar handler | README, ARCHITECTURE |
-| `ginger generate service <name>` | Gerar service | README, ARCHITECTURE |
-| `ginger generate repository <name>` | Gerar repository | README, ARCHITECTURE |
 | `ginger generate crud <name>` | Gerar CRUD completo | README, ARCHITECTURE |
+| `ginger generate test <name>` | Gerar testes do recurso | README, TESTING |
+| `ginger generate smoke-test` | Gerar smoke test da app | README, TESTING |
 | `ginger add <integration>` | Adicionar integração | INTEGRATIONS |
 | `ginger doctor` | Diagnosticar projeto | README |
 

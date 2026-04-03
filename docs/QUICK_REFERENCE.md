@@ -11,13 +11,11 @@ Guia de consulta rápida com os comandos e padrões mais usados.
 ```bash
 # Criar novo projeto
 ginger new foobar            # genérico  -> cmd/foobar
-ginger new foobar --api         # api       -> cmd/foobar-api
-ginger new foobar -a            # igual a --api
-ginger new foobar --service         # service   -> cmd/foobar-service
+ginger new foobar --service         # service   -> cmd/foobar
 ginger new foobar -s            # igual a --service
 ginger new foobar --worker         # worker    -> cmd/foobar-worker
 ginger new foobar -w            # igual a --worker
-ginger new foobar --cli         # cli       -> cmd/foobar-cli
+ginger new foobar --cli         # cli       -> cmd/foobar
 ginger new foobar -c            # igual a --cli
 
 # Executar
@@ -28,12 +26,12 @@ ginger build
 ginger build ./bin/foobar
 
 # Gerar código
-ginger generate handler foobar
-ginger generate service foobar
-ginger generate repository foobar
 ginger generate crud foobar
+ginger generate command deploy
+ginger generate handler order
+ginger generate service deployer
 ginger generate test foobar
-ginger generate test app
+ginger generate smoke-test
 ginger generate swagger
 ginger generate swagger foobar
 
@@ -558,7 +556,7 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 
 ```makefile
 BIN=bin/foobar
-CMD_DIR=cmd/foobar-api
+CMD_DIR=cmd/foobar
 
 .PHONY: run build test lint docker-build docker-run
 

@@ -64,3 +64,90 @@ func TestRealtimeTemplatesUseHandlersPackage(t *testing.T) {
 		}
 	}
 }
+
+func TestAddUpdatesDockerComposeForMessagingIntegration(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := os.MkdirAll(filepath.Join("devops", "docker"), 0755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+
+	compose := `version: "3.9"
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: devops/docker/Dockerfile
+    environment:
+      APP_ENV: development
+`
+	if err := os.WriteFile(filepath.Join("devops", "docker", "docker-compose.yml"), []byte(compose), 0644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	originalExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+	defer func() {
+		execCommand = originalExecCommand
+	}()
+
+	if err := Add("rabbitmq"); err != nil {
+		t.Fatalf("Add returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("devops", "docker", "docker-compose.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	content := string(data)
+	for _, want := range []string{"rabbitmq:", "rabbitmq:3-management-alpine", "RABBITMQ_URL", "depends_on"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("expected compose to contain %q, got:\n%s", want, content)
+		}
+	}
+}
+
+func TestAddSkipsComposeUpdateWhenComposeFileDoesNotExist(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	originalExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+	defer func() {
+		execCommand = originalExecCommand
+	}()
+
+	if err := Add("postgres"); err != nil {
+		t.Fatalf("Add returned error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join("platform", "database", "postgres.go")); err != nil {
+		t.Fatalf("expected generated integration file to exist: %v", err)
+	}
+}

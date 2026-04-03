@@ -35,8 +35,8 @@ ginger version
 ## 2. Criar Seu Primeiro Projeto
 
 ```bash
-ginger new foobar --api
-# ou use a flag curta equivalente: -a
+ginger new foobar --service
+# ou use a flag curta equivalente: -s
 cd foobar
 go mod tidy
 ```
@@ -44,7 +44,7 @@ go mod tidy
 Estrutura criada:
 ```
 foobar/
-├── cmd/foobar-api/main.go      # Ponto de entrada
+├── cmd/foobar/main.go          # Ponto de entrada
 ├── internal/api/handlers/health.go
 ├── configs/app.yaml         # Configuração
 └── devops/                  # Build, deploy e CI/CD
@@ -75,13 +75,20 @@ ginger generate crud foobar
 Isso cria:
 - `internal/models/foobar.go` — Modelo
 - `internal/api/handlers/foobar_handler.go` — HTTP
-- `internal/api/services/foobar_service.go` — Lógica
-- `internal/api/repositories/foobar_repository.go` — Dados
-- `internal/api/handlers/foobar_handler_test.go` — Testes
+- `internal/services/foobar_service.go` — Lógica
+- `internal/ports/foobar_repository.go` — Contrato
+- `internal/adapters/foobar_memory_repository.go` — Adapter in-memory
+
+Se quiser os testes depois, gere separadamente:
+
+```bash
+ginger generate test foobar
+ginger generate smoke-test
+```
 
 ### Registrar no Router
 
-Edite `cmd/foobar-api/main.go`:
+Edite `cmd/foobar/main.go`:
 
 ```go
 package main
@@ -137,14 +144,14 @@ Edite `configs/app.yaml`:
 ```yaml
 database:
   driver: postgres
-  dsn: postgres://<user>:<password>@localhost:5432/foobar-api?sslmode=disable
+  dsn: postgres://<user>:<password>@localhost:5432/foobar?sslmode=disable
   max_open: 25
   max_idle: 5
 ```
 
 ### Conectar
 
-Edite `cmd/foobar-api/main.go`:
+Edite `cmd/foobar/main.go`:
 
 ```go
 import (
@@ -255,15 +262,15 @@ helm install foobar ./devops/helm
 ```bash
 # Criar projeto
 ginger new <nome>            # genérico -> cmd/<nome>
-ginger new <nome> --api | -a       # API      -> cmd/<nome>-api
-ginger new <nome> --service | -s   # service  -> cmd/<nome>-service
+ginger new <nome> --service | -s   # service  -> cmd/<nome>
 ginger new <nome> --worker | -w    # worker   -> cmd/<nome>-worker
+ginger new <nome> --cli | -c       # cli      -> cmd/<nome>
 ginger new <nome> --cli | -c       # CLI      -> cmd/<nome>-cli
 
 # Gerar código
 ginger generate crud <recurso>
-ginger generate handler <nome>
-ginger generate service <nome>
+ginger generate test <recurso>
+ginger generate swagger [recurso]
 
 # Adicionar integração
 ginger add <integração>

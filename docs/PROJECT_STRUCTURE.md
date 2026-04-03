@@ -209,22 +209,28 @@ go build -o bin/app ./cmd/app
 O conteúdo varia por tipo de projeto:
 
 - sem flag: `cmd/<nome>`
-- `-a`: `cmd/<nome>-api`
-- `-s`: `cmd/<nome>-service`
+- `-s`: `cmd/<nome>`
 - `-w`: `cmd/<nome>-worker`
-- `-c`: `cmd/<nome>-cli`
+- `-c`: `cmd/<nome>`
 
-Exemplo para `ginger new foobar --api`:
+Exemplo para `ginger new foobar --service`:
 
 ```
 foobar/
-├── cmd/foobar-api
+├── cmd/foobar
 │   └── main.go
 ├── internal/
 │   ├── api/
-│   │   └── handlers/
+│   │   ├── handlers/
+│   │   ├── middlewares/
+│   │   └── router.go
+│   ├── adapters/
+│   ├── ports/
+│   ├── models/
 │   └── config/
 ├── configs/app.yaml
+├── migrations/
+├── tests/integration/
 ├── devops/
 │   ├── docker/
 │   ├── kubernetes/
@@ -234,10 +240,11 @@ foobar/
 ├── .env.example
 ├── .gitignore
 ├── go.mod
-└── README.md
+├── README.md
+└── .editorconfig
 ```
 
-Pastas como `platform/`, `tests/`, `docs/`, `scripts/`, `internal/api/services/`, `internal/api/repositories/` e outras surgem sob demanda, quando algum fluxo do Ginger realmente gera arquivos nelas.
+Pastas como `platform/`, `docs/`, `scripts/`, `internal/services/`, `internal/adapters/` e outras surgem sob demanda, quando algum fluxo do Ginger realmente gera arquivos nelas.
 
 ## Convenção Para `ginger add`
 
@@ -250,6 +257,7 @@ Na prática:
 
 - bancos, cache, mensageria, protocolos e observabilidade vão para `platform/...`
 - `sse`, `websocket` e `swagger` vão para `internal/api/handlers/...`
+- quando existir `devops/docker/docker-compose.yml`, o `ginger add` também injeta os serviços locais compatíveis nele
 
 ---
 

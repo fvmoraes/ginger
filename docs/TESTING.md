@@ -44,41 +44,31 @@
 ### Geração de Testes com o CLI
 
 ```bash
-# Gera testes unitários para handler, service e repository
+# Gera testes unitários para handler, service e adapter in-memory
 ginger generate test foobar
 
-# Gera apenas um tipo de teste
-ginger generate test foobar handler
-ginger generate test foobar service
-ginger generate test foobar repository
-
-# Gera os testes do recurso + smoke test da aplicação
-ginger generate test foobar all
-
 # Gera só o smoke test da aplicação
-ginger generate test app
+ginger generate smoke-test
 ```
 
 ### Convenções de Nomenclatura
 
 ```
-internal/api/
-├── handlers/
-│   ├── user_handler.go
-│   └── user_handler_test.go      ← Testes unitários
-├── services/
-│   ├── user_service.go
-│   └── user_service_test.go
-└── repositories/
-    ├── user_repository.go
-    └── user_repository_test.go
+internal/api/handlers/
+├── user_handler.go
+└── user_handler_test.go          ← Testes unitários
 
-tests/
-├── integration/
-│   ├── api_test.go                ← Testes de integração
-│   └── database_test.go
-└── e2e/
-    └── user_flow_test.go          ← Testes end-to-end
+internal/services/
+├── user_service.go
+└── user_service_test.go
+
+internal/adapters/
+├── user_memory_repository.go
+└── user_memory_repository_test.go
+
+tests/integration/
+├── user_test.go                  ← Fluxo CRUD do recurso
+└── app_smoke_test.go             ← Smoke test da aplicação
 ```
 
 ### Padrão de Nome de Teste
@@ -143,7 +133,7 @@ import (
     "context"
     "testing"
     
-    "yourmodule/internal/api/services"
+    "yourmodule/internal/services"
     "yourmodule/internal/models"
 )
 
@@ -272,7 +262,7 @@ import (
     "testing"
     
     _ "github.com/lib/pq"
-    "yourmodule/internal/api/repositories"
+    "yourmodule/internal/adapters"
     "yourmodule/internal/models"
 )
 
@@ -351,9 +341,8 @@ import (
     "net/http/httptest"
     "testing"
     
-    // Ajuste para o diretório real do seu comando em cmd/<nome[-tipo]>
-    // Ex.: cmd/foobar, cmd/foobar-api, cmd/foobar-worker
-    _ "yourmodule/cmd/foobar-api"
+    // Ajuste para o diretório real do seu comando em cmd/<nome> ou cmd/<nome>-worker
+    _ "yourmodule/cmd/foobar"
 )
 
 func setupTestServer(t *testing.T) *httptest.Server {

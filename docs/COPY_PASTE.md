@@ -636,7 +636,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o bin/foobar ./cmd/foobar-api
+RUN go build -o bin/foobar ./cmd/foobar
 
 FROM alpine:3.19
 WORKDIR /app

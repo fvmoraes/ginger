@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -26,15 +27,97 @@ func TestNewProjectRejectsExistingDirectory(t *testing.T) {
 		t.Fatalf("MkdirAll returned error: %v", err)
 	}
 
-	err = NewProject("demo", "api")
+	err = NewProject("demo", "service")
 	if !errors.Is(err, ErrProjectExists) {
 		t.Fatalf("expected ErrProjectExists, got %v", err)
 	}
 }
 
 func TestNewProjectRejectsPathLikeName(t *testing.T) {
-	err := NewProject(filepath.Join("tmp", "demo"), "api")
+	err := NewProject(filepath.Join("tmp", "demo"), "service")
 	if !errors.Is(err, ErrInvalidProjectName) {
 		t.Fatalf("expected ErrInvalidProjectName, got %v", err)
+	}
+}
+
+func TestResolveGoVersion(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "version above minimum",
+			input: "go version go1.26.0 darwin/amd64",
+			want:  "1.26",
+		},
+		{
+			name:  "version equal to minimum",
+			input: "go version go1.25.0 linux/amd64",
+			want:  "1.25",
+		},
+		{
+			name:  "version below minimum",
+			input: "go version go1.21.5 linux/amd64",
+			want:  "1.25",
+		},
+		{
+			name:  "detection failure empty string",
+			input: "",
+			want:  "1.25",
+		},
+		{
+			name:  "detection failure garbage output",
+			input: "not a go version string",
+			want:  "1.25",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveGoVersion(tc.input)
+			if got != tc.want {
+				t.Errorf("resolveGoVersion(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDetectGoVersionFallsBackOnCommandError(t *testing.T) {
+	original := goVersionOutput
+	goVersionOutput = func() ([]byte, error) {
+		return nil, errors.New("boom")
+	}
+	defer func() { goVersionOutput = original }()
+
+	if got := detectGoVersion(); got != minGoVersion {
+		t.Fatalf("detectGoVersion() = %q, want %q", got, minGoVersion)
+	}
+}
+
+func TestNewProjectWorkerIncludesConfigLoader(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := NewProject("demo", "worker"); err != nil {
+		t.Fatalf("NewProject returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("demo", "internal", "config", "config.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(data), `gingercfg.Load("configs/app.yaml")`) {
+		t.Fatalf("expected worker scaffold config loader, got %s", string(data))
 	}
 }

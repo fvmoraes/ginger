@@ -7,7 +7,7 @@ const generatedGoFileHeader = `// PT-BR: Arquivo gerado pelo Ginger. Ajuste conf
 
 const goModTmpl = `module {{.Module}}
 
-go 1.25
+go {{.GoVersion}}
 `
 
 const mainTmpl = generatedGoFileHeader + `package main
@@ -15,8 +15,9 @@ const mainTmpl = generatedGoFileHeader + `package main
 import (
 	"log"
 
-	"{{.Module}}/internal/config"
+	"{{.Module}}/internal/api"
 	"{{.Module}}/internal/api/handlers"
+	"{{.Module}}/internal/config"
 	gingerapp "github.com/fvmoraes/ginger/pkg/app"
 )
 
@@ -27,10 +28,11 @@ func main() {
 	}
 
 	app := gingerapp.New(cfg)
+	handlers.RegisterHealthChecks(app.Health)
 
 	// PT-BR: Registra as rotas da aplicação.
 	// EN: Registers the application routes.
-	handlers.Register(app.Router)
+	api.Register(app.Router)
 
 	if err := app.Run(); err != nil {
 		log.Fatalf("app: %v", err)
@@ -41,16 +43,21 @@ func main() {
 const cliMainTmpl = generatedGoFileHeader + `package main
 
 import (
+	"context"
 	"fmt"
-	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: {{.Name}} <command>")
-		os.Exit(1)
-	}
-	fmt.Printf("{{.Name}} CLI — command: %s\n", os.Args[1])
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	fmt.Println("{{.Name}} started")
+	fmt.Println("Press Ctrl+C to stop gracefully.")
+	<-ctx.Done()
+	fmt.Printf("{{.Name}} shutting down at %s\n", time.Now().Format(time.RFC3339))
 }
 `
 
@@ -58,11 +65,14 @@ const workerMainTmpl = generatedGoFileHeader + `package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"os"
+	"net/http"
 	"os/signal"
 	"syscall"
 
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/config"
 	"{{.Module}}/internal/worker"
 )
 
@@ -70,13 +80,34 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	w := worker.New()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
+	go startHealthServer(cfg.HTTP.Host, cfg.HTTP.Port)
+
+	consumer := adapters.NewMemoryConsumer()
+	w := worker.New(consumer, &worker.DefaultHandler{})
 	log.Println("worker starting...")
 	if err := w.Run(ctx); err != nil {
 		log.Fatalf("worker: %v", err)
 	}
 	log.Println("worker stopped")
-	os.Exit(0)
+}
+
+func startHealthServer(host string, port int) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(` + "`" + `{"healthy":true}` + "`" + `))
+	})
+
+	addr := fmt.Sprintf("%s:%d", host, port)
+	log.Printf("worker health endpoint listening on %s", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil && err != http.ErrServerClosed {
+		log.Printf("worker health server: %v", err)
+	}
 }
 `
 
@@ -84,30 +115,61 @@ const workerTmpl = generatedGoFileHeader + `package worker
 
 import (
 	"context"
+	"errors"
 	"time"
+
+	"{{.Module}}/internal/ports"
 )
 
 // PT-BR: Worker representa o processador de jobs em segundo plano.
 // EN: Worker is the background job processor.
-type Worker struct{}
+type Worker struct {
+	consumer   ports.MessageConsumer
+	handler    Handler
+	retryDelay time.Duration
+}
 
-func New() *Worker { return &Worker{} }
+func New(consumer ports.MessageConsumer, handler Handler) *Worker {
+	return &Worker{
+		consumer:   consumer,
+		handler:    handler,
+		retryDelay: time.Second,
+	}
+}
 
 // PT-BR: Run inicia o loop do worker e bloqueia até o ctx ser cancelado.
 // EN: Run starts the worker loop and blocks until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	if w.consumer == nil {
+		return errors.New("worker: consumer is nil")
+	}
+	if w.handler == nil {
+		return errors.New("worker: handler is nil")
+	}
+
+	msgs, err := w.consumer.Consume(ctx)
+	if err != nil {
+		return err
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-ticker.C:
-			// PT-BR: Mantém este trecho bloqueado por padrão para evitar loop agressivo.
-			// EN: Keeps this branch blocked by default to avoid a hot loop.
-			// PT-BR: TODO: adicione aqui a lógica de processamento de jobs.
-			// EN: TODO: add job processing logic here.
+		case msg, ok := <-msgs:
+			if !ok {
+				return nil
+			}
+			if err := w.handler.Handle(ctx, msg); err != nil {
+				_ = w.consumer.Nack(ctx, msg)
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(w.retryDelay):
+				}
+				continue
+			}
+			_ = w.consumer.Ack(ctx, msg)
 		}
 	}
 }
@@ -129,17 +191,22 @@ func Load() (*gingercfg.Config, error) {
 const healthHandlerTmpl = generatedGoFileHeader + `package handlers
 
 import (
-	"net/http"
+	"context"
 
-	"github.com/fvmoraes/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/pkg/health"
 )
 
-// PT-BR: Register monta todas as rotas da aplicação.
-// EN: Register mounts all application routes.
-func Register(r *router.Router) {
-	r.GET("/", func(w http.ResponseWriter, req *http.Request) {
-		router.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	})
+type staticChecker struct {
+	name string
+}
+
+func (c staticChecker) Name() string { return c.name }
+
+func (c staticChecker) Check(context.Context) error { return nil }
+
+// RegisterHealthChecks registers starter health checks for the generated service.
+func RegisterHealthChecks(h *health.Handler) {
+	h.Register(staticChecker{name: "app"})
 }
 `
 
@@ -167,7 +234,7 @@ DATABASE_DRIVER=postgres
 DATABASE_DSN=postgres://user:pass@localhost:5432/{{.Name}}?sslmode=disable
 `
 
-const dockerfileTmpl = `FROM golang:1.25-alpine AS builder
+const dockerfileTmpl = `FROM golang:{{.GoVersion}}-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -361,7 +428,7 @@ spec:
 
 const makefileTmpl = `BIN=bin/{{.Name}}
 
-.PHONY: run build test lint tidy{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}} docker{{end}}{{if or (eq .Type "api") (eq .Type "service")}} up down{{end}}
+.PHONY: run build test lint tidy{{if or (eq .Type "service") (eq .Type "worker")}} docker{{end}}{{if eq .Type "service"}} up down{{end}}
 
 run:
 	go run ./{{.CmdDir}}
@@ -377,10 +444,10 @@ lint:
 
 tidy:
 	go mod tidy
-{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+{{if or (eq .Type "service") (eq .Type "worker")}}
 docker:
 	docker build -f devops/docker/Dockerfile -t {{.Name}}:latest .
-{{end}}{{if or (eq .Type "api") (eq .Type "service")}}
+{{end}}{{if eq .Type "service"}}
 up:
 	docker compose -f devops/docker/docker-compose.yml up -d
 
@@ -429,18 +496,20 @@ const readmeTmpl = `# {{.Name}}
 
 A Ginger-powered Go application (type: {{.Type}}).
 
+Generated with Go {{.GoVersion}} or the minimum supported version when the local toolchain is older or unavailable.
+
 ## Getting started
 
 ` + "```" + `bash
 go mod tidy
 make run
 ` + "```" + `
-{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+{{if or (eq .Type "service") (eq .Type "worker")}}
 ## DevOps
 
 ` + "```" + `bash
 make docker  # builds using devops/docker/Dockerfile
-{{if or (eq .Type "api") (eq .Type "service")}}
+{{if eq .Type "service"}}
 make up      # starts app + postgres + redis + prometheus + grafana
 make down    # stops everything
 {{end}}
@@ -449,8 +518,8 @@ make down    # stops everything
 ## Project structure
 
 ` + "```" + `
-{{.CmdDir}}/       # Application entrypoint{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
-configs/          # YAML config files{{end}}{{if or (eq .Type "api") (eq .Type "service")}}
+{{.CmdDir}}/       # Application entrypoint{{if or (eq .Type "service") (eq .Type "worker")}}
+configs/          # YAML config files{{end}}{{if eq .Type "service"}}
 
 internal/
   api/
@@ -458,11 +527,11 @@ internal/
   config/         # Config loader{{end}}{{if eq .Type "worker"}}
 
 internal/
-  worker/         # Worker loop{{end}}{{if or (eq .Type "api") (eq .Type "service") (eq .Type "worker")}}
+  worker/         # Worker loop{{end}}{{if or (eq .Type "service") (eq .Type "worker")}}
 
 devops/
-  docker/         # Dockerfile{{if or (eq .Type "api") (eq .Type "service")}}, compose and Prometheus config{{end}}
-{{if or (eq .Type "api") (eq .Type "service")}}  kubernetes/     # K8s manifests
+  docker/         # Dockerfile{{if eq .Type "service"}}, compose and Prometheus config{{end}}
+{{if eq .Type "service"}}  kubernetes/     # K8s manifests
   helm/           # Helm chart
 {{end}}  pipelines/      # CI/CD sample
 {{end}}
@@ -470,4 +539,583 @@ devops/
 
 Ginger keeps new projects minimal.
 Directories like ` + "`platform/`" + `, ` + "`tests/`" + `, extra ` + "`internal/api/...`" + ` layers, and additional ` + "`devops/`" + ` assets appear only when you generate or add them.
+`
+
+// ─── Shared ─────────────────────────────────────────────────────────────────
+
+const editorconfigTmpl = `root = true
+
+[*]
+indent_style = tab
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[*.{yaml,yml,json,md}]
+indent_style = space
+indent_size = 2
+`
+
+// ─── CLI app template (--cli) ────────────────────────────────────────────────
+
+const cliAppMainTmpl = generatedGoFileHeader + `package main
+
+import (
+	"os"
+
+	"{{.Module}}/internal/commands"
+)
+
+func main() {
+	if err := commands.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+`
+
+const cliRootCommandTmpl = generatedGoFileHeader + `package commands
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	verbose bool
+	output  string
+	cfgFile string
+)
+
+var rootCmd = &cobra.Command{
+	Use:   "{{.Name}}",
+	Short: "{{.Name}} — a Ginger-powered CLI",
+	Long: ` + "`" + `{{.Name}} is a CLI application built with Ginger.
+
+Use --help on any subcommand for details.` + "`" + `,
+	Example: ` + "`" + `  {{.Name}} version
+  {{.Name}} completion zsh > _{{.Name}}` + "`" + `,
+	SilenceUsage: true,
+}
+
+// Execute runs the root command.
+func Execute() error {
+	return rootCmd.Execute()
+}
+
+func init() {
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
+	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "text", "output format: text, json, table")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default: $HOME/.{{.Name}}.yaml)")
+	rootCmd.PersistentFlags().Bool("no-color", false, "disable color output")
+	rootCmd.AddCommand(newCompletionCmd())
+}
+
+func newCompletionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "completion [bash|zsh|fish]",
+		Short: "Generate shell completion scripts",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch args[0] {
+			case "bash":
+				return rootCmd.GenBashCompletion(cmd.OutOrStdout())
+			case "zsh":
+				return rootCmd.GenZshCompletion(cmd.OutOrStdout())
+			case "fish":
+				return rootCmd.GenFishCompletion(cmd.OutOrStdout(), true)
+			default:
+				return fmt.Errorf("unsupported shell %q", args[0])
+			}
+		},
+	}
+}
+`
+
+const cliVersionCommandTmpl = generatedGoFileHeader + `package commands
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
+// These are set via -ldflags at build time.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("{{.Name}} %s (commit: %s, built: %s)\n", version, commit, date)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
+}
+`
+
+const cliPortsTmpl = generatedGoFileHeader + `package ports
+
+import "io"
+
+// FileReader reads a named file and returns its contents.
+type FileReader interface {
+	ReadFile(name string) ([]byte, error)
+}
+
+// ConfigLoader loads application configuration from a named source.
+type ConfigLoader interface {
+	Load(source string) (map[string]any, error)
+}
+
+// Writer is a generic output writer.
+type Writer interface {
+	io.Writer
+}
+`
+
+const cliFilesystemAdapterTmpl = generatedGoFileHeader + `package adapters
+
+import "os"
+
+// Filesystem implements ports.FileReader using the local filesystem.
+type Filesystem struct{}
+
+// NewFilesystem returns a new Filesystem adapter.
+func NewFilesystem() *Filesystem { return &Filesystem{} }
+
+// ReadFile reads the file at name and returns its contents.
+func (f *Filesystem) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+`
+
+const cliConfigTmpl = generatedGoFileHeader + `package config
+
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Config holds application configuration.
+type Config struct {
+	App struct {
+		Name string ` + "`yaml:\"name\"`" + `
+		Env  string ` + "`yaml:\"env\"`" + `
+	} ` + "`yaml:\"app\"`" + `
+}
+
+// Load reads configuration from the given YAML file path.
+// Falls back to sensible defaults if the file is not found.
+func Load(path string) (*Config, error) {
+	cfg := &Config{}
+	cfg.App.Name = "{{.Name}}"
+	cfg.App.Env = "development"
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return cfg, nil
+		}
+		return nil, fmt.Errorf("config: read %s: %w", path, err)
+	}
+
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("config: parse %s: %w", path, err)
+	}
+
+	return cfg, nil
+}
+`
+
+const cliOutputFormatterTmpl = generatedGoFileHeader + `package output
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"text/tabwriter"
+)
+
+// Format is the output format.
+type Format string
+
+const (
+	FormatText  Format = "text"
+	FormatJSON  Format = "json"
+	FormatTable Format = "table"
+)
+
+// Formatter writes structured output in the chosen format.
+type Formatter struct {
+	w      io.Writer
+	format Format
+}
+
+// New returns a Formatter writing to w in the given format.
+func New(w io.Writer, format Format) *Formatter {
+	return &Formatter{w: w, format: format}
+}
+
+// Print writes v in the configured format.
+func (f *Formatter) Print(v any) error {
+	switch f.format {
+	case FormatJSON:
+		enc := json.NewEncoder(f.w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(v)
+	case FormatTable:
+		tw := tabwriter.NewWriter(f.w, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(tw, "%v\n", v)
+		return tw.Flush()
+	default: // text
+		fmt.Fprintf(f.w, "%v\n", v)
+		return nil
+	}
+}
+`
+
+const goreleaserTmpl = `# .goreleaser.yaml — generated by Ginger
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: {{.Name}}
+    main: ./{{.CmdDir}}
+    binary: {{.Name}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X {{.Module}}/internal/commands.version={{ "{{" }}.Version{{ "}}" }}
+      - -X {{.Module}}/internal/commands.commit={{ "{{" }}.Commit{{ "}}" }}
+      - -X {{.Module}}/internal/commands.date={{ "{{" }}.Date{{ "}}" }}
+
+archives:
+  - format: tar.gz
+    name_template: "{{.Name}}_{{ "{{" }}.Version{{ "}}" }}_{{ "{{" }}.Os{{ "}}" }}_{{ "{{" }}.Arch{{ "}}" }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+`
+
+// ─── Worker templates ────────────────────────────────────────────────────────
+
+const workerHandlerTmpl = generatedGoFileHeader + `package worker
+
+import "context"
+
+// Handler processes a single message.
+// Return a non-nil error to signal that the message should be retried.
+type Handler interface {
+	Handle(ctx context.Context, msg []byte) error
+}
+
+// DefaultHandler is a no-op handler used as a placeholder.
+type DefaultHandler struct{}
+
+// Handle logs the message and returns nil (acknowledge).
+func (h *DefaultHandler) Handle(ctx context.Context, msg []byte) error {
+	// PT-BR: Substitua esta implementação pela lógica de negócio real.
+	// EN: Replace this implementation with real business logic.
+	_ = msg
+	return nil
+}
+`
+
+const workerPortsTmpl = generatedGoFileHeader + `package ports
+
+import "context"
+
+// MessageConsumer receives messages from a queue or topic.
+type MessageConsumer interface {
+	Consume(ctx context.Context) (<-chan []byte, error)
+	Ack(ctx context.Context, msg []byte) error
+	Nack(ctx context.Context, msg []byte) error
+}
+
+// MessagePublisher sends messages to a queue or topic.
+type MessagePublisher interface {
+	Publish(ctx context.Context, topic string, msg []byte) error
+}
+
+// JobStore persists job state.
+type JobStore interface {
+	Save(ctx context.Context, id string, payload []byte) error
+	Load(ctx context.Context, id string) ([]byte, error)
+}
+`
+
+const workerMemoryConsumerTmpl = generatedGoFileHeader + `package adapters
+
+import (
+	"context"
+	"sync"
+)
+
+// MemoryConsumer is an in-memory MessageConsumer for development and testing.
+type MemoryConsumer struct {
+	mu   sync.Mutex
+	msgs [][]byte
+	ch   chan []byte
+}
+
+// NewMemoryConsumer returns a new MemoryConsumer.
+func NewMemoryConsumer() *MemoryConsumer {
+	return &MemoryConsumer{ch: make(chan []byte, 64)}
+}
+
+// Push enqueues a message (for testing / local use).
+func (m *MemoryConsumer) Push(msg []byte) {
+	m.ch <- msg
+}
+
+// Consume returns the internal channel. Calling this multiple times returns the same channel.
+func (m *MemoryConsumer) Consume(_ context.Context) (<-chan []byte, error) {
+	return m.ch, nil
+}
+
+// Ack is a no-op for the in-memory adapter.
+func (m *MemoryConsumer) Ack(_ context.Context, _ []byte) error { return nil }
+
+// Nack is a no-op for the in-memory adapter.
+func (m *MemoryConsumer) Nack(_ context.Context, _ []byte) error { return nil }
+`
+
+const workerProcessorTmpl = generatedGoFileHeader + `package services
+
+import (
+	"context"
+	"fmt"
+)
+
+// Processor holds business logic for processing messages.
+type Processor struct{}
+
+// NewProcessor returns a new Processor.
+func NewProcessor() *Processor { return &Processor{} }
+
+// ProcessMessage processes a single raw message payload.
+// Replace this stub with real domain logic.
+func (p *Processor) ProcessMessage(ctx context.Context, msg []byte) error {
+	if len(msg) == 0 {
+		return fmt.Errorf("processor: empty message")
+	}
+	// PT-BR: Adicione a lógica de processamento aqui.
+	// EN: Add processing logic here.
+	return nil
+}
+`
+
+const workerIntegrationTestTmpl = `package integration_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/worker"
+)
+
+func TestWorkerProcessesMessage(t *testing.T) {
+	consumer := adapters.NewMemoryConsumer()
+	w := worker.New(consumer, &worker.DefaultHandler{})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+
+	consumer.Push([]byte("hello"))
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- w.Run(ctx) }()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("worker returned error: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("worker did not stop within timeout")
+	}
+}
+`
+
+const workerDockerComposeTmpl = `version: "3.9"
+# PT-BR: Este compose contém apenas o serviço worker.
+# EN: This compose contains only the worker service.
+# Use 'ginger add rabbitmq' (or kafka/nats/redis/postgres) to add infrastructure services.
+
+services:
+  {{.Name}}:
+    build:
+      context: ../..
+      dockerfile: devops/docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: development
+`
+
+// ─── Service templates ───────────────────────────────────────────────────────
+
+const serviceRouterTmpl = generatedGoFileHeader + `package api
+
+import (
+	"{{.Module}}/internal/api/middlewares"
+	"github.com/fvmoraes/ginger/pkg/router"
+)
+
+// Register wires starter routes onto Ginger's shared router.
+func Register(r *router.Router) {
+	// PT-BR: Agrupe as rotas da API sob /api/v1.
+	// EN: Group API routes under /api/v1.
+	v1 := r.Group("/api/v1", middlewares.RequestID)
+	_ = v1 // Remove this line when you add routes to the group.
+}
+`
+
+const serviceRequestIDMiddlewareTmpl = generatedGoFileHeader + `package middlewares
+
+import (
+	"net/http"
+
+	"github.com/google/uuid"
+)
+
+const headerRequestID = "X-Request-ID"
+
+// RequestID injects a unique request ID into every response header.
+// If the incoming request already carries X-Request-ID, it is propagated as-is.
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get(headerRequestID)
+		if id == "" {
+			id = uuid.NewString()
+		}
+		w.Header().Set(headerRequestID, id)
+		next.ServeHTTP(w, r)
+	})
+}
+`
+
+const servicePortsTmpl = generatedGoFileHeader + `package ports
+
+import "context"
+
+// Store is a generic key-value store interface.
+// Replace or extend with domain-specific repository interfaces as the project grows.
+type Store interface {
+	Get(ctx context.Context, key string) ([]byte, error)
+	Set(ctx context.Context, key string, value []byte) error
+	Delete(ctx context.Context, key string) error
+}
+`
+
+const serviceMemoryStoreTmpl = generatedGoFileHeader + `package adapters
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+// MemoryStore is an in-memory Store implementation for development and testing.
+type MemoryStore struct {
+	mu   sync.RWMutex
+	data map[string][]byte
+}
+
+// NewMemoryStore returns a new MemoryStore.
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{data: make(map[string][]byte)}
+}
+
+// Get retrieves the value for key.
+func (s *MemoryStore) Get(_ context.Context, key string) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v, ok := s.data[key]
+	if !ok {
+		return nil, fmt.Errorf("store: key not found: %s", key)
+	}
+	return v, nil
+}
+
+// Set stores value under key.
+func (s *MemoryStore) Set(_ context.Context, key string, value []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[key] = value
+	return nil
+}
+
+// Delete removes key from the store.
+func (s *MemoryStore) Delete(_ context.Context, key string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, key)
+	return nil
+}
+`
+
+const serviceHealthTestTmpl = `package integration_test
+
+import (
+	"net/http"
+	"testing"
+
+	"{{.Module}}/internal/api"
+	"{{.Module}}/internal/api/handlers"
+	"{{.Module}}/internal/config"
+	gingerapp "github.com/fvmoraes/ginger/pkg/app"
+	"github.com/fvmoraes/ginger/pkg/testhelper"
+)
+
+func TestHealthEndpoint(t *testing.T) {
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load returned error: %v", err)
+	}
+
+	app := gingerapp.New(cfg)
+	handlers.RegisterHealthChecks(app.Health)
+	api.Register(app.Router)
+
+	rec := testhelper.NewRequest(t, app.Router, http.MethodGet, "/health").Do()
+	testhelper.AssertStatus(t, rec, http.StatusOK)
+}
 `

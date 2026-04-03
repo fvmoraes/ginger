@@ -29,8 +29,8 @@ go install github.com/fvmoraes/ginger/cmd/ginger@latest
 export PATH="$(go env GOPATH)/bin:$PATH"
 
 # 2. Create a project
-ginger new foobar --api    # API → cmd/foobar-api
-# short flags also work: -a, -s, -w, -c
+ginger new foobar --service    # Service → cmd/foobar
+# short flags also work: -s, -w, -c
 cd foobar
 go mod tidy
 
@@ -42,12 +42,13 @@ ginger run
 
 ```bash
 # Next steps
-ginger generate crud foobar     # Generate CRUD (handler + service + repository + tests)
-ginger generate test foobar     # Generate unit tests for handler/service/repository
-ginger generate test app        # Generate app smoke test
+ginger generate crud foobar     # Generate CRUD (model + handler + service + port + adapter)
+ginger generate service deployer # Generate a business service for --cli/--worker
+ginger generate test foobar     # Generate tests for handler/service/adapter
+ginger generate smoke-test      # Generate app smoke test
 ginger add postgres             # Add PostgreSQL
 ginger add redis                # Add Redis
-ginger build                    # Compile → bin/foobar-api
+ginger build                    # Compile → bin/foobar
 ```
 
 📖 **Full guide:** [Getting Started (5 min)](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
@@ -103,28 +104,74 @@ Ginger is a CLI tool and set of packages that accelerates and standardizes Go pr
 
 ## Project Structure
 
-Every project created with `ginger new` starts minimal and grows on demand:
+Every project created with `ginger new` starts minimal and grows on demand.
+
+### Template types
+
+| Flag | Entry point | Best for |
+|------|-------------|----------|
+| *(none)* | `cmd/<name>/` | Generic Go programs, scripts |
+| `--service` | `cmd/<name>/` | HTTP APIs and microservices |
+| `--worker` | `cmd/<name>-worker/` | Background jobs and message consumers |
+| `--cli` | `cmd/<name>/` | User-facing CLI tools (Cobra-based) |
+
+### Service project (`--service`)
 
 ```
-foobar/                          # ginger new foobar --api
-├── cmd/
-│   └── foobar-api/              # cmd dir name = <name>-<type>
-│       └── main.go              # Application entrypoint
+foobar/                          # ginger new foobar --service
+├── cmd/foobar/main.go
 ├── internal/
-│   ├── api/handlers/            # Starts with health.go
-│   └── config/                  # Config loader wrapper
-├── configs/
-│   └── app.yaml                 # Application configuration
-├── devops/
-│   ├── docker/                  # Dockerfile, compose, Prometheus config
-│   ├── kubernetes/              # Deployment samples
-│   ├── helm/                    # Helm chart
-│   └── pipelines/               # CI/CD samples
-├── Makefile
-└── .env.example
+│   ├── api/
+│   │   ├── router.go            # Centralized route setup (/api/v1 group)
+│   │   ├── handlers/health.go
+│   │   └── middlewares/         # request_id.go and more
+│   ├── ports/ports.go           # Hexagonal Store interface
+│   ├── adapters/memory_store.go # In-memory adapter for dev/test
+│   ├── models/                  # Domain models
+│   └── config/config.go
+├── configs/app.yaml
+├── migrations/
+├── tests/integration/health_test.go
+├── devops/docker/   devops/kubernetes/   devops/helm/   devops/pipelines/
+├── Makefile  .env.example  .editorconfig
+└── .gitignore
 ```
 
-Extra directories such as `platform/`, `tests/`, `docs/`, additional `internal/api/...` layers, and more `devops/` assets are created only when a flow actually needs them, such as `ginger generate` or `ginger add`.
+### Worker project (`--worker`)
+
+```
+foobar/                          # ginger new foobar --worker
+├── cmd/foobar-worker/main.go
+├── internal/
+│   ├── worker/worker.go         # Run loop with backoff
+│   │          handler.go        # Handler interface + DefaultHandler
+│   ├── ports/ports.go           # MessageConsumer, MessagePublisher, JobStore
+│   ├── adapters/memory_consumer.go
+│   └── services/processor.go
+├── tests/integration/worker_test.go
+├── devops/docker/   devops/kubernetes/   devops/helm/   devops/pipelines/
+├── Makefile  .env.example  .editorconfig
+└── .gitignore
+```
+
+### CLI project (`--cli`)
+
+```
+foobar/                          # ginger new foobar --cli
+├── cmd/foobar/main.go           # Calls commands.Execute()
+├── internal/
+│   ├── commands/root.go         # Root Cobra command (--verbose, --output, --config)
+│   │            version.go      # version subcommand with ldflags support
+│   ├── ports/ports.go           # FileReader, ConfigLoader interfaces
+│   ├── adapters/filesystem.go   # Filesystem adapter
+│   └── config/config.go        # YAML config loader
+├── pkg/output/formatter.go      # json/table/text output
+├── .goreleaser.yaml             # Cross-platform release config
+├── Makefile  .editorconfig
+└── .gitignore
+```
+
+Extra directories such as `platform/`, `docs/`, additional layers, and more `devops/` assets appear only when you generate or add them.
 
 ## Getting Started
 
@@ -160,15 +207,13 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 ### Create a new project
 
 ```bash
-ginger new foobar --api       # API       → cmd/foobar-api
-ginger new foobar -a          # same as --api
-ginger new foobar --service       # Service   → cmd/foobar-service
+ginger new foobar --service   # Service   → cmd/foobar
 ginger new foobar -s          # same as --service
-ginger new foobar --worker       # Worker    → cmd/foobar-worker
+ginger new foobar --worker    # Worker    → cmd/foobar-worker
 ginger new foobar -w          # same as --worker
-ginger new foobar --cli      # CLI       → cmd/foobar-cli
-ginger new foobar -c         # same as --cli
-ginger new foobar          # Generic   → cmd/foobar
+ginger new foobar --cli       # CLI       → cmd/foobar
+ginger new foobar -c          # same as --cli
+ginger new foobar             # Generic   → cmd/foobar
 ```
 
 ```bash
@@ -190,19 +235,17 @@ curl http://localhost:8080/health
 
 ```
 ginger new <name>                  Scaffold a generic project  → cmd/<name>
-ginger new <name> --api | -a       API project                → cmd/<name>-api
-ginger new <name> --service | -s   Service project            → cmd/<name>-service
-ginger new <name> --worker | -w    Worker project             → cmd/<name>-worker
-ginger new <name> --cli | -c       CLI project                → cmd/<name>-cli
+ginger new <name> --service | -s   Service project            → cmd/<name>
+ginger new <name> --worker  | -w   Worker project             → cmd/<name>-worker
+ginger new <name> --cli     | -c   CLI project                → cmd/<name>
 ginger run                         Run the app in dev mode
 ginger build [output]              Build the binary
-ginger generate handler <name>     Generate an HTTP handler
-ginger generate service <name>     Generate a service
-ginger generate repository <name>  Generate a repository
-ginger generate crud <name>        Generate full CRUD (model+handler+service+repo+tests)
+ginger generate crud <name>        Generate model+handler+service+port+adapter
+ginger generate command <name>     Generate a Cobra subcommand for --cli projects
+ginger generate handler <name>     Generate a worker handler for --worker projects
+ginger generate service <name>     Generate a business service for --cli/--worker projects
 ginger generate test <name>        Generate handler+service+repository tests
-ginger generate test <name> all    Generate resource tests + app smoke test
-ginger generate test app           Generate app smoke test under tests/integration
+ginger generate smoke-test         Generate app smoke test under tests/integration
 ginger generate swagger [name]     Generate docs/openapi.json starter or CRUD example
 ginger add <integration>           Add an integration to the project
 ginger doctor                      Run project health diagnostics
@@ -243,7 +286,6 @@ ginger generate swagger foobar
 
 This creates a complete CRUD with:
 - Model, Handler, Service, Repository
-- Handler, service, and repository tests included
 - Ready to wire in your router
 
 For API docs, you can also generate an OpenAPI example file:
@@ -257,8 +299,7 @@ You can also generate tests separately:
 
 ```bash
 ginger generate test foobar
-ginger generate test foobar all
-ginger generate test app
+ginger generate smoke-test
 ```
 
 **Learn more:** [Getting Started Guide](./docs/GETTING_STARTED.md)
@@ -554,7 +595,7 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 
 ## Docker & Kubernetes
 
-A DevOps bundle is generated only for project types that need it. For `api` and `service`, Ginger creates:
+A DevOps bundle is generated only for project types that need it. For `service`, Ginger creates the full bundle and `worker` gets the Docker-oriented subset:
 
 - `devops/docker/Dockerfile`
 - `devops/docker/docker-compose.yml`
@@ -577,8 +618,8 @@ A Kubernetes `Deployment` + `Service` template is available at `devops/kubernete
 
 ### Create and Run
 ```bash
-ginger new foobar --api           # Create API project → cmd/foobar-api
-ginger new foobar -a              # Same as --api
+ginger new foobar --service       # Create service project → cmd/foobar
+ginger new foobar -s              # Same as --service
 cd foobar && go mod tidy       # Install deps
 ginger run                     # Run (dev)
 ginger build                   # Build (prod)
@@ -586,9 +627,10 @@ ginger build                   # Build (prod)
 
 ### Generate Code
 ```bash
-ginger generate crud foobar        # Complete CRUD
-ginger generate handler foobar     # Handler only
-ginger generate service foobar     # Service only
+ginger generate crud foobar        # Complete CRUD base
+ginger generate test foobar        # Resource tests
+ginger generate smoke-test         # App smoke test
+ginger generate swagger foobar     # OpenAPI example
 ```
 
 ### Add Integrations
@@ -696,25 +738,34 @@ Ginger é uma CLI e um conjunto de pacotes que agiliza e padroniza projetos Go e
 
 ## Estrutura do Projeto
 
-Todo projeto criado com `ginger new` segue este layout:
+Todo projeto criado com `ginger new` começa enxuto e cresce sob demanda. Para `--service`, o ponto de partida é:
 
 ```
-foobar/                          # ginger new foobar --api
+foobar/                          # ginger new foobar --service
 ├── cmd/
-│   └── foobar-api/              # nome do cmd = <nome>-<tipo>
+│   └── foobar/                  # entrypoint principal
 │       └── main.go              # Ponto de entrada da aplicação
 ├── internal/
-│   ├── api/handlers/            # Começa com health.go
-│   └── config/                  # Wrapper do carregador de configuração
+│   ├── api/
+│   │   ├── handlers/            # Começa com health.go
+│   │   ├── middlewares/
+│   │   └── router.go
+│   ├── adapters/
+│   ├── ports/
+│   ├── models/
+│   └── config/
 ├── configs/
 │   └── app.yaml                 # Configuração da aplicação
+├── migrations/
+├── tests/integration/
 ├── devops/
 │   ├── docker/                  # Dockerfile, compose, Prometheus config
 │   ├── kubernetes/              # Samples de Deployment
 │   ├── helm/                    # Helm chart
 │   └── pipelines/               # Samples de CI/CD
 ├── Makefile
-└── .env.example
+├── .env.example
+└── .editorconfig
 ```
 
 Diretórios como `platform/`, `tests/`, `docs/`, camadas extras em `internal/api/...` e mais assets em `devops/` surgem sob demanda, conforme você usa `ginger generate` e `ginger add`.
@@ -753,13 +804,11 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 ### Criar um novo projeto
 
 ```bash
-ginger new foobar --api        # API       → cmd/foobar-api
-ginger new foobar -a           # igual a --api
-ginger new foobar --service          # Service   → cmd/foobar-service
+ginger new foobar --service    # Service   → cmd/foobar
 ginger new foobar -s           # igual a --service
-ginger new foobar --worker          # Worker    → cmd/foobar-worker
+ginger new foobar --worker     # Worker    → cmd/foobar-worker
 ginger new foobar -w           # igual a --worker
-ginger new foobar --cli         # CLI       → cmd/foobar-cli
+ginger new foobar --cli        # CLI       → cmd/foobar
 ginger new foobar -c           # igual a --cli
 ginger new foobar             # Genérico  → cmd/foobar
 ```
@@ -777,22 +826,21 @@ Endpoints disponíveis imediatamente:
 | Método | Caminho      | Descrição          |
 |--------|--------------|--------------------|
 | GET    | /health      | Health check       |
-| GET    | /api/v1/ping | Endpoint de ping   |
+| GET    | /api/v1/...  | Grupo base para suas rotas da aplicação |
 
 ## Referência da CLI
 
 ```
 ginger new <nome>                  Scaffold genérico          → cmd/<nome>
-ginger new <nome> --api | -a       Projeto API                → cmd/<nome>-api
-ginger new <nome> --service | -s   Projeto Service            → cmd/<nome>-service
+ginger new <nome> --service | -s   Projeto Service            → cmd/<nome>
 ginger new <nome> --worker | -w    Projeto Worker             → cmd/<nome>-worker
-ginger new <nome> --cli | -c       Projeto CLI                → cmd/<nome>-cli
+ginger new <nome> --cli | -c       Projeto CLI                → cmd/<nome>
 ginger run                         Executa a aplicação em modo dev
 ginger build [saída]               Compila o binário
-ginger generate handler <nome>     Gera um handler HTTP
-ginger generate service <nome>     Gera um service
-ginger generate repository <nome>  Gera um repository
-ginger generate crud <nome>        Gera CRUD completo (model+handler+service+repo+test)
+ginger generate crud <nome>        Gera model+handler+service+port+adapter
+ginger generate test <nome>        Gera testes de handler+service+adapter
+ginger generate smoke-test         Gera smoke test da aplicação
+ginger generate swagger [nome]     Gera docs/openapi.json base ou exemplo CRUD
 ginger add <integração>            Adiciona uma integração ao projeto
 ginger doctor                      Diagnóstico de saúde do projeto
 ginger version                     Exibe ginger x.y.z
@@ -826,17 +874,20 @@ ginger help                        Exibe a ajuda
 ### Exemplo de geração de código
 
 ```bash
-ginger generate handler  foobar
-ginger generate service  foobar
-ginger generate repository foobar
+ginger generate crud foobar
+ginger generate test foobar
+ginger generate swagger foobar
 ```
 
 Isso cria:
 
 ```
+internal/models/foobar.go
 internal/api/handlers/foobar_handler.go
-internal/api/services/foobar_service.go
-internal/api/repositories/foobar_repository.go
+internal/services/foobar_service.go
+internal/ports/foobar_repository.go
+internal/adapters/foobar_memory_repository.go
+docs/openapi.json
 ```
 
 Cada arquivo já vem com a interface correta, construtor e stubs de métodos — pronto para preencher.
@@ -1155,7 +1206,7 @@ Um template de `Deployment` + `Service` Kubernetes está disponível em `devops/
 
 ### Criar e Rodar
 ```bash
-ginger new foobar --api        # Criar projeto API → cmd/foobar-api
+ginger new foobar --service    # Criar projeto service → cmd/foobar
 cd foobar && go mod tidy    # Instalar deps
 ginger run                     # Rodar (dev)
 ginger build                   # Build (prod)
@@ -1163,9 +1214,9 @@ ginger build                   # Build (prod)
 
 ### Gerar Código
 ```bash
-ginger generate crud foobar      # CRUD completo
-ginger generate handler foobar   # Apenas handler
-ginger generate service foobar   # Apenas service
+ginger generate crud foobar      # Estrutura completa do recurso
+ginger generate test foobar      # Testes do recurso
+ginger generate swagger foobar   # OpenAPI do recurso
 ```
 
 ### Adicionar Integrações

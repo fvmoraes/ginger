@@ -21,7 +21,7 @@ func TestDetectCmdDirRejectsMultipleEntrypoints(t *testing.T) {
 		_ = os.Chdir(wd)
 	}()
 
-	for _, name := range []string{"api", "worker"} {
+	for _, name := range []string{"service", "worker"} {
 		dir := filepath.Join("cmd", name)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			t.Fatalf("MkdirAll returned error: %v", err)

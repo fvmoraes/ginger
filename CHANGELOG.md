@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2026-04-01
 
 ### Added
-- Add short flags (-a/-s/-w/-c) for ginger new and auto PATH setup in install.sh
+- Add short flags (-s/-w/-c) for ginger new and auto PATH setup in install.sh
 
 ## [1.1.4] - 2026-03-14
 

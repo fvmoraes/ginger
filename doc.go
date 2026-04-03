@@ -9,10 +9,9 @@
 //	Both long and short flags work for project types.
 //	As flags longas e curtas funcionam para os tipos de projeto.
 //
-//	ginger new foobar --api | -a       # API     → cmd/foobar-api
-//	ginger new foobar --service | -s   # Service → cmd/foobar-service
+//	ginger new foobar --service | -s   # Service → cmd/foobar
 //	ginger new foobar --worker | -w    # Worker  → cmd/foobar-worker
-//	ginger new foobar --cli | -c       # CLI     → cmd/foobar-cli
+//	ginger new foobar --cli | -c       # CLI     → cmd/foobar
 //	ginger new foobar                  # Generic → cmd/foobar
 //
 // # Core Packages

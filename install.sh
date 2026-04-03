@@ -153,10 +153,9 @@ fi
 
 echo ""
 echo "Quick start:"
-echo "   ginger new foobar --api      # API       → cmd/foobar-api"
-echo "   ginger new foobar --service  # Service   → cmd/foobar-service"
+echo "   ginger new foobar --service  # Service   → cmd/foobar"
 echo "   ginger new foobar --worker   # Worker    → cmd/foobar-worker"
-echo "   ginger new foobar --cli      # CLI       → cmd/foobar-cli"
+echo "   ginger new foobar --cli      # CLI       → cmd/foobar"
 echo "   ginger new foobar            # Generic   → cmd/foobar"
 echo ""
 echo "Documentation: https://github.com/fvmoraes/ginger#readme"

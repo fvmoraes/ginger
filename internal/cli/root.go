@@ -53,25 +53,23 @@ Usage:
   ginger <command> [arguments]
 
 Project Commands:
-  new <name> [--api|--service|--worker|--cli]  Create a new project
+  new <name> [--service|--worker|--cli]        Create a new project
     default   generic  -> cmd/<name>
-    --api     api      -> cmd/<name>-api
-    --service service  -> cmd/<name>-service
+    --service service  -> cmd/<name>
     --worker  worker   -> cmd/<name>-worker
-    --cli     cli      -> cmd/<name>-cli
+    --cli     cli      -> cmd/<name>
 
   run [args...]                                Run the detected app entrypoint
   build [output]                               Build the detected app entrypoint
   doctor                                       Diagnose project health
 
 Generation Commands:
-  generate crud <name>                         Generate model, handler, service, and repository
-  generate handler <name>                      Generate an HTTP handler
-  generate service <name>                      Generate a service
-  generate repository <name>                   Generate a repository
-  generate test <name>                         Generate handler, service, and repository tests
-  generate test <name> all                     Generate resource tests plus app smoke test
-  generate test app                            Generate app smoke test under tests/integration
+  generate crud <name>                         Generate a REST CRUD base (--service projects)
+  generate command <name>                      Generate a Cobra subcommand (--cli projects)
+  generate handler <name>                      Generate a worker handler (--worker projects)
+  generate service <name>                      Generate a business service (--cli/--worker projects)
+  generate test <name>                         Generate tests for a generated resource
+  generate smoke-test                          Generate app smoke test under tests/integration
   generate swagger [name]                      Generate docs/openapi.json
                                                no name = starter spec
                                                name    = CRUD example for that resource
@@ -80,6 +78,7 @@ Integration Commands:
   add <integration>                            Add an integration file to the current project
     infrastructure adapters -> platform/...
     ready-to-mount HTTP endpoints -> internal/api/handlers/...
+    updates devops/docker/docker-compose.yml when local infra is available
 
     databases   : postgres, mysql, sqlite, sqlserver
     nosql       : couchbase, mongodb
@@ -101,10 +100,15 @@ Aliases:
   help     = -h, --help
 
 Examples:
-  ginger new foobar --api
+  ginger new foobar --service
   ginger new foobar --worker
+  ginger new foobar --cli
   ginger generate crud foobar
-  ginger generate test foobar all
+  ginger generate command deploy
+  ginger generate handler order
+  ginger generate service deployer
+  ginger generate test foobar
+  ginger generate smoke-test
   ginger generate swagger
   ginger generate swagger foobar
   ginger add postgres

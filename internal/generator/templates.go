@@ -10,25 +10,20 @@ const handlerTmpl = generatedGoFileHeader + `package handlers
 import (
 	"net/http"
 
+	"{{.Module}}/internal/models"
+	"{{.Module}}/internal/services"
 	"github.com/fvmoraes/ginger/pkg/response"
 	"github.com/fvmoraes/ginger/pkg/router"
 )
 
-// PT-BR: {{.NameTitle}}Handler lida com requisições HTTP de {{.NamePlural}}.
-// EN: {{.NameTitle}}Handler handles HTTP requests for {{.NamePlural}}.
 type {{.NameTitle}}Handler struct {
-	// PT-BR: svc representa o serviço de {{.NameTitle}}.
-	// EN: svc represents the {{.NameTitle}} service.
+	svc services.{{.NameTitle}}Service
 }
 
-// PT-BR: New{{.NameTitle}}Handler cria um novo {{.NameTitle}}Handler.
-// EN: New{{.NameTitle}}Handler creates a new {{.NameTitle}}Handler.
-func New{{.NameTitle}}Handler( /* svc {{.NameTitle}}Service */ ) *{{.NameTitle}}Handler {
-	return &{{.NameTitle}}Handler{}
+func New{{.NameTitle}}Handler(svc services.{{.NameTitle}}Service) *{{.NameTitle}}Handler {
+	return &{{.NameTitle}}Handler{svc: svc}
 }
 
-// PT-BR: Register monta as rotas de {{.NameTitle}} no grupo informado.
-// EN: Register mounts the {{.NameTitle}} routes on the given router group.
 func (h *{{.NameTitle}}Handler) Register(r *router.Router) {
 	g := r.Group("/{{.NamePlural}}")
 	g.GET("/", h.list)
@@ -39,127 +34,200 @@ func (h *{{.NameTitle}}Handler) Register(r *router.Router) {
 }
 
 func (h *{{.NameTitle}}Handler) list(w http.ResponseWriter, r *http.Request) {
-	response.OK(w, []any{})
+	items, err := h.svc.List(r.Context())
+	if err != nil {
+		router.Error(w, err)
+		return
+	}
+	response.OK(w, items)
 }
 
 func (h *{{.NameTitle}}Handler) get(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	response.OK(w, map[string]string{"id": id})
+	item, err := h.svc.Get(r.Context(), r.PathValue("id"))
+	if err != nil {
+		router.Error(w, err)
+		return
+	}
+	response.OK(w, item)
 }
 
 func (h *{{.NameTitle}}Handler) create(w http.ResponseWriter, r *http.Request) {
-	var body map[string]any
-	if err := router.Decode(r, &body); err != nil {
+	var input models.Create{{.NameTitle}}Input
+	if err := router.Decode(r, &input); err != nil {
 		router.Error(w, err)
 		return
 	}
-	response.Created(w, body)
+
+	item, err := h.svc.Create(r.Context(), input)
+	if err != nil {
+		router.Error(w, err)
+		return
+	}
+	response.Created(w, item)
 }
 
 func (h *{{.NameTitle}}Handler) update(w http.ResponseWriter, r *http.Request) {
-	var body map[string]any
-	if err := router.Decode(r, &body); err != nil {
+	var input models.Update{{.NameTitle}}Input
+	if err := router.Decode(r, &input); err != nil {
 		router.Error(w, err)
 		return
 	}
-	response.OK(w, body)
+
+	item, err := h.svc.Update(r.Context(), r.PathValue("id"), input)
+	if err != nil {
+		router.Error(w, err)
+		return
+	}
+	response.OK(w, item)
 }
 
 func (h *{{.NameTitle}}Handler) delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.Delete(r.Context(), r.PathValue("id")); err != nil {
+		router.Error(w, err)
+		return
+	}
 	response.NoContent(w)
 }
 `
 
 const serviceTmpl = generatedGoFileHeader + `package services
 
-import "context"
+import (
+	"context"
+	"time"
 
-// PT-BR: {{.NameTitle}}Service define a logica de negocio de {{.NamePlural}}.
-// EN: {{.NameTitle}}Service defines the business logic for {{.NamePlural}}.
+	"{{.Module}}/internal/models"
+	"{{.Module}}/internal/ports"
+)
+
 type {{.NameTitle}}Service interface {
-	List(ctx context.Context) ([]any, error)
-	Get(ctx context.Context, id string) (any, error)
-	Create(ctx context.Context, input any) (any, error)
-	Update(ctx context.Context, id string, input any) (any, error)
+	List(ctx context.Context) ([]models.{{.NameTitle}}, error)
+	Get(ctx context.Context, id string) (models.{{.NameTitle}}, error)
+	Create(ctx context.Context, input models.Create{{.NameTitle}}Input) (models.{{.NameTitle}}, error)
+	Update(ctx context.Context, id string, input models.Update{{.NameTitle}}Input) (models.{{.NameTitle}}, error)
 	Delete(ctx context.Context, id string) error
 }
 
 type {{.Name}}Service struct {
-	// PT-BR: repo representa o repositorio de {{.NameTitle}}.
-	// EN: repo represents the {{.NameTitle}} repository.
+	repo ports.{{.NameTitle}}Repository
 }
 
-// PT-BR: New{{.NameTitle}}Service cria um novo {{.Name}}Service.
-// EN: New{{.NameTitle}}Service creates a new {{.Name}}Service.
-func New{{.NameTitle}}Service( /* repo {{.NameTitle}}Repository */ ) {{.NameTitle}}Service {
-	return &{{.Name}}Service{}
+func New{{.NameTitle}}Service(repo ports.{{.NameTitle}}Repository) {{.NameTitle}}Service {
+	return &{{.Name}}Service{repo: repo}
 }
 
-func (s *{{.Name}}Service) List(ctx context.Context) ([]any, error) {
-	return []any{}, nil
+func (s *{{.Name}}Service) List(ctx context.Context) ([]models.{{.NameTitle}}, error) {
+	return s.repo.List(ctx)
 }
 
-func (s *{{.Name}}Service) Get(ctx context.Context, id string) (any, error) {
-	return map[string]string{"id": id}, nil
+func (s *{{.Name}}Service) Get(ctx context.Context, id string) (models.{{.NameTitle}}, error) {
+	return s.repo.Get(ctx, id)
 }
 
-func (s *{{.Name}}Service) Create(ctx context.Context, input any) (any, error) {
-	return input, nil
+func (s *{{.Name}}Service) Create(ctx context.Context, input models.Create{{.NameTitle}}Input) (models.{{.NameTitle}}, error) {
+	item := models.{{.NameTitle}}{
+		ID:        input.Name,
+		Name:      input.Name,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	return s.repo.Create(ctx, item)
 }
 
-func (s *{{.Name}}Service) Update(ctx context.Context, id string, input any) (any, error) {
-	return input, nil
+func (s *{{.Name}}Service) Update(ctx context.Context, id string, input models.Update{{.NameTitle}}Input) (models.{{.NameTitle}}, error) {
+	current, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return models.{{.NameTitle}}{}, err
+	}
+	if input.Name != "" {
+		current.Name = input.Name
+	}
+	current.UpdatedAt = time.Now()
+	return s.repo.Update(ctx, id, current)
 }
 
 func (s *{{.Name}}Service) Delete(ctx context.Context, id string) error {
-	return nil
+	return s.repo.Delete(ctx, id)
 }
 `
 
-const repositoryTmpl = generatedGoFileHeader + `package repositories
+const repositoryTmpl = generatedGoFileHeader + `package ports
 
 import (
 	"context"
-	"database/sql"
+
+	"{{.Module}}/internal/models"
 )
 
-// PT-BR: {{.NameTitle}}Repository define o acesso a dados de {{.NamePlural}}.
-// EN: {{.NameTitle}}Repository defines data access for {{.NamePlural}}.
 type {{.NameTitle}}Repository interface {
-	FindAll(ctx context.Context) ([]any, error)
-	FindByID(ctx context.Context, id string) (any, error)
-	Save(ctx context.Context, entity any) (any, error)
-	Update(ctx context.Context, id string, entity any) (any, error)
+	List(ctx context.Context) ([]models.{{.NameTitle}}, error)
+	Get(ctx context.Context, id string) (models.{{.NameTitle}}, error)
+	Create(ctx context.Context, item models.{{.NameTitle}}) (models.{{.NameTitle}}, error)
+	Update(ctx context.Context, id string, item models.{{.NameTitle}}) (models.{{.NameTitle}}, error)
 	Delete(ctx context.Context, id string) error
 }
+`
 
-type {{.Name}}Repository struct {
-	db *sql.DB
+const adapterTmpl = generatedGoFileHeader + `package adapters
+
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	"{{.Module}}/internal/models"
+)
+
+type {{.NameTitle}}MemoryRepository struct {
+	mu    sync.RWMutex
+	items map[string]models.{{.NameTitle}}
 }
 
-// PT-BR: New{{.NameTitle}}Repository cria um novo {{.Name}}Repository.
-// EN: New{{.NameTitle}}Repository creates a new {{.Name}}Repository.
-func New{{.NameTitle}}Repository(db *sql.DB) {{.NameTitle}}Repository {
-	return &{{.Name}}Repository{db: db}
+func New{{.NameTitle}}MemoryRepository() *{{.NameTitle}}MemoryRepository {
+	return &{{.NameTitle}}MemoryRepository{items: make(map[string]models.{{.NameTitle}})}
 }
 
-func (r *{{.Name}}Repository) FindAll(ctx context.Context) ([]any, error) {
-	return []any{}, nil
+func (r *{{.NameTitle}}MemoryRepository) List(context.Context) ([]models.{{.NameTitle}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	items := make([]models.{{.NameTitle}}, 0, len(r.items))
+	for _, item := range r.items {
+		items = append(items, item)
+	}
+	return items, nil
 }
 
-func (r *{{.Name}}Repository) FindByID(ctx context.Context, id string) (any, error) {
-	return map[string]string{"id": id}, nil
+func (r *{{.NameTitle}}MemoryRepository) Get(_ context.Context, id string) (models.{{.NameTitle}}, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.items[id]
+	if !ok {
+		return models.{{.NameTitle}}{}, fmt.Errorf("{{.Slug}} not found: %s", id)
+	}
+	return item, nil
 }
 
-func (r *{{.Name}}Repository) Save(ctx context.Context, entity any) (any, error) {
-	return entity, nil
+func (r *{{.NameTitle}}MemoryRepository) Create(_ context.Context, item models.{{.NameTitle}}) (models.{{.NameTitle}}, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.items[item.ID] = item
+	return item, nil
 }
 
-func (r *{{.Name}}Repository) Update(ctx context.Context, id string, entity any) (any, error) {
-	return entity, nil
+func (r *{{.NameTitle}}MemoryRepository) Update(_ context.Context, id string, item models.{{.NameTitle}}) (models.{{.NameTitle}}, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	item.ID = id
+	r.items[id] = item
+	return item, nil
 }
 
-func (r *{{.Name}}Repository) Delete(ctx context.Context, id string) error {
+func (r *{{.NameTitle}}MemoryRepository) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.items, id)
 	return nil
 }
 `
@@ -168,26 +236,19 @@ const modelTmpl = generatedGoFileHeader + `package models
 
 import "time"
 
-// PT-BR: {{.NameTitle}} representa o modelo de dominio de {{.NamePlural}}.
-// EN: {{.NameTitle}} is the domain model for {{.NamePlural}}.
 type {{.NameTitle}} struct {
 	ID        string    ` + "`json:\"id\"`" + `
+	Name      string    ` + "`json:\"name\"`" + `
 	CreatedAt time.Time ` + "`json:\"created_at\"`" + `
 	UpdatedAt time.Time ` + "`json:\"updated_at\"`" + `
 }
 
-// PT-BR: Create{{.NameTitle}}Input representa o payload para criar um(a) {{.Name}}.
-// EN: Create{{.NameTitle}}Input is the payload for creating a {{.Name}}.
 type Create{{.NameTitle}}Input struct {
-	// PT-BR: TODO: adicione os campos necessarios.
-	// EN: TODO: add the required fields.
+	Name string ` + "`json:\"name\"`" + `
 }
 
-// PT-BR: Update{{.NameTitle}}Input representa o payload para atualizar um(a) {{.Name}}.
-// EN: Update{{.NameTitle}}Input is the payload for updating a {{.Name}}.
 type Update{{.NameTitle}}Input struct {
-	// PT-BR: TODO: adicione os campos necessarios.
-	// EN: TODO: add the required fields.
+	Name string ` + "`json:\"name\"`" + `
 }
 `
 
@@ -197,12 +258,16 @@ import (
 	"net/http"
 	"testing"
 
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/services"
 	"github.com/fvmoraes/ginger/pkg/router"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
 
 func Test{{.NameTitle}}Handler_Register(t *testing.T) {
-	h := New{{.NameTitle}}Handler()
+	repo := adapters.New{{.NameTitle}}MemoryRepository()
+	svc := services.New{{.NameTitle}}Service(repo)
+	h := New{{.NameTitle}}Handler(svc)
 	r := router.New()
 	h.Register(r)
 
@@ -213,38 +278,11 @@ func Test{{.NameTitle}}Handler_Register(t *testing.T) {
 		body       any
 		wantStatus int
 	}{
-		{
-			name:       "list {{.NamePlural}}",
-			method:     http.MethodGet,
-			path:       "/{{.NamePlural}}/",
-			wantStatus: http.StatusOK,
-		},
-		{
-			name:   "create {{.Name}}",
-			method: http.MethodPost,
-			path:   "/{{.NamePlural}}/",
-			body:       map[string]any{"name": "{{.Name}}"},
-			wantStatus: http.StatusCreated,
-		},
-		{
-			name:       "get {{.Name}} by id",
-			method:     http.MethodGet,
-			path:       "/{{.NamePlural}}/123",
-			wantStatus: http.StatusOK,
-		},
-		{
-			name:   "update {{.Name}}",
-			method: http.MethodPut,
-			path:   "/{{.NamePlural}}/123",
-			body:   map[string]any{"name": "{{.Name}} updated"},
-			wantStatus: http.StatusOK,
-		},
-		{
-			name:       "delete {{.Name}}",
-			method:     http.MethodDelete,
-			path:       "/{{.NamePlural}}/123",
-			wantStatus: http.StatusNoContent,
-		},
+		{name: "list", method: http.MethodGet, path: "/{{.NamePlural}}/", wantStatus: http.StatusOK},
+		{name: "create", method: http.MethodPost, path: "/{{.NamePlural}}/", body: map[string]any{"name": "{{.Slug}}"}, wantStatus: http.StatusCreated},
+		{name: "get", method: http.MethodGet, path: "/{{.NamePlural}}/{{.Slug}}", wantStatus: http.StatusOK},
+		{name: "update", method: http.MethodPut, path: "/{{.NamePlural}}/{{.Slug}}", body: map[string]any{"name": "{{.Slug}} updated"}, wantStatus: http.StatusOK},
+		{name: "delete", method: http.MethodDelete, path: "/{{.NamePlural}}/{{.Slug}}", wantStatus: http.StatusNoContent},
 	}
 
 	for _, tt := range tests {
@@ -264,111 +302,97 @@ const serviceTestTmpl = generatedGoFileHeader + `package services
 
 import (
 	"context"
-	"reflect"
 	"testing"
+
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/models"
 )
 
 func Test{{.NameTitle}}Service_CRUD(t *testing.T) {
-	svc := New{{.NameTitle}}Service()
+	svc := New{{.NameTitle}}Service(adapters.New{{.NameTitle}}MemoryRepository())
 	ctx := context.Background()
 
-	list, err := svc.List(ctx)
-	if err != nil {
-		t.Fatalf("List returned error: %v", err)
-	}
-	if len(list) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(list))
-	}
-
-	got, err := svc.Get(ctx, "123")
-	if err != nil {
-		t.Fatalf("Get returned error: %v", err)
-	}
-	entity, ok := got.(map[string]string)
-	if !ok {
-		t.Fatalf("expected map[string]string, got %T", got)
-	}
-	if entity["id"] != "123" {
-		t.Fatalf("expected id 123, got %q", entity["id"])
-	}
-
-	input := map[string]any{"name": "{{.Name}}"}
-
-	created, err := svc.Create(ctx, input)
+	created, err := svc.Create(ctx, models.Create{{.NameTitle}}Input{Name: "{{.Slug}}"})
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
-	if !reflect.DeepEqual(created, input) {
-		t.Fatalf("expected Create to return input, got %#v", created)
+	if created.Name != "{{.Slug}}" {
+		t.Fatalf("expected created name %q, got %q", "{{.Slug}}", created.Name)
 	}
 
-	updated, err := svc.Update(ctx, "123", input)
+	items, err := svc.List(ctx)
 	if err != nil {
-		t.Fatalf("Update returned error: %v", err)
+		t.Fatalf("List returned error: %v", err)
 	}
-	if !reflect.DeepEqual(updated, input) {
-		t.Fatalf("expected Update to return input, got %#v", updated)
-	}
-
-	if err := svc.Delete(ctx, "123"); err != nil {
-		t.Fatalf("Delete returned error: %v", err)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
 	}
 }
 `
 
-const repositoryTestTmpl = generatedGoFileHeader + `package repositories
+const repositoryTestTmpl = generatedGoFileHeader + `package adapters
 
 import (
 	"context"
-	"reflect"
 	"testing"
+	"time"
+
+	"{{.Module}}/internal/models"
 )
 
-func Test{{.NameTitle}}Repository_CRUD(t *testing.T) {
-	repo := New{{.NameTitle}}Repository(nil)
+func Test{{.NameTitle}}MemoryRepository_CRUD(t *testing.T) {
+	repo := New{{.NameTitle}}MemoryRepository()
 	ctx := context.Background()
 
-	list, err := repo.FindAll(ctx)
+	item := models.{{.NameTitle}}{
+		ID:        "{{.Slug}}",
+		Name:      "{{.Slug}}",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if _, err := repo.Create(ctx, item); err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+
+	got, err := repo.Get(ctx, "{{.Slug}}")
 	if err != nil {
-		t.Fatalf("FindAll returned error: %v", err)
+		t.Fatalf("Get returned error: %v", err)
 	}
-	if len(list) != 0 {
-		t.Fatalf("expected empty list, got %d items", len(list))
+	if got.Name != item.Name {
+		t.Fatalf("expected %q, got %q", item.Name, got.Name)
 	}
+}
+`
 
-	got, err := repo.FindByID(ctx, "123")
-	if err != nil {
-		t.Fatalf("FindByID returned error: %v", err)
-	}
-	entity, ok := got.(map[string]string)
-	if !ok {
-		t.Fatalf("expected map[string]string, got %T", got)
-	}
-	if entity["id"] != "123" {
-		t.Fatalf("expected id 123, got %q", entity["id"])
-	}
+const integrationTestTmpl = generatedGoFileHeader + `package integration_test
 
-	input := map[string]any{"name": "{{.Name}}"}
+import (
+	"net/http"
+	"testing"
 
-	saved, err := repo.Save(ctx, input)
-	if err != nil {
-		t.Fatalf("Save returned error: %v", err)
-	}
-	if !reflect.DeepEqual(saved, input) {
-		t.Fatalf("expected Save to return input, got %#v", saved)
-	}
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/api/handlers"
+	"{{.Module}}/internal/services"
+	"github.com/fvmoraes/ginger/pkg/router"
+	"github.com/fvmoraes/ginger/pkg/testhelper"
+)
 
-	updated, err := repo.Update(ctx, "123", input)
-	if err != nil {
-		t.Fatalf("Update returned error: %v", err)
-	}
-	if !reflect.DeepEqual(updated, input) {
-		t.Fatalf("expected Update to return input, got %#v", updated)
-	}
+func Test{{.NameTitle}}CRUDFlow(t *testing.T) {
+	repo := adapters.New{{.NameTitle}}MemoryRepository()
+	svc := services.New{{.NameTitle}}Service(repo)
+	h := handlers.New{{.NameTitle}}Handler(svc)
+	r := router.New()
+	v1 := r.Group("/api/v1")
+	h.Register(v1)
 
-	if err := repo.Delete(ctx, "123"); err != nil {
-		t.Fatalf("Delete returned error: %v", err)
-	}
+	create := testhelper.NewRequest(t, r, http.MethodPost, "/api/v1/{{.NamePlural}}/").
+		WithBody(map[string]any{"name": "{{.Slug}}"}).
+		Do()
+	testhelper.AssertStatus(t, create, http.StatusCreated)
+
+	list := testhelper.NewRequest(t, r, http.MethodGet, "/api/v1/{{.NamePlural}}/").Do()
+	testhelper.AssertStatus(t, list, http.StatusOK)
 }
 `
 
@@ -378,6 +402,7 @@ import (
 	"net/http"
 	"testing"
 
+	"{{.Module}}/internal/api"
 	"{{.Module}}/internal/api/handlers"
 	"{{.Module}}/internal/config"
 	gingerapp "github.com/fvmoraes/ginger/pkg/app"
@@ -391,33 +416,94 @@ func TestApp_Smoke(t *testing.T) {
 	}
 
 	app := gingerapp.New(cfg)
-	handlers.Register(app.Router)
+	handlers.RegisterHealthChecks(app.Health)
+	api.Register(app.Router)
 
-	tests := []struct {
-		name       string
-		method     string
-		path       string
-		wantStatus int
-	}{
-		{
-			name:       "health endpoint",
-			method:     http.MethodGet,
-			path:       "/health",
-			wantStatus: http.StatusOK,
-		},
-		{
-			name:       "root endpoint",
-			method:     http.MethodGet,
-			path:       "/",
-			wantStatus: http.StatusOK,
-		},
+	rec := testhelper.NewRequest(t, app.Router, http.MethodGet, "/health").Do()
+	testhelper.AssertStatus(t, rec, http.StatusOK)
+}
+`
+
+const cliServicePortTmpl = generatedGoFileHeader + `package ports
+
+import "context"
+
+type {{.NameTitle}}Runner interface {
+	Run(ctx context.Context, args []string) error
+}
+`
+
+const cliServiceTmpl = generatedGoFileHeader + `package services
+
+import (
+	"context"
+	"fmt"
+)
+
+type {{.NameTitle}} struct{}
+
+func New{{.NameTitle}}() *{{.NameTitle}} { return &{{.NameTitle}}{} }
+
+func (s *{{.NameTitle}}) Run(ctx context.Context, args []string) error {
+	_ = ctx
+	fmt.Printf("{{.Slug}} service executed with %d args\n", len(args))
+	return nil
+}
+`
+
+const cliServiceTestTmpl = generatedGoFileHeader + `package services
+
+import (
+	"context"
+	"testing"
+)
+
+func Test{{.NameTitle}}Run(t *testing.T) {
+	if err := New{{.NameTitle}}().Run(context.Background(), []string{"example"}); err != nil {
+		t.Fatalf("Run returned error: %v", err)
 	}
+}
+`
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rec := testhelper.NewRequest(t, app.Router, tt.method, tt.path).Do()
-			testhelper.AssertStatus(t, rec, tt.wantStatus)
-		})
+const workerServicePortTmpl = generatedGoFileHeader + `package ports
+
+import "context"
+
+type {{.NameTitle}}Processor interface {
+	Process(ctx context.Context, msg []byte) error
+}
+`
+
+const workerServiceTmpl = generatedGoFileHeader + `package services
+
+import (
+	"context"
+	"fmt"
+)
+
+type {{.NameTitle}} struct{}
+
+func New{{.NameTitle}}() *{{.NameTitle}} { return &{{.NameTitle}}{} }
+
+func (s *{{.NameTitle}}) Process(ctx context.Context, msg []byte) error {
+	_ = ctx
+	if len(msg) == 0 {
+		return fmt.Errorf("{{.Slug}}: empty message")
+	}
+	return nil
+}
+`
+
+const workerServiceTestTmpl = generatedGoFileHeader + `package services
+
+import (
+	"context"
+	"testing"
+)
+
+func Test{{.NameTitle}}Process(t *testing.T) {
+	if err := New{{.NameTitle}}().Process(context.Background(), []byte("hello")); err != nil {
+		t.Fatalf("Process returned error: %v", err)
 	}
 }
 `
@@ -457,118 +543,15 @@ const openAPITmpl = `{
         }
       },
       "post": {
-        "summary": "Create {{.Name}}",
+        "summary": "Create {{.NameTitle}}",
         "tags": ["{{.NameTitle}}"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Create{{.NameTitle}}Input"
-              }
-            }
-          }
-        },
         "responses": {
           "201": {
             "description": "{{.NameTitle}} created"
           }
         }
       }
-    },
-    "/{{.NamePlural}}/{id}": {
-      "get": {
-        "summary": "Get {{.Name}} by ID",
-        "tags": ["{{.NameTitle}}"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "{{.NameTitle}} details"
-          }
-        }
-      },
-      "put": {
-        "summary": "Update {{.Name}}",
-        "tags": ["{{.NameTitle}}"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Update{{.NameTitle}}Input"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "{{.NameTitle}} updated"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete {{.Name}}",
-        "tags": ["{{.NameTitle}}"],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "{{.NameTitle}} deleted"
-          }
-        }
-      }
     }{{end}}
-  }{{if .Name}},
-  "components": {
-    "schemas": {
-      "{{.NameTitle}}": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string", "example": "{{.Name}}" }
-        }
-      },
-      "Create{{.NameTitle}}Input": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "example": "{{.Name}}" }
-        },
-        "required": ["name"]
-      },
-      "Update{{.NameTitle}}Input": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "example": "{{.Name}} updated" }
-        }
-      }
-    }
-  }{{end}}
+  }
 }
 `

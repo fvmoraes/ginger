@@ -19,7 +19,7 @@
 
 ### Dockerfile Gerado
 
-Projetos `api`, `service` e `worker` gerados pelo Ginger vêm com um `Dockerfile` multi-stage otimizado em `devops/docker/Dockerfile`:
+Projetos `service` e `worker` gerados pelo Ginger vêm com um `Dockerfile` multi-stage otimizado em `devops/docker/Dockerfile`:
 
 ```dockerfile
 # Build stage
@@ -31,9 +31,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build (example for API project type)
+# Build (example for service project type)
 COPY . .
-RUN go build -o bin/foobar ./cmd/foobar-api
+RUN go build -o bin/foobar ./cmd/foobar
 
 # Runtime stage
 FROM alpine:3.19
@@ -100,7 +100,9 @@ CMD ["/main"]
 
 ## Docker Compose
 
-### docker-compose.yml Gerado (projetos API/service)
+### docker-compose.yml Gerado
+
+Projetos `service` já nascem com stack local pronta. Projetos `worker` começam com o serviço principal e ganham dependências adicionais quando você roda `ginger add <integration>`.
 
 Localização: `devops/docker/docker-compose.yml`
 
@@ -173,6 +175,18 @@ docker compose -f devops/docker/docker-compose.yml up -d --build
 
 # Access database
 docker compose exec postgres psql -U user -d foobar
+```
+
+### Atualização Automática com `ginger add`
+
+Quando o compose já existe, o Ginger também o atualiza automaticamente para integrações com infraestrutura local. Exemplos:
+
+```bash
+ginger add postgres   # adiciona serviço postgres + DATABASE_DSN
+ginger add redis      # adiciona serviço redis + REDIS_ADDR
+ginger add rabbitmq   # adiciona serviço rabbitmq + RABBITMQ_URL
+ginger add kafka      # adiciona serviço kafka + KAFKA_BROKERS
+ginger add nats       # adiciona serviço nats + NATS_URL
 ```
 
 ---

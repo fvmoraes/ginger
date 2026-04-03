@@ -9,13 +9,11 @@ import (
 
 func runNew(args []string) {
 	fs := mustFlag("new")
-	isAPI := fs.Bool("api", false, "API project      → cmd/<name>-api")
-	isSvc := fs.Bool("service", false, "service project  → cmd/<name>-service")
+	isSvc := fs.Bool("service", false, "service project  → cmd/<name>")
 	isWorker := fs.Bool("worker", false, "worker project   → cmd/<name>-worker")
-	isCLI := fs.Bool("cli", false, "CLI project      → cmd/<name>-cli")
+	isCLI := fs.Bool("cli", false, "CLI project      → cmd/<name>")
 
-	// Backward-compatible short aliases (legacy flags).
-	isAPIShort := fs.Bool("a", false, "alias for --api")
+	// Short aliases.
 	isSvcShort := fs.Bool("s", false, "alias for --service")
 	isWorkerShort := fs.Bool("w", false, "alias for --worker")
 	isCLIShort := fs.Bool("c", false, "alias for --cli")
@@ -32,12 +30,11 @@ func runNew(args []string) {
 	fs.Parse(append(flags, positional...)) //nolint:errcheck
 
 	if fs.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: ginger new <name> [--api|--service|--worker|--cli]")
+		fmt.Fprintln(os.Stderr, "usage: ginger new <name> [--service|--worker|--cli]")
 		fmt.Fprintln(os.Stderr, "  (no flag)  generic   → cmd/<name>")
-		fmt.Fprintln(os.Stderr, "  --api      api       → cmd/<name>-api")
-		fmt.Fprintln(os.Stderr, "  --service  service   → cmd/<name>-service")
+		fmt.Fprintln(os.Stderr, "  --service  service   → cmd/<name>")
 		fmt.Fprintln(os.Stderr, "  --worker   worker    → cmd/<name>-worker")
-		fmt.Fprintln(os.Stderr, "  --cli      cli       → cmd/<name>-cli")
+		fmt.Fprintln(os.Stderr, "  --cli      cli       → cmd/<name>")
 		os.Exit(1)
 	}
 
@@ -45,8 +42,6 @@ func runNew(args []string) {
 
 	projectType := "generic"
 	switch {
-	case *isAPI || *isAPIShort:
-		projectType = "api"
 	case *isSvc || *isSvcShort:
 		projectType = "service"
 	case *isWorker || *isWorkerShort:

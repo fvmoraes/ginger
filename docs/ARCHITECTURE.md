@@ -87,7 +87,7 @@ userHandler := handlers.NewUserHandler(userService)
 Interfaces são definidas onde são usadas, não onde são implementadas:
 
 ```go
-// internal/api/services/user_service.go
+// internal/services/user_service.go
 type UserRepository interface {
     FindByID(ctx context.Context, id int) (*models.User, error)
     Create(ctx context.Context, user *models.User) error
@@ -129,7 +129,7 @@ O router converte automaticamente para JSON:
 ```text
 foobar/
 ├── cmd/
-│   └── foobar-api/
+│   └── foobar/
 │       └── main.go              # Entrypoint — wiring de dependências
 │
 ├── internal/                    # Código privado da aplicação
@@ -242,14 +242,14 @@ Exemplos:
    │ - Write response
    │
    ▼
-5. Service (internal/api/services)
+5. Service (internal/services)
    │ - Business logic
    │ - Validation rules
    │ - Orchestrate repositories
    │ - Return domain errors
    │
    ▼
-6. Repository (internal/api/repositories)
+6. Ports/Adapters (internal/ports + internal/adapters)
    │ - SQL queries
    │ - Transaction management
    │ - Map rows → models
