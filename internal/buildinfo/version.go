@@ -7,7 +7,7 @@ import (
 )
 
 // FallbackVersion is used when the binary does not carry a stable semantic version.
-const FallbackVersion = "1.3.1"
+const FallbackVersion = "1.3.2"
 
 var pseudoVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+-(0\.)?\d{14}-[0-9a-f]{12}$`)
 

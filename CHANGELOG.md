@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.3.2] - 2026-04-03
+
+### Fixed
+- Stable module version pinning and release tooling fixes
+
+### Commit Summary
+- fix: pin stable ginger version in scaffolded projects
+
 ## [1.3.1] - 2026-04-03
 
 ### Fixed
@@ -252,3 +260,4 @@ Verify downloads with `checksums.txt`.
 [1.2.10]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.10
 [1.3.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.0
 [1.3.1]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.1
+[1.3.2]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.2
