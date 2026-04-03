@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.2.10] - 2026-04-03
+
+### Fixed
+- Documentation improvements for project creation flags
+
+### Commit Summary
+- docs: clarify short and long project flags
+
 ## [1.2.9] - 2026-04-03
 
 ### Fixed
@@ -225,3 +233,4 @@ Verify downloads with `checksums.txt`.
 [1.2.7]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.7
 [1.2.8]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.8
 [1.2.9]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.9
+[1.2.10]: https://github.com/fvmoraes/ginger/releases/tag/v1.2.10
