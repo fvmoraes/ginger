@@ -30,6 +30,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 
 # 2. Create a project
 ginger new foobar --api    # API → cmd/foobar-api
+# short flags also work: -a, -s, -w, -c
 cd foobar
 go mod tidy
 
@@ -160,9 +161,13 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 ```bash
 ginger new foobar --api       # API       → cmd/foobar-api
+ginger new foobar -a          # same as --api
 ginger new foobar --service       # Service   → cmd/foobar-service
+ginger new foobar -s          # same as --service
 ginger new foobar --worker       # Worker    → cmd/foobar-worker
+ginger new foobar -w          # same as --worker
 ginger new foobar --cli      # CLI       → cmd/foobar-cli
+ginger new foobar -c         # same as --cli
 ginger new foobar          # Generic   → cmd/foobar
 ```
 
@@ -185,10 +190,10 @@ curl http://localhost:8080/health
 
 ```
 ginger new <name>                  Scaffold a generic project  → cmd/<name>
-ginger new <name> --api               API project                → cmd/<name>-api
-ginger new <name> --service               Service project            → cmd/<name>-service
-ginger new <name> --worker               Worker project             → cmd/<name>-worker
-ginger new <name> --cli               CLI project                → cmd/<name>-cli
+ginger new <name> --api | -a       API project                → cmd/<name>-api
+ginger new <name> --service | -s   Service project            → cmd/<name>-service
+ginger new <name> --worker | -w    Worker project             → cmd/<name>-worker
+ginger new <name> --cli | -c       CLI project                → cmd/<name>-cli
 ginger run                         Run the app in dev mode
 ginger build [output]              Build the binary
 ginger generate handler <name>     Generate an HTTP handler
@@ -573,6 +578,7 @@ A Kubernetes `Deployment` + `Service` template is available at `devops/kubernete
 ### Create and Run
 ```bash
 ginger new foobar --api           # Create API project → cmd/foobar-api
+ginger new foobar -a              # Same as --api
 cd foobar && go mod tidy       # Install deps
 ginger run                     # Run (dev)
 ginger build                   # Build (prod)
@@ -748,9 +754,13 @@ go build -o /usr/local/bin/ginger ./cmd/ginger
 
 ```bash
 ginger new foobar --api        # API       → cmd/foobar-api
+ginger new foobar -a           # igual a --api
 ginger new foobar --service          # Service   → cmd/foobar-service
+ginger new foobar -s           # igual a --service
 ginger new foobar --worker          # Worker    → cmd/foobar-worker
+ginger new foobar -w           # igual a --worker
 ginger new foobar --cli         # CLI       → cmd/foobar-cli
+ginger new foobar -c           # igual a --cli
 ginger new foobar             # Genérico  → cmd/foobar
 ```
 
@@ -773,10 +783,10 @@ Endpoints disponíveis imediatamente:
 
 ```
 ginger new <nome>                  Scaffold genérico          → cmd/<nome>
-ginger new <nome> --api               Projeto API                → cmd/<nome>-api
-ginger new <nome> --service               Projeto Service            → cmd/<nome>-service
-ginger new <nome> --worker               Projeto Worker             → cmd/<nome>-worker
-ginger new <nome> --cli               Projeto CLI                → cmd/<nome>-cli
+ginger new <nome> --api | -a       Projeto API                → cmd/<nome>-api
+ginger new <nome> --service | -s   Projeto Service            → cmd/<nome>-service
+ginger new <nome> --worker | -w    Projeto Worker             → cmd/<nome>-worker
+ginger new <nome> --cli | -c       Projeto CLI                → cmd/<nome>-cli
 ginger run                         Executa a aplicação em modo dev
 ginger build [saída]               Compila o binário
 ginger generate handler <nome>     Gera um handler HTTP

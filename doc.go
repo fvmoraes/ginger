@@ -6,11 +6,14 @@
 //
 // # Create a new project
 //
-//	ginger new foobar -a   # API     → cmd/foobar-api
-//	ginger new foobar -s   # Service → cmd/foobar-service
-//	ginger new foobar -w   # Worker  → cmd/foobar-worker
-//	ginger new foobar -c   # CLI     → cmd/foobar-cli
-//	ginger new foobar      # Generic → cmd/foobar
+//	Both long and short flags work for project types.
+//	As flags longas e curtas funcionam para os tipos de projeto.
+//
+//	ginger new foobar --api | -a       # API     → cmd/foobar-api
+//	ginger new foobar --service | -s   # Service → cmd/foobar-service
+//	ginger new foobar --worker | -w    # Worker  → cmd/foobar-worker
+//	ginger new foobar --cli | -c       # CLI     → cmd/foobar-cli
+//	ginger new foobar                  # Generic → cmd/foobar
 //
 // # Core Packages
 //

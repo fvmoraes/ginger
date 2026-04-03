@@ -12,9 +12,13 @@ Guia de consulta rápida com os comandos e padrões mais usados.
 # Criar novo projeto
 ginger new foobar            # genérico  -> cmd/foobar
 ginger new foobar --api         # api       -> cmd/foobar-api
+ginger new foobar -a            # igual a --api
 ginger new foobar --service         # service   -> cmd/foobar-service
+ginger new foobar -s            # igual a --service
 ginger new foobar --worker         # worker    -> cmd/foobar-worker
+ginger new foobar -w            # igual a --worker
 ginger new foobar --cli         # cli       -> cmd/foobar-cli
+ginger new foobar -c            # igual a --cli
 
 # Executar
 ginger run

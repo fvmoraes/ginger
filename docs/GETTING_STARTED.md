@@ -36,6 +36,7 @@ ginger version
 
 ```bash
 ginger new foobar --api
+# ou use a flag curta equivalente: -a
 cd foobar
 go mod tidy
 ```
@@ -254,10 +255,10 @@ helm install foobar ./devops/helm
 ```bash
 # Criar projeto
 ginger new <nome>            # genérico -> cmd/<nome>
-ginger new <nome> --api         # API      -> cmd/<nome>-api
-ginger new <nome> --service         # service  -> cmd/<nome>-service
-ginger new <nome> --worker         # worker   -> cmd/<nome>-worker
-ginger new <nome> --cli         # CLI      -> cmd/<nome>-cli
+ginger new <nome> --api | -a       # API      -> cmd/<nome>-api
+ginger new <nome> --service | -s   # service  -> cmd/<nome>-service
+ginger new <nome> --worker | -w    # worker   -> cmd/<nome>-worker
+ginger new <nome> --cli | -c       # CLI      -> cmd/<nome>-cli
 
 # Gerar código
 ginger generate crud <recurso>
