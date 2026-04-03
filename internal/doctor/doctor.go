@@ -9,10 +9,28 @@ import (
 	"path/filepath"
 )
 
+type checkState int
+
+const (
+	checkPass checkState = iota
+	checkFail
+	checkSkip
+)
+
+type checkResult struct {
+	state  checkState
+	reason string
+}
+
 type check struct {
 	label string
-	fn    func() bool
+	fn    func() checkResult
 }
+
+var (
+	lookPath    = exec.LookPath
+	execCommand = exec.Command
+)
 
 // Run executes all checks and prints a diagnostic report.
 func Run() {
@@ -32,9 +50,17 @@ func Run() {
 
 	allOK := true
 	for _, c := range checks {
-		if c.fn() {
+		result := c.fn()
+		switch result.state {
+		case checkPass:
 			fmt.Printf("  ✓ %s\n", c.label)
-		} else {
+		case checkSkip:
+			if result.reason != "" {
+				fmt.Printf("  - %s (%s)\n", c.label, result.reason)
+			} else {
+				fmt.Printf("  - %s\n", c.label)
+			}
+		default:
 			fmt.Printf("  ■ %s\n", c.label)
 			allOK = false
 		}
@@ -49,75 +75,99 @@ func Run() {
 	fmt.Println()
 }
 
-func checkStructure() bool {
+func checkStructure() checkResult {
 	for _, d := range []string{"cmd"} {
 		if _, err := os.Stat(d); os.IsNotExist(err) {
-			return false
+			return checkResult{state: checkFail}
 		}
 	}
-	return true
+	return checkResult{state: checkPass}
 }
 
-func checkGoMod() bool {
+func checkGoMod() checkResult {
 	_, err := os.Stat("go.mod")
-	return err == nil
+	if err == nil {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkConfig() bool {
+func checkConfig() checkResult {
 	if !needsConfig() {
-		return true
+		return checkResult{state: checkPass}
 	}
 	_, err := os.Stat(filepath.Join("configs", "app.yaml"))
-	return err == nil
+	if err == nil {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkDockerfile() bool {
+func checkDockerfile() checkResult {
 	if !needsDockerfile() {
-		return true
+		return checkResult{state: checkPass}
 	}
 	_, err := os.Stat(filepath.Join("devops", "docker", "Dockerfile"))
-	return err == nil
+	if err == nil {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkHealthEndpoint() bool {
+func checkHealthEndpoint() checkResult {
 	if !isHTTPProject() {
-		return true
+		return checkResult{state: checkPass}
 	}
-	return grepInDir(".", "/health") ||
+	if grepInDir(".", "/health") ||
 		grepInDir(".", "health.New") ||
-		grepInDir(".", "gingerapp.New")
+		grepInDir(".", "gingerapp.New") {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkGracefulShutdown() bool {
+func checkGracefulShutdown() checkResult {
 	if !isHTTPProject() {
-		return true
+		return checkResult{state: checkPass}
 	}
-	return grepInDir(".", "Shutdown") ||
+	if grepInDir(".", "Shutdown") ||
 		grepInDir(".", "SIGTERM") ||
 		grepInDir(".", "gingerapp.New") ||
-		grepInDir(".", "app.New")
+		grepInDir(".", "app.New") {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkTests() bool {
-	return hasFileWithSuffix(".", "_test.go")
+func checkTests() checkResult {
+	if hasFileWithSuffix(".", "_test.go") {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
 // checkGoVet runs go vet ./... and reports whether it passes.
-func checkGoVet() bool {
-	cmd := exec.Command("go", "vet", "./...")
+func checkGoVet() checkResult {
+	cmd := execCommand("go", "vet", "./...")
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	return cmd.Run() == nil
+	if cmd.Run() == nil {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
-func checkLint() bool {
-	if _, err := exec.LookPath("golangci-lint"); err != nil {
-		return false
+func checkLint() checkResult {
+	if _, err := lookPath("golangci-lint"); err != nil {
+		return checkResult{state: checkSkip, reason: "golangci-lint not installed"}
 	}
-	cmd := exec.Command("golangci-lint", "run", "--fast", "--timeout", "30s")
+	cmd := execCommand("golangci-lint", "run", "--fast", "--timeout", "30s")
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	return cmd.Run() == nil
+	if cmd.Run() == nil {
+		return checkResult{state: checkPass}
+	}
+	return checkResult{state: checkFail}
 }
 
 // grepInDir reports whether pattern appears in any .go file under dir.

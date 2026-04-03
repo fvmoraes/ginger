@@ -5,23 +5,35 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 )
 
-// detectCmdDir finds the first subdirectory of cmd/ that contains a main.go.
+// detectCmdDir finds the only subdirectory of cmd/ that contains a main.go.
 func detectCmdDir() (string, error) {
 	entries, err := os.ReadDir("cmd")
 	if err != nil {
 		return "", fmt.Errorf("no cmd/ directory found — are you inside a Ginger project?")
 	}
+
+	var matches []string
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
 		if _, err := os.Stat(filepath.Join("cmd", e.Name(), "main.go")); err == nil {
-			return "./" + filepath.Join("cmd", e.Name()), nil
+			matches = append(matches, "./"+filepath.Join("cmd", e.Name()))
 		}
 	}
-	return "", fmt.Errorf("no main.go found inside cmd/ — are you inside a Ginger project?")
+
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("no main.go found inside cmd/ — are you inside a Ginger project?")
+	case 1:
+		return matches[0], nil
+	default:
+		sort.Strings(matches)
+		return "", fmt.Errorf("multiple app entrypoints found: %v", matches)
+	}
 }
 
 func runRun(args []string) {

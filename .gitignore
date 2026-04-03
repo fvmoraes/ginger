@@ -48,3 +48,8 @@ bin/
 .claude/
 .mcp.json
 /ginger
+.codex/
+AGENTS.md
+.github/copilot-instructions.md
+.cursor/
+.kiro/

@@ -169,7 +169,7 @@ func Tests(name, scope string) error {
 	}
 }
 
-// CRUD generates model + handler + service + repository + tests for a given name.
+// CRUD generates model + handler + service + repository for a given name.
 func CRUD(name string) error {
 	fmt.Printf("\n  Generating CRUD for '%s'...\n\n", name)
 	steps := []struct {
@@ -180,14 +180,11 @@ func CRUD(name string) error {
 		{"repository", Repository},
 		{"service", Service},
 		{"handler", Handler},
-		{"handler test", HandlerTest},
-		{"service test", ServiceTest},
-		{"repository test", RepositoryTest},
 	}
 	if err := generateMany(name, steps); err != nil {
 		return err
 	}
-	fmt.Printf("\n  ✓ CRUD for '%s' generated. Wire it up in your router!\n", name)
+	fmt.Printf("\n  ✓ CRUD for '%s' generated. Generate tests separately if you need them.\n", name)
 	return nil
 }
 

@@ -13,6 +13,9 @@ Comece a usar o Ginger em 5 minutos.
 **Opção recomendada (Go install):**
 ```bash
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
+
+# Se `ginger` não for encontrado, exporte o bin do Go no PATH
+export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
 **Alternativa (script de instalação):**

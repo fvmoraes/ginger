@@ -14,6 +14,8 @@ import (
 // ErrIntegrationExists is returned when the target integration file already exists.
 var ErrIntegrationExists = errors.New("integration already exists")
 
+var execCommand = exec.Command
+
 type integration struct {
 	name string
 	pkg  string // go get package
@@ -196,14 +198,14 @@ func Add(name string) error {
 
 	// go get the dependency
 	fmt.Printf("  → go get %s\n", intg.pkg)
-	cmd := exec.Command("go", "get", intg.pkg)
+	cmd := execCommand("go", "get", intg.pkg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("  ■ go get failed — add manually: go get %s\n", intg.pkg)
-	} else {
-		fmt.Printf("  ✓ dependency added\n")
+		_ = os.Remove(intg.file)
+		return fmt.Errorf("add dependency %s: %w", intg.pkg, err)
 	}
+	fmt.Printf("  ✓ dependency added\n")
 
 	fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", name)
 	return nil

@@ -2,11 +2,19 @@
 package scaffold
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
+
+// ErrProjectExists is returned when the target project directory already exists.
+var ErrProjectExists = errors.New("project directory already exists")
+
+// ErrInvalidProjectName is returned when the requested project name is not a simple slug.
+var ErrInvalidProjectName = errors.New("invalid project name")
 
 type projectData struct {
 	Name   string
@@ -40,6 +48,16 @@ func NewProject(name, projectType string) error {
 		return fmt.Errorf("unknown project type %q — use: generic, api, service, cli, worker", projectType)
 	}
 
+	if err := validateProjectName(name); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(name); err == nil {
+		return fmt.Errorf("%w: %s", ErrProjectExists, name)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("scaffold: stat %s: %w", name, err)
+	}
+
 	cmdDir := CmdDir(name, projectType)
 	data := projectData{Name: name, Module: name, Type: projectType, CmdDir: cmdDir}
 
@@ -55,6 +73,22 @@ func NewProject(name, projectType string) error {
 	}
 
 	fmt.Printf("  created %s/ (%s → %s)\n", name, projectType, cmdDir)
+	return nil
+}
+
+func validateProjectName(name string) error {
+	if name == "" {
+		return fmt.Errorf("%w: name cannot be empty", ErrInvalidProjectName)
+	}
+	if filepath.Base(name) != name {
+		return fmt.Errorf("%w: use a simple directory name, not a path: %s", ErrInvalidProjectName, name)
+	}
+	if strings.ContainsAny(name, `\/`) {
+		return fmt.Errorf("%w: path separators are not allowed: %s", ErrInvalidProjectName, name)
+	}
+	if strings.Contains(name, " ") {
+		return fmt.Errorf("%w: spaces are not allowed: %s", ErrInvalidProjectName, name)
+	}
 	return nil
 }
 

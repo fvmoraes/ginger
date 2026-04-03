@@ -65,7 +65,7 @@ Project Commands:
   doctor                                       Diagnose project health
 
 Generation Commands:
-  generate crud <name>                         Generate model, handler, service, repository, and tests
+  generate crud <name>                         Generate model, handler, service, and repository
   generate handler <name>                      Generate an HTTP handler
   generate service <name>                      Generate a service
   generate repository <name>                   Generate a repository

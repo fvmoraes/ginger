@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/fvmoraes/ginger/example/internal/api/services"
 	"github.com/fvmoraes/ginger/example/internal/models"
 	apperrors "github.com/fvmoraes/ginger/pkg/errors"
+	"github.com/fvmoraes/ginger/pkg/response"
 	"github.com/fvmoraes/ginger/pkg/router"
 )
 
@@ -35,7 +34,7 @@ func (h *UserHandler) list(w http.ResponseWriter, r *http.Request) {
 		router.Error(w, err)
 		return
 	}
-	router.JSON(w, http.StatusOK, users)
+	response.OK(w, users)
 }
 
 func (h *UserHandler) get(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +44,7 @@ func (h *UserHandler) get(w http.ResponseWriter, r *http.Request) {
 		router.Error(w, err)
 		return
 	}
-	router.JSON(w, http.StatusOK, user)
+	response.OK(w, user)
 }
 
 func (h *UserHandler) create(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +58,7 @@ func (h *UserHandler) create(w http.ResponseWriter, r *http.Request) {
 		router.Error(w, err)
 		return
 	}
-	router.JSON(w, http.StatusCreated, user)
+	response.Created(w, user)
 }
 
 func (h *UserHandler) update(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +73,7 @@ func (h *UserHandler) update(w http.ResponseWriter, r *http.Request) {
 		router.Error(w, err)
 		return
 	}
-	router.JSON(w, http.StatusOK, user)
+	response.OK(w, user)
 }
 
 func (h *UserHandler) delete(w http.ResponseWriter, r *http.Request) {
@@ -83,5 +82,5 @@ func (h *UserHandler) delete(w http.ResponseWriter, r *http.Request) {
 		router.Error(w, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	response.NoContent(w)
 }

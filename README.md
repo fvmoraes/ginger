@@ -25,6 +25,9 @@
 # 1. Install
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
+# If `ginger` is not found, export your Go bin to PATH
+export PATH="$(go env GOPATH)/bin:$PATH"
+
 # 2. Create a project
 ginger new foobar --api    # API → cmd/foobar-api
 cd foobar
@@ -131,6 +134,9 @@ Extra directories such as `platform/`, `tests/`, `docs/`, additional `internal/a
 **Option 1: Go install (recommended)**
 ```bash
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
+
+# If `ginger` is not found, export your Go bin to PATH
+export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
 **Option 2: One-line install script**
@@ -716,6 +722,9 @@ Diretórios como `platform/`, `tests/`, `docs/`, camadas extras em `internal/api
 **Opção 1: Go install (recomendado)**
 ```bash
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
+
+# Se `ginger` não for encontrado, exporte o bin do Go no PATH
+export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
 **Opção 2: Script de instalação**

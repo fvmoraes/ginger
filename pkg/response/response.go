@@ -55,9 +55,13 @@ func Paginated[T any](w http.ResponseWriter, data []T, page, perPage, total int)
 	if data == nil {
 		data = []T{} // never serialize null
 	}
-	totalPages := total / perPage
-	if total%perPage != 0 {
-		totalPages++
+
+	totalPages := 0
+	if perPage > 0 {
+		totalPages = total / perPage
+		if total%perPage != 0 {
+			totalPages++
+		}
 	}
 	write(w, http.StatusOK, Page[T]{
 		Data: data,
