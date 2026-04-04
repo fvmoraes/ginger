@@ -318,8 +318,6 @@ APP_ENV=development
 HTTP_PORT=8080
 LOG_LEVEL=info
 LOG_FORMAT=json
-DATABASE_DRIVER=postgres
-DATABASE_DSN=postgres://user:pass@localhost:5432/{{.Name}}?sslmode=disable
 `
 
 const dockerfileTmpl = `FROM golang:{{.GoVersion}}-alpine AS builder
@@ -349,43 +347,6 @@ services:
     environment:
       APP_ENV: development
       HTTP_PORT: 8080
-      DATABASE_DSN: postgres://user:pass@postgres:5432/{{.Name}}?sslmode=disable
-    depends_on:
-      - postgres
-      - redis
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: {{.Name}}
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-
-volumes:
-  pgdata:
 `
 
 const prometheusConfigTmpl = `global:
@@ -598,7 +559,7 @@ make run
 ` + "```" + `bash
 make docker  # builds using devops/docker/Dockerfile
 {{if eq .Type "service"}}
-make up      # starts app + postgres + redis + prometheus + grafana
+make up      # starts the app from devops/docker/docker-compose.yml
 make down    # stops everything
 {{end}}
 ` + "```" + `
@@ -618,7 +579,7 @@ internal/
   worker/         # Worker loop{{end}}{{if or (eq .Type "service") (eq .Type "worker")}}
 
 devops/
-  docker/         # Dockerfile{{if eq .Type "service"}}, compose and Prometheus config{{end}}
+  docker/         # Dockerfile{{if eq .Type "service"}}, compose and optional local infra config{{end}}
 {{if eq .Type "service"}}  kubernetes/     # K8s manifests
   helm/           # Helm chart
 {{end}}  pipelines/      # CI/CD sample

@@ -43,29 +43,37 @@ Por isso:
 ginger add <integration>
 ```
 
+Se `devops/docker/docker-compose.yml` já existir, apenas parte das integrações também atualiza o compose automaticamente.
+
 ### Integrações Disponíveis
 
-| Categoria | Integração | Pacote | Arquivo Gerado |
-|-----------|------------|--------|----------------|
-| **Databases** | `postgres` | `github.com/lib/pq` | `platform/database/postgres.go` |
-| | `mysql` | `github.com/go-sql-driver/mysql` | `platform/database/mysql.go` |
-| | `sqlite` | `github.com/mattn/go-sqlite3` | `platform/database/sqlite.go` |
-| | `sqlserver` | `github.com/microsoft/go-mssqldb` | `platform/database/sqlserver.go` |
-| **NoSQL** | `couchbase` | `github.com/couchbase/gocb/v2` | `platform/nosql/couchbase.go` |
-| | `mongodb` | `go.mongodb.org/mongo-driver/v2` | `platform/nosql/mongo.go` |
-| **Analytical** | `clickhouse` | `github.com/ClickHouse/clickhouse-go/v2` | `platform/database/clickhouse.go` |
-| **Cache** | `redis` | `github.com/redis/go-redis/v9` | `platform/cache/redis.go` |
-| **Messaging** | `kafka` | `github.com/segmentio/kafka-go` | `platform/messaging/kafka.go` |
-| | `rabbitmq` | `github.com/rabbitmq/amqp091-go` | `platform/messaging/rabbitmq.go` |
-| | `nats` | `github.com/nats-io/nats.go` | `platform/messaging/nats.go` |
-| | `pubsub` | `cloud.google.com/go/pubsub/v2` | `platform/messaging/pubsub.go` |
-| **Protocols** | `grpc` | `google.golang.org/grpc` | `platform/grpc/server.go` |
-| | `mcp` | stdlib only | `platform/mcp/server.go` |
-| **Real-time** | `sse` | stdlib only | `internal/api/handlers/sse_handler.go` |
-| | `websocket` | stdlib only | `internal/api/handlers/ws_handler.go` |
-| **Observability** | `otel` | `go.opentelemetry.io/otel` | `platform/telemetry/otel.go` |
-| | `prometheus` | `github.com/prometheus/client_golang` | `platform/metrics/prometheus.go` |
-| **Docs** | `swagger` | stdlib + Swagger UI CDN | `internal/api/swagger.go` |
+| Categoria | Integração | Pacote | Arquivo Gerado | Atualiza compose? |
+|-----------|------------|--------|----------------|-------------------|
+| **Databases** | `postgres` | `github.com/lib/pq` | `platform/database/postgres.go` | sim |
+| | `mysql` | `github.com/go-sql-driver/mysql` | `platform/database/mysql.go` | sim |
+| | `sqlite` | `github.com/mattn/go-sqlite3` | `platform/database/sqlite.go` | não |
+| | `sqlserver` | `github.com/microsoft/go-mssqldb` | `platform/database/sqlserver.go` | não |
+| **NoSQL** | `couchbase` | `github.com/couchbase/gocb/v2` | `platform/nosql/couchbase.go` | sim |
+| | `mongodb` | `go.mongodb.org/mongo-driver/v2` | `platform/nosql/mongo.go` | sim |
+| **Analytical** | `clickhouse` | `github.com/ClickHouse/clickhouse-go/v2` | `platform/database/clickhouse.go` | sim |
+| **Cache** | `redis` | `github.com/redis/go-redis/v9` | `platform/cache/redis.go` | sim |
+| **Messaging** | `kafka` | `github.com/segmentio/kafka-go` | `platform/messaging/kafka.go` | sim |
+| | `rabbitmq` | `github.com/rabbitmq/amqp091-go` | `platform/messaging/rabbitmq.go` | sim |
+| | `nats` | `github.com/nats-io/nats.go` | `platform/messaging/nats.go` | sim |
+| | `pubsub` | `cloud.google.com/go/pubsub/v2` | `platform/messaging/pubsub.go` | não |
+| **Protocols** | `grpc` | `google.golang.org/grpc` | `platform/grpc/server.go` | não |
+| | `mcp` | stdlib only | `platform/mcp/server.go` | não |
+| **Real-time** | `sse` | stdlib only | `internal/api/handlers/sse_handler.go` | não |
+| | `websocket` | stdlib only | `internal/api/handlers/ws_handler.go` | não |
+| **Observability** | `otel` | `go.opentelemetry.io/otel` | `platform/telemetry/otel.go` | sim |
+| | `prometheus` | `github.com/prometheus/client_golang` | `platform/metrics/prometheus.go` | sim |
+| **Docs** | `swagger` | stdlib + Swagger UI CDN | `internal/api/swagger.go` | não |
+
+Notas rápidas:
+
+- `prometheus` também cria `devops/docker/prometheus.yml` quando necessário.
+- `otel` adiciona o serviço `otel-collector` ao compose.
+- Se o projeto não tiver `devops/docker/docker-compose.yml`, nenhuma integração altera compose.
 
 ---
 

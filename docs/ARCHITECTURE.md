@@ -175,7 +175,7 @@ foobar/
 │   └── DEPLOYMENT.md
 │
 ├── devops/
-│   ├── docker/                  # Dockerfile, compose, Prometheus config
+│   ├── docker/                  # Dockerfile, compose e configs locais opcionais
 │   ├── kubernetes/              # Deployment samples
 │   ├── helm/                    # Helm chart
 │   └── pipelines/               # CI/CD samples

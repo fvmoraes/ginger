@@ -189,6 +189,74 @@ func TestNewProjectServiceRouterIncludesPingAndGeneratedRegistrars(t *testing.T)
 	}
 }
 
+func TestNewProjectServiceComposeStartsMinimal(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := NewProject("demo", "service"); err != nil {
+		t.Fatalf("NewProject returned error: %v", err)
+	}
+
+	composeData, err := os.ReadFile(filepath.Join("demo", "devops", "docker", "docker-compose.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	compose := string(composeData)
+	for _, want := range []string{
+		`services:`,
+		`demo:`,
+		`APP_ENV: development`,
+		`HTTP_PORT: 8080`,
+	} {
+		if !strings.Contains(compose, want) {
+			t.Fatalf("expected minimal service compose to contain %q, got %s", want, compose)
+		}
+	}
+
+	for _, unwanted := range []string{
+		`postgres:`,
+		`redis:`,
+		`prometheus:`,
+		`grafana:`,
+		`DATABASE_DSN`,
+		`depends_on`,
+	} {
+		if strings.Contains(compose, unwanted) {
+			t.Fatalf("expected minimal service compose to omit %q, got %s", unwanted, compose)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join("demo", "devops", "docker", "prometheus.yml")); !os.IsNotExist(err) {
+		t.Fatalf("expected prometheus config to be absent by default, stat err=%v", err)
+	}
+
+	envData, err := os.ReadFile(filepath.Join("demo", ".env.example"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	envExample := string(envData)
+	for _, unwanted := range []string{
+		`DATABASE_DRIVER`,
+		`DATABASE_DSN`,
+	} {
+		if strings.Contains(envExample, unwanted) {
+			t.Fatalf("expected minimal env example to omit %q, got %s", unwanted, envExample)
+		}
+	}
+}
+
 func TestNewProjectWorkerUsesStructuredLifecycle(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {

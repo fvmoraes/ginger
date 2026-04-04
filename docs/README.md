@@ -125,7 +125,7 @@ Cada integração inclui:
 - Configuração de health check
 - Variáveis de ambiente
 - Comandos comuns
-- Atualização automática do `devops/docker/docker-compose.yml` quando a integração tem infraestrutura local suportada
+- Atualização automática do `devops/docker/docker-compose.yml` apenas para integrações com infraestrutura local suportada, como `postgres`, `mysql`, `redis`, `rabbitmq`, `kafka`, `nats`, `mongodb`, `clickhouse`, `couchbase`, `prometheus` e `otel`
 
 **Ideal para:** Adicionar novas funcionalidades ao projeto.
 
@@ -182,7 +182,9 @@ Deploy completo do desenvolvimento à produção:
 - Build e run local
 
 #### Docker Compose
-- `devops/docker/docker-compose.yml` gerado no scaffold e atualizado por `ginger add` para serviços locais como postgres, redis, rabbitmq, kafka e nats
+- `devops/docker/docker-compose.yml` gerado no scaffold e atualizado por `ginger add` apenas para integrações com serviços locais suportados
+- Exemplos suportados: `postgres`, `mysql`, `redis`, `rabbitmq`, `kafka`, `nats`, `mongodb`, `clickhouse`, `couchbase`, `prometheus` e `otel`
+- Exemplos que não alteram compose: `sqlite`, `sqlserver`, `pubsub`, `grpc`, `mcp`, `sse`, `websocket` e `swagger`
 - Health checks
 - Volumes persistentes
 - Comandos úteis

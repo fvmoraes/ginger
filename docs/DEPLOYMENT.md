@@ -102,7 +102,7 @@ CMD ["/main"]
 
 ### docker-compose.yml Gerado
 
-Projetos `service` já nascem com stack local pronta. Projetos `worker` começam com o serviço principal e ganham dependências adicionais quando você roda `ginger add <integration>`.
+Projetos `service` e `worker` começam com o serviço principal no compose. Dependências locais entram depois, quando você roda `ginger add <integration>`.
 
 Localização: `devops/docker/docker-compose.yml`
 
@@ -119,43 +119,6 @@ services:
     environment:
       APP_ENV: development
       HTTP_PORT: 8080
-      DATABASE_DSN: postgres://<user>:<password>@postgres:5432/foobar?sslmode=disable
-    depends_on:
-      - postgres
-      - redis
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: foobar
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-
-volumes:
-  pgdata:
 ```
 
 ### Comandos
@@ -184,10 +147,42 @@ Quando o compose já existe, o Ginger também o atualiza automaticamente para in
 ```bash
 ginger add postgres   # adiciona serviço postgres + DATABASE_DSN
 ginger add redis      # adiciona serviço redis + REDIS_ADDR
+ginger add prometheus # adiciona serviço prometheus + prometheus.yml
 ginger add rabbitmq   # adiciona serviço rabbitmq + RABBITMQ_URL
 ginger add kafka      # adiciona serviço kafka + KAFKA_BROKERS
 ginger add nats       # adiciona serviço nats + NATS_URL
 ```
+
+Hoje, as integrações que também alimentam o compose são:
+
+- `postgres`
+- `mysql`
+- `redis`
+- `rabbitmq`
+- `kafka`
+- `nats`
+- `mongodb`
+- `clickhouse`
+- `couchbase`
+- `prometheus`
+- `otel`
+
+Estas integrações não alteram o compose automaticamente:
+
+- `sqlite`
+- `sqlserver`
+- `pubsub`
+- `grpc`
+- `mcp`
+- `sse`
+- `websocket`
+- `swagger`
+
+Observações:
+
+- `prometheus` adiciona o serviço e cria `devops/docker/prometheus.yml` se ele ainda não existir.
+- `otel` adiciona `otel-collector` e configura `OTEL_EXPORTER_OTLP_ENDPOINT` na app.
+- Se `devops/docker/docker-compose.yml` não existir, o `ginger add` só gera o código da integração.
 
 ---
 

@@ -121,6 +121,89 @@ services:
 	}
 }
 
+func TestAddUpdatesDockerComposeForRequestedLocalInfra(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := os.MkdirAll(filepath.Join("devops", "docker"), 0755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+
+	compose := `version: "3.9"
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: devops/docker/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: development
+      HTTP_PORT: 8080
+`
+	if err := os.WriteFile(filepath.Join("devops", "docker", "docker-compose.yml"), []byte(compose), 0644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	originalExecCommand := execCommand
+	execCommand = func(_ string, _ ...string) *exec.Cmd {
+		return exec.Command("true")
+	}
+	defer func() {
+		execCommand = originalExecCommand
+	}()
+
+	for _, integration := range []string{"postgres", "redis", "prometheus"} {
+		if err := Add(integration); err != nil {
+			t.Fatalf("Add(%q) returned error: %v", integration, err)
+		}
+	}
+
+	data, err := os.ReadFile(filepath.Join("devops", "docker", "docker-compose.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	content := string(data)
+	for _, want := range []string{
+		`postgres:`,
+		`redis:`,
+		`prometheus:`,
+		`postgres:16-alpine`,
+		`redis:7-alpine`,
+		`prom/prometheus:latest`,
+		`DATABASE_DSN`,
+		`REDIS_ADDR`,
+		`depends_on`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("expected compose to contain %q, got:\n%s", want, content)
+		}
+	}
+
+	if strings.Contains(content, `grafana:`) {
+		t.Fatalf("expected compose to keep grafana absent unless explicitly supported, got:\n%s", content)
+	}
+
+	prometheusConfig, err := os.ReadFile(filepath.Join("devops", "docker", "prometheus.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(prometheusConfig), `targets: ["app:8080"]`) {
+		t.Fatalf("expected prometheus config to target app service, got:\n%s", string(prometheusConfig))
+	}
+}
+
 func TestAddSkipsComposeUpdateWhenComposeFileDoesNotExist(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {

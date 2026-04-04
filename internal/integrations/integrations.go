@@ -282,6 +282,15 @@ func updateDockerCompose(integrationName string) error {
 	app := compose.Services[appName]
 
 	changed := mergeIntegrationIntoCompose(&compose, appName, &app, integrationName)
+	if integrationName == "prometheus" {
+		created, err := ensurePrometheusConfig(composePath, appName)
+		if err != nil {
+			return err
+		}
+		if created {
+			fmt.Printf("  ✓ created %s\n", filepath.Join("devops", "docker", "prometheus.yml"))
+		}
+	}
 	if !changed {
 		return nil
 	}
@@ -299,6 +308,39 @@ func updateDockerCompose(integrationName string) error {
 
 	fmt.Printf("  ✓ updated %s\n", composePath)
 	return nil
+}
+
+const prometheusComposeConfigTmpl = `global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "{{.Name}}"
+    static_configs:
+      - targets: ["{{.Name}}:8080"]
+`
+
+func ensurePrometheusConfig(composePath, appName string) (bool, error) {
+	configPath := filepath.Join(filepath.Dir(composePath), "prometheus.yml")
+	if _, err := os.Stat(configPath); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("add: stat prometheus config: %w", err)
+	}
+
+	var rendered strings.Builder
+	tmpl, err := template.New("prometheus-compose-config").Parse(prometheusComposeConfigTmpl)
+	if err != nil {
+		return false, fmt.Errorf("add: parse prometheus config template: %w", err)
+	}
+	if err := tmpl.Execute(&rendered, struct{ Name string }{Name: appName}); err != nil {
+		return false, fmt.Errorf("add: render prometheus config template: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, []byte(rendered.String()), 0644); err != nil {
+		return false, fmt.Errorf("add: write prometheus config: %w", err)
+	}
+
+	return true, nil
 }
 
 func detectComposeAppService(services map[string]composeService) string {

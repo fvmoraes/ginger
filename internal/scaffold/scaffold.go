@@ -212,7 +212,6 @@ func baseFiles(d projectData) map[string]string {
 		common["tests/integration/health_test.go"] = serviceHealthTestTmpl
 		common["devops/docker/Dockerfile"] = dockerfileTmpl
 		common["devops/docker/docker-compose.yml"] = dockerComposeTmpl
-		common["devops/docker/prometheus.yml"] = prometheusConfigTmpl
 		common["devops/kubernetes/deployment.yaml"] = k8sDeploymentTmpl
 		common["devops/helm/Chart.yaml"] = helmChartTmpl
 		common["devops/helm/values.yaml"] = helmValuesTmpl

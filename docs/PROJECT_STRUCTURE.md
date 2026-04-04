@@ -257,7 +257,8 @@ Na prática:
 
 - bancos, cache, mensageria, protocolos e observabilidade vão para `platform/...`
 - `sse`, `websocket` e `swagger` vão para `internal/api/handlers/...`
-- quando existir `devops/docker/docker-compose.yml`, o `ginger add` também injeta os serviços locais compatíveis nele
+- quando existir `devops/docker/docker-compose.yml`, o `ginger add` também injeta serviços locais para `postgres`, `mysql`, `redis`, `rabbitmq`, `kafka`, `nats`, `mongodb`, `clickhouse`, `couchbase`, `prometheus` e `otel`
+- integrações como `sqlite`, `sqlserver`, `pubsub`, `grpc`, `mcp`, `sse`, `websocket` e `swagger` não alteram compose
 
 ---
 
