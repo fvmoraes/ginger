@@ -185,6 +185,9 @@ func TestAddMongoDBGeneratesValidTemplateOutput(t *testing.T) {
 	if !strings.Contains(string(data), `bson.D{bson.E{Key: "ping", Value: 1}}`) {
 		t.Fatalf("expected escaped bson command in generated file, got:\n%s", string(data))
 	}
+	if !strings.Contains(string(data), `go.mongodb.org/mongo-driver/v2/mongo`) {
+		t.Fatalf("expected mongo template to use the v2 driver import path, got:\n%s", string(data))
+	}
 }
 
 func TestAddSQLiteTemplateIncludesTimeImport(t *testing.T) {
@@ -219,5 +222,33 @@ func TestAddSQLiteTemplateIncludesTimeImport(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"time"`) {
 		t.Fatalf("expected sqlite template to import time, got:\n%s", string(data))
+	}
+}
+
+func TestMessagingTemplatesUseTransportSpecificHelperNames(t *testing.T) {
+	if strings.Contains(kafkaTmpl, "func Publish(") {
+		t.Fatalf("kafka template should not declare a generic Publish function")
+	}
+	if !strings.Contains(kafkaTmpl, "func PublishKafka(") {
+		t.Fatalf("expected kafka template to declare PublishKafka")
+	}
+
+	if strings.Contains(natsTmpl, "func Publish(") {
+		t.Fatalf("nats template should not declare a generic Publish function")
+	}
+	if !strings.Contains(natsTmpl, "func PublishNATS(") {
+		t.Fatalf("expected nats template to declare PublishNATS")
+	}
+	if !strings.Contains(natsTmpl, "func SubscribeNATS(") {
+		t.Fatalf("expected nats template to declare SubscribeNATS")
+	}
+}
+
+func TestRegistryUsesCurrentMongoAndPubSubModules(t *testing.T) {
+	if got := registry["mongodb"].pkg; got != "go.mongodb.org/mongo-driver/v2/mongo" {
+		t.Fatalf("expected mongodb integration to use v2 driver, got %q", got)
+	}
+	if got := registry["pubsub"].pkg; got != "cloud.google.com/go/pubsub/v2" {
+		t.Fatalf("expected pubsub integration to use v2 module, got %q", got)
 	}
 }

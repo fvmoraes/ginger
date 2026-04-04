@@ -144,9 +144,9 @@ func NewReader(cfg ConsumerConfig) *kafka.Reader {
 	})
 }
 
-// PT-BR: Publish envia uma mensagem para o Kafka.
-// EN: Publish sends a message to Kafka.
-func Publish(ctx context.Context, w *kafka.Writer, key, value []byte) error {
+// PT-BR: PublishKafka envia uma mensagem para o Kafka.
+// EN: PublishKafka sends a message to Kafka.
+func PublishKafka(ctx context.Context, w *kafka.Writer, key, value []byte) error {
 	return w.WriteMessages(ctx, kafka.Message{Key: key, Value: value})
 }
 `
@@ -374,15 +374,15 @@ func ConnectNATS(url string) (*nats.Conn, error) {
 	return nc, nil
 }
 
-// PT-BR: Publish envia uma mensagem para um subject NATS.
-// EN: Publish sends a message to a NATS subject.
-func Publish(nc *nats.Conn, subject string, data []byte) error {
+// PT-BR: PublishNATS envia uma mensagem para um subject NATS.
+// EN: PublishNATS sends a message to a NATS subject.
+func PublishNATS(nc *nats.Conn, subject string, data []byte) error {
 	return nc.Publish(subject, data)
 }
 
-// PT-BR: Subscribe registra um handler para um subject NATS.
-// EN: Subscribe registers a handler for a NATS subject.
-func Subscribe(nc *nats.Conn, subject string, handler nats.MsgHandler) (*nats.Subscription, error) {
+// PT-BR: SubscribeNATS registra um handler para um subject NATS.
+// EN: SubscribeNATS registers a handler for a NATS subject.
+func SubscribeNATS(nc *nats.Conn, subject string, handler nats.MsgHandler) (*nats.Subscription, error) {
 	return nc.Subscribe(subject, handler)
 }
 
@@ -407,7 +407,7 @@ import (
 	"context"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 // PT-BR: PubSubClient encapsula um cliente do Google Cloud Pub/Sub.
@@ -431,7 +431,9 @@ func ConnectPubSub(ctx context.Context, projectID string) (*PubSubClient, error)
 // PT-BR: Publish envia uma mensagem para o topico informado.
 // EN: Publish sends a message to the given topic.
 func (p *PubSubClient) Publish(ctx context.Context, topicID string, data []byte) (string, error) {
-	t := p.client.Topic(topicID)
+	t := p.client.Publisher(topicID)
+	defer t.Stop()
+
 	result := t.Publish(ctx, &pubsub.Message{Data: data})
 	id, err := result.Get(ctx)
 	if err != nil {
@@ -443,7 +445,7 @@ func (p *PubSubClient) Publish(ctx context.Context, topicID string, data []byte)
 // PT-BR: Subscribe consome mensagens de uma subscription.
 // EN: Subscribe pulls messages from a subscription.
 func (p *PubSubClient) Subscribe(ctx context.Context, subID string, fn func(ctx context.Context, msg *pubsub.Message)) error {
-	sub := p.client.Subscription(subID)
+	sub := p.client.Subscriber(subID)
 	return sub.Receive(ctx, fn)
 }
 
@@ -1194,7 +1196,7 @@ func (c *ClickHouseChecker) Check(ctx context.Context) error {
 `
 
 const mongoTmpl = generatedGoFileHeader + `// Package nosql provides a MongoDB connection helper.
-// Uses the official MongoDB Go driver.
+// Uses the official MongoDB Go driver v2.
 //
 // Usage:
 //
@@ -1209,9 +1211,9 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // PT-BR: MongoConfig guarda as configuracoes de conexao do MongoDB.
@@ -1227,7 +1229,7 @@ func ConnectMongo(cfg MongoConfig) (*mongo.Client, *mongo.Database, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(options.Client().ApplyURI(cfg.URI))
 	if err != nil {
 		return nil, nil, fmt.Errorf("mongo: connect: %w", err)
 	}

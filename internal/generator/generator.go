@@ -56,6 +56,16 @@ func Handler(name string) error {
 	)
 }
 
+// Routes generates internal/api/<name>_routes.go.
+func Routes(name string) error {
+	data := newData(name)
+	return generate(
+		filepath.Join("internal", "api", data.FileName+"_routes.go"),
+		apiRoutesTmpl,
+		data,
+	)
+}
+
 // Service generates internal/services/<name>_service.go.
 func Service(name string) error {
 	data := newData(name)
@@ -186,6 +196,7 @@ func CRUD(name string) error {
 		{"memory adapter", Adapter},
 		{"service", Service},
 		{"handler", Handler},
+		{"api routes", Routes},
 		{"integration test", IntegrationTest},
 	}
 	if err := generateMany(name, steps); err != nil {

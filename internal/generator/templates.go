@@ -90,6 +90,26 @@ func (h *{{.NameTitle}}Handler) delete(w http.ResponseWriter, r *http.Request) {
 }
 `
 
+const apiRoutesTmpl = generatedGoFileHeader + `package api
+
+import (
+	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/api/handlers"
+	"{{.Module}}/internal/services"
+	"github.com/fvmoraes/ginger/pkg/router"
+)
+
+func init() {
+	generatedRouteRegistrars = append(generatedRouteRegistrars, register{{.NameTitle}}Routes)
+}
+
+func register{{.NameTitle}}Routes(r *router.Router) {
+	repo := adapters.New{{.NameTitle}}MemoryRepository()
+	svc := services.New{{.NameTitle}}Service(repo)
+	handlers.New{{.NameTitle}}Handler(svc).Register(r)
+}
+`
+
 const serviceTmpl = generatedGoFileHeader + `package services
 
 import (
@@ -176,6 +196,7 @@ import (
 	"sync"
 
 	"{{.Module}}/internal/models"
+	apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
 type {{.NameTitle}}MemoryRepository struct {
@@ -204,7 +225,7 @@ func (r *{{.NameTitle}}MemoryRepository) Get(_ context.Context, id string) (mode
 
 	item, ok := r.items[id]
 	if !ok {
-		return models.{{.NameTitle}}{}, fmt.Errorf("{{.Slug}} not found: %s", id)
+		return models.{{.NameTitle}}{}, apperrors.NotFound(fmt.Sprintf("{{.Slug}} not found: %s", id))
 	}
 	return item, nil
 }
@@ -219,6 +240,9 @@ func (r *{{.NameTitle}}MemoryRepository) Create(_ context.Context, item models.{
 func (r *{{.NameTitle}}MemoryRepository) Update(_ context.Context, id string, item models.{{.NameTitle}}) (models.{{.NameTitle}}, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, ok := r.items[id]; !ok {
+		return models.{{.NameTitle}}{}, apperrors.NotFound(fmt.Sprintf("{{.Slug}} not found: %s", id))
+	}
 	item.ID = id
 	r.items[id] = item
 	return item, nil
@@ -227,6 +251,9 @@ func (r *{{.NameTitle}}MemoryRepository) Update(_ context.Context, id string, it
 func (r *{{.NameTitle}}MemoryRepository) Delete(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, ok := r.items[id]; !ok {
+		return apperrors.NotFound(fmt.Sprintf("{{.Slug}} not found: %s", id))
+	}
 	delete(r.items, id)
 	return nil
 }
@@ -371,27 +398,29 @@ import (
 	"net/http"
 	"testing"
 
-	"{{.Module}}/internal/adapters"
+	"{{.Module}}/internal/api"
 	"{{.Module}}/internal/api/handlers"
-	"{{.Module}}/internal/services"
-	"github.com/fvmoraes/ginger/pkg/router"
+	"{{.Module}}/internal/config"
+	gingerapp "github.com/fvmoraes/ginger/pkg/app"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
 
 func Test{{.NameTitle}}CRUDFlow(t *testing.T) {
-	repo := adapters.New{{.NameTitle}}MemoryRepository()
-	svc := services.New{{.NameTitle}}Service(repo)
-	h := handlers.New{{.NameTitle}}Handler(svc)
-	r := router.New()
-	v1 := r.Group("/api/v1")
-	h.Register(v1)
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load returned error: %v", err)
+	}
 
-	create := testhelper.NewRequest(t, r, http.MethodPost, "/api/v1/{{.NamePlural}}").
+	app := gingerapp.New(cfg)
+	handlers.RegisterHealthChecks(app.Health)
+	api.Register(app.Router)
+
+	create := testhelper.NewRequest(t, app.Router, http.MethodPost, "/api/v1/{{.NamePlural}}").
 		WithBody(map[string]any{"name": "{{.Slug}}"}).
 		Do()
 	testhelper.AssertStatus(t, create, http.StatusCreated)
 
-	list := testhelper.NewRequest(t, r, http.MethodGet, "/api/v1/{{.NamePlural}}").Do()
+	list := testhelper.NewRequest(t, app.Router, http.MethodGet, "/api/v1/{{.NamePlural}}").Do()
 	testhelper.AssertStatus(t, list, http.StatusOK)
 }
 `
@@ -421,6 +450,9 @@ func TestApp_Smoke(t *testing.T) {
 
 	rec := testhelper.NewRequest(t, app.Router, http.MethodGet, "/health").Do()
 	testhelper.AssertStatus(t, rec, http.StatusOK)
+
+	ping := testhelper.NewRequest(t, app.Router, http.MethodGet, "/api/v1/ping").Do()
+	testhelper.AssertStatus(t, ping, http.StatusOK)
 }
 `
 

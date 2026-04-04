@@ -3,6 +3,7 @@ package generator
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -51,6 +52,7 @@ func TestCRUDDoesNotGenerateTests(t *testing.T) {
 
 	expectedFiles := []string{
 		filepath.Join("internal", "models", "user.go"),
+		filepath.Join("internal", "api", "user_routes.go"),
 		filepath.Join("internal", "api", "handlers", "user_handler.go"),
 		filepath.Join("internal", "services", "user_service.go"),
 		filepath.Join("internal", "ports", "user_repository.go"),
@@ -61,6 +63,14 @@ func TestCRUDDoesNotGenerateTests(t *testing.T) {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected file %s to exist: %v", path, err)
 		}
+	}
+
+	adapterSource, err := os.ReadFile(filepath.Join("internal", "adapters", "user_memory_repository.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(adapterSource), "apperrors.NotFound") {
+		t.Fatalf("expected generated adapter to map missing resources to apperrors.NotFound")
 	}
 
 	unexpectedFiles := []string{

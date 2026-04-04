@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sort"
+	"syscall"
 )
 
 // detectCmdDir finds the only subdirectory of cmd/ that contains a main.go.
@@ -42,13 +44,36 @@ func runRun(args []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
 	cmd := exec.Command("go", append([]string{"run", cmdDir}, args...)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
 		os.Exit(1)
+	}
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-waitCh:
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "run failed: %v\n", err)
+			os.Exit(1)
+		}
+	case sig := <-sigCh:
+		if cmd.Process != nil {
+			_ = cmd.Process.Signal(sig)
+		}
+		<-waitCh
 	}
 }
 

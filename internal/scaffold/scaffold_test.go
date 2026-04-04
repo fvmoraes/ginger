@@ -153,3 +153,38 @@ func TestNewProjectServicePinsStableGingerVersionInGoMod(t *testing.T) {
 		t.Fatalf("expected pinned Ginger version in go.mod, got %s", string(data))
 	}
 }
+
+func TestNewProjectServiceRouterIncludesPingAndGeneratedRegistrars(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := NewProject("demo", "service"); err != nil {
+		t.Fatalf("NewProject returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("demo", "internal", "api", "router.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	content := string(data)
+	for _, want := range []string{
+		`generatedRouteRegistrars`,
+		`registerGeneratedRoutes(v1)`,
+		`v1.GET("/ping"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("expected service router to contain %q, got %s", want, content)
+		}
+	}
+}

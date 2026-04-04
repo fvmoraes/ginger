@@ -509,9 +509,10 @@ ginger add kafka
 
 ```go
 writer := messaging.NewWriter(messaging.ProducerConfig{
-    Brokers: []string{"localhost:9092"},
-    Topic:   "events",
+	Brokers: []string{"localhost:9092"},
+	Topic:   "events",
 })
+err := messaging.PublishKafka(ctx, writer, []byte("key"), []byte(`{"event":"user.created"}`))
 ```
 
 ---

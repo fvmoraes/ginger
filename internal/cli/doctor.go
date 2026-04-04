@@ -1,9 +1,13 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/fvmoraes/ginger/internal/doctor"
 )
 
 func runDoctor(_ []string) {
-	doctor.Run()
+	if !doctor.Run() {
+		os.Exit(1)
+	}
 }

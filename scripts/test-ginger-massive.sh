@@ -116,6 +116,11 @@ Defaults:
   CHECKOUT_REF   current branch (${CURRENT_BRANCH:-main})
   WORKSPACE_DIR  $REPO_ROOT/my-local/workspace
 
+Behavior:
+  - Local REPO_URL paths are copied as a working tree snapshot, including
+    uncommitted changes.
+  - Remote REPO_URL values are cloned with git using CHECKOUT_REF.
+
 Environment variables:
   REPO_URL       Git repository URL or local path
   CHECKOUT_REF   Branch, tag, or ref to clone
@@ -169,6 +174,23 @@ timestamp() {
 format_duration() {
 	local seconds="$1"
 	printf '%02dm%02ds' "$((seconds / 60))" "$((seconds % 60))"
+}
+
+port_is_open() {
+	local port="$1"
+	(: >/dev/tcp/127.0.0.1/"$port") >/dev/null 2>&1
+}
+
+choose_available_port() {
+	local port="$1"
+
+	while port_is_open "$port"; do
+		printf '%s[%s]%s %sPort %s is already in use; trying %s%s\n' \
+			"$C_TIME" "$(timestamp)" "$C_RESET" "$C_WARN" "$port" "$((port + 1))" "$C_RESET" >&2
+		port=$((port + 1))
+	done
+
+	printf '%s\n' "$port"
 }
 
 note() {
@@ -307,6 +329,7 @@ run_step() {
 	local end_ts
 	local elapsed
 	local status
+	local step_exit=0
 
 	STEP_COUNTER=$((STEP_COUNTER + 1))
 	mkdir -p "$LOG_DIR"
@@ -316,13 +339,16 @@ run_step() {
 
 	printf '\n%s[%02d]%s %s%s%s\n' "$C_STEP" "$STEP_COUNTER" "$C_RESET" "$C_STEP" "$title" "$C_RESET"
 	printf '%sLog:%s %s%s%s\n' "$C_LOG" "$C_RESET" "$C_DIM" "$CURRENT_LOG" "$C_RESET"
+	set +e
 	if [[ "$VERBOSE" == "1" ]]; then
-		if "$@" 2>&1 | tee "$CURRENT_LOG"; then
-			status="OK"
-		else
-			status="FAIL"
-		fi
-	elif "$@" >"$CURRENT_LOG" 2>&1; then
+		( set -Eeuo pipefail; "$@" ) > >(tee "$CURRENT_LOG") 2>&1
+		step_exit="$?"
+	else
+		( set -Eeuo pipefail; "$@" ) >"$CURRENT_LOG" 2>&1
+		step_exit="$?"
+	fi
+	set -e
+	if [[ "$step_exit" -eq 0 ]]; then
 		status="OK"
 	else
 		status="FAIL"
@@ -389,6 +415,32 @@ wait_for_http() {
 	return 1
 }
 
+assert_http_status() {
+	local method="$1"
+	local url="$2"
+	local expected="$3"
+	shift 3
+
+	local body_file
+	local status
+
+	body_file="$(mktemp)"
+	printf '%s[%s]%s %s$ curl -sS -X %s %s %s%s\n' \
+		"$C_TIME" "$(timestamp)" "$C_RESET" "$C_CMD" "$method" "$url" "$(command_string "$@")" "$C_RESET"
+	status="$(curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$url" "$@")"
+	if [[ "$status" != "$expected" ]]; then
+		echo "Unexpected HTTP status for $method $url: got $status, want $expected" >&2
+		if [[ -s "$body_file" ]]; then
+			echo "--- response body ---" >&2
+			cat "$body_file" >&2
+			echo >&2
+		fi
+		rm -f "$body_file"
+		return 1
+	fi
+	rm -f "$body_file"
+}
+
 prepare_workspace() {
 	run_cmd mkdir -p "$BIN_DIR" "$PLAYGROUND_DIR" "$LOG_DIR"
 	note "Writing environment helper: $ENV_FILE"
@@ -400,6 +452,31 @@ EOF
 }
 
 clone_repo() {
+	if [[ -d "$REPO_URL" ]]; then
+		note "Local repository detected; copying current working tree snapshot."
+		note "CHECKOUT_REF is ignored for local snapshots."
+		run_cmd mkdir -p "$SRC_DIR"
+		if command -v rsync >/dev/null 2>&1; then
+			run_cmd rsync -a --delete \
+				--exclude .git \
+				--exclude my-local \
+				--exclude bin \
+				--exclude dist \
+				"$REPO_URL"/ "$SRC_DIR"/
+			return
+		fi
+
+		note "rsync not found; falling back to tar-based copy."
+		(
+			cd "$REPO_URL"
+			tar --exclude .git --exclude my-local --exclude bin --exclude dist -cf - .
+		) | (
+			cd "$SRC_DIR"
+			tar -xf -
+		)
+		return
+	fi
+
 	run_cmd git clone --depth 1 --branch "$CHECKOUT_REF" "$REPO_URL" "$SRC_DIR"
 }
 
@@ -516,17 +593,18 @@ run_service_project() {
 	local run_log="$LOG_DIR/service-run.out"
 	cd "$SERVICE_PROJECT"
 	note "Writing request payload: $payload_file"
-	printf '{"name":"Massive Test","email":"massive@example.com"}\n' >"$payload_file"
+	printf '{"name":"massive-test","email":"massive@example.com"}\n' >"$payload_file"
 	start_background "service project" "$run_log" env HTTP_PORT="$SERVICE_PORT" ginger run
 	SERVICE_PID="$LAST_BG_PID"
 	SERVICE_TAIL_PID="$LAST_TAIL_PID"
 	wait_for_http "http://127.0.0.1:$SERVICE_PORT/health" 30 1
-	run_cmd_discard_output curl -fsS "http://127.0.0.1:$SERVICE_PORT/health"
-	run_cmd_discard_output curl -fsS "http://127.0.0.1:$SERVICE_PORT/api/v1/ping"
-	run_cmd_discard_output curl -fsS "http://127.0.0.1:$SERVICE_PORT/api/v1/users/123"
-	run_cmd_discard_output curl -fsS -X POST "http://127.0.0.1:$SERVICE_PORT/api/v1/users" \
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/health" 200
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/api/v1/ping" 200
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/api/v1/users/123" 404
+	assert_http_status POST "http://127.0.0.1:$SERVICE_PORT/api/v1/users" 201 \
 		-H "Content-Type: application/json" \
 		--data @"$payload_file"
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/api/v1/users/massive-test" 200
 	stop_process "$SERVICE_PID" "service project" "$SERVICE_TAIL_PID"
 	SERVICE_PID=""
 	SERVICE_TAIL_PID=""
@@ -655,11 +733,16 @@ print_summary() {
 main() {
 	require_commands
 
+	SERVICE_PORT="$(choose_available_port "$SERVICE_PORT")"
+	WORKER_PORT="$(choose_available_port "$WORKER_PORT")"
+
 	note "Verbose mode: $VERBOSE"
 	note "Color mode: $COLOR_ENABLED"
 	note "Workspace base: $BASE_WORKSPACE_DIR"
 	note "Repository: $REPO_URL"
 	note "Checkout ref: $CHECKOUT_REF"
+	note "Service port: $SERVICE_PORT"
+	note "Worker port: $WORKER_PORT"
 	note "The script will stream commands live and finish with a full report."
 
 	run_step "Prepare isolated workspace" prepare_workspace

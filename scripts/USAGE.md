@@ -32,7 +32,8 @@ The `scripts/release.sh` script automates the full release flow:
 
 The `scripts/test-ginger-massive.sh` script performs a full end-to-end validation of Ginger in an isolated workspace:
 
-- Clones Ginger into a fresh workspace
+- Copies the local working tree into a fresh workspace when `REPO_URL` is a local path
+- Clones Ginger into a fresh workspace when `REPO_URL` is a remote repository URL
 - Installs the CLI into a private `bin/`
 - Exports `PATH` during the run
 - Validates `ginger version` and `ginger help`
@@ -48,6 +49,11 @@ The `scripts/test-ginger-massive.sh` script performs a full end-to-end validatio
 - `REPO_URL`: current repository root
 - `CHECKOUT_REF`: current branch
 - `WORKSPACE_DIR`: `./my-local/workspace`
+
+### Behavior notes
+
+- Local `REPO_URL` values validate the current filesystem state, including uncommitted changes
+- Remote `REPO_URL` values use `git clone --branch "$CHECKOUT_REF"`
 
 ### Usage
 

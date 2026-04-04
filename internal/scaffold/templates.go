@@ -999,16 +999,34 @@ services:
 const serviceRouterTmpl = generatedGoFileHeader + `package api
 
 import (
+	"net/http"
+
 	"{{.Module}}/internal/api/middlewares"
+	"github.com/fvmoraes/ginger/pkg/response"
 	"github.com/fvmoraes/ginger/pkg/router"
 )
+
+var generatedRouteRegistrars []func(*router.Router)
 
 // Register wires starter routes onto Ginger's shared router.
 func Register(r *router.Router) {
 	// PT-BR: Agrupe as rotas da API sob /api/v1.
 	// EN: Group API routes under /api/v1.
 	v1 := r.Group("/api/v1", middlewares.RequestID)
-	_ = v1 // Remove this line when you add routes to the group.
+	registerCoreRoutes(v1)
+	registerGeneratedRoutes(v1)
+}
+
+func registerCoreRoutes(v1 *router.Router) {
+	v1.GET("/ping", func(w http.ResponseWriter, _ *http.Request) {
+		response.OK(w, map[string]any{"status": "ok"})
+	})
+}
+
+func registerGeneratedRoutes(v1 *router.Router) {
+	for _, register := range generatedRouteRegistrars {
+		register(v1)
+	}
 }
 `
 

@@ -52,13 +52,13 @@ ginger add <integration>
 | | `sqlite` | `github.com/mattn/go-sqlite3` | `platform/database/sqlite.go` |
 | | `sqlserver` | `github.com/microsoft/go-mssqldb` | `platform/database/sqlserver.go` |
 | **NoSQL** | `couchbase` | `github.com/couchbase/gocb/v2` | `platform/nosql/couchbase.go` |
-| | `mongodb` | `go.mongodb.org/mongo-driver` | `platform/nosql/mongo.go` |
+| | `mongodb` | `go.mongodb.org/mongo-driver/v2` | `platform/nosql/mongo.go` |
 | **Analytical** | `clickhouse` | `github.com/ClickHouse/clickhouse-go/v2` | `platform/database/clickhouse.go` |
 | **Cache** | `redis` | `github.com/redis/go-redis/v9` | `platform/cache/redis.go` |
 | **Messaging** | `kafka` | `github.com/segmentio/kafka-go` | `platform/messaging/kafka.go` |
 | | `rabbitmq` | `github.com/rabbitmq/amqp091-go` | `platform/messaging/rabbitmq.go` |
 | | `nats` | `github.com/nats-io/nats.go` | `platform/messaging/nats.go` |
-| | `pubsub` | `cloud.google.com/go/pubsub` | `platform/messaging/pubsub.go` |
+| | `pubsub` | `cloud.google.com/go/pubsub/v2` | `platform/messaging/pubsub.go` |
 | **Protocols** | `grpc` | `google.golang.org/grpc` | `platform/grpc/server.go` |
 | | `mcp` | stdlib only | `platform/mcp/server.go` |
 | **Real-time** | `sse` | stdlib only | `internal/api/handlers/sse_handler.go` |
@@ -395,7 +395,7 @@ writer := messaging.NewWriter(cfg)
 defer writer.Close()
 
 // Publish
-err := messaging.Publish(ctx, writer, []byte("key"), []byte(`{"event":"user.created"}`))
+err := messaging.PublishKafka(ctx, writer, []byte("key"), []byte(`{"event":"user.created"}`))
 ```
 
 **Consumer:**
@@ -467,10 +467,10 @@ if err != nil {
 defer nc.Close()
 
 // Publish
-messaging.Publish(nc, "events", []byte(`{"event":"user.created"}`))
+messaging.PublishNATS(nc, "events", []byte(`{"event":"user.created"}`))
 
 // Subscribe
-sub, err := messaging.Subscribe(nc, "events", func(msg *nats.Msg) {
+sub, err := messaging.SubscribeNATS(nc, "events", func(msg *nats.Msg) {
     fmt.Printf("Received: %s\n", msg.Data)
 })
 defer sub.Unsubscribe()

@@ -89,7 +89,7 @@ var registry = map[string]integration{
 	},
 	"mongodb": {
 		name: "mongodb",
-		pkg:  "go.mongodb.org/mongo-driver/mongo",
+		pkg:  "go.mongodb.org/mongo-driver/v2/mongo",
 		file: "platform/nosql/mongo.go",
 		tmpl: mongoTmpl,
 	},
@@ -126,7 +126,7 @@ var registry = map[string]integration{
 	},
 	"pubsub": {
 		name: "pubsub",
-		pkg:  "cloud.google.com/go/pubsub",
+		pkg:  "cloud.google.com/go/pubsub/v2",
 		file: "platform/messaging/pubsub.go",
 		tmpl: pubsubTmpl,
 	},

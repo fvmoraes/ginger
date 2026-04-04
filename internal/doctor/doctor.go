@@ -27,16 +27,18 @@ type check struct {
 	fn    func() checkResult
 }
 
+type evaluatedCheck struct {
+	label  string
+	result checkResult
+}
+
 var (
 	lookPath    = exec.LookPath
 	execCommand = exec.Command
 )
 
-// Run executes all checks and prints a diagnostic report.
-func Run() {
-	fmt.Print("\n🩺 Ginger Doctor\n\n")
-
-	checks := []check{
+func defaultChecks() []check {
+	return []check{
 		{"valid project structure", checkStructure},
 		{"go.mod present", checkGoMod},
 		{"configs/app.yaml present when applicable", checkConfig},
@@ -47,24 +49,46 @@ func Run() {
 		{"go vet passes", checkGoVet},
 		{"lint (golangci-lint)", checkLint},
 	}
+}
 
+func evaluateChecks(checks []check) ([]evaluatedCheck, bool) {
+	results := make([]evaluatedCheck, 0, len(checks))
 	allOK := true
+
 	for _, c := range checks {
 		result := c.fn()
-		switch result.state {
-		case checkPass:
-			fmt.Printf("  ✓ %s\n", c.label)
-		case checkSkip:
-			if result.reason != "" {
-				fmt.Printf("  - %s (%s)\n", c.label, result.reason)
-			} else {
-				fmt.Printf("  - %s\n", c.label)
-			}
-		default:
-			fmt.Printf("  ■ %s\n", c.label)
+		results = append(results, evaluatedCheck{label: c.label, result: result})
+		if result.state == checkFail {
 			allOK = false
 		}
 	}
+
+	return results, allOK
+}
+
+func printResults(results []evaluatedCheck) {
+	for _, r := range results {
+		switch r.result.state {
+		case checkPass:
+			fmt.Printf("  ✓ %s\n", r.label)
+		case checkSkip:
+			if r.result.reason != "" {
+				fmt.Printf("  - %s (%s)\n", r.label, r.result.reason)
+			} else {
+				fmt.Printf("  - %s\n", r.label)
+			}
+		default:
+			fmt.Printf("  ■ %s\n", r.label)
+		}
+	}
+}
+
+// Run executes all checks, prints a diagnostic report, and returns true when all mandatory checks pass.
+func Run() bool {
+	fmt.Print("\n🩺 Ginger Doctor\n\n")
+
+	results, allOK := evaluateChecks(defaultChecks())
+	printResults(results)
 
 	fmt.Println()
 	if allOK {
@@ -73,6 +97,7 @@ func Run() {
 		fmt.Println("■ Some checks failed. Review the items above.")
 	}
 	fmt.Println()
+	return allOK
 }
 
 func checkStructure() checkResult {
