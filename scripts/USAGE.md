@@ -1,4 +1,6 @@
-# Release Script Usage
+# Scripts Usage
+
+## `release.sh`
 
 The `scripts/release.sh` script automates the full release flow:
 
@@ -10,16 +12,62 @@ The `scripts/release.sh` script automates the full release flow:
 - Creates `RELEASE_NOTES.md` in English
 - Commits, tags, pushes, and publishes the GitHub release
 
-## Usage
+### Usage
 
 ```bash
 ./scripts/release.sh [--type patch|minor|major] [--message "Release message"]
 ```
 
-## Examples
+### Examples
 
 ```bash
 ./scripts/release.sh
 ./scripts/release.sh --type minor
 ./scripts/release.sh --type patch --message "CLI improvements and reliability fixes"
+```
+
+---
+
+## `test-ginger-massive.sh`
+
+The `scripts/test-ginger-massive.sh` script performs a full end-to-end validation of Ginger in an isolated workspace:
+
+- Clones Ginger into a fresh workspace
+- Installs the CLI into a private `bin/`
+- Exports `PATH` during the run
+- Validates `ginger version` and `ginger help`
+- Exercises `ginger new` for `generic`, `service`, `worker`, and `cli`
+- Exercises all supported generators
+- Exercises all supported `ginger add` integrations
+- Runs `go test`, `go build`, `ginger build`, `ginger doctor`, and runtime checks
+- Streams colorful output in real time
+- Prints a final report with `OK` / `FAIL`, duration, and log path per step
+
+### Defaults
+
+- `REPO_URL`: current repository root
+- `CHECKOUT_REF`: current branch
+- `WORKSPACE_DIR`: `./my-local/workspace`
+
+### Usage
+
+```bash
+./scripts/test-ginger-massive.sh
+```
+
+### Useful overrides
+
+```bash
+REPO_URL=https://github.com/fvmoraes/ginger.git \
+CHECKOUT_REF=main \
+WORKSPACE_DIR=/tmp/ginger-massive \
+./scripts/test-ginger-massive.sh
+```
+
+### Verbosity and color
+
+```bash
+VERBOSE=0 ./scripts/test-ginger-massive.sh
+FORCE_COLOR=1 ./scripts/test-ginger-massive.sh
+COLOR_ENABLED=0 ./scripts/test-ginger-massive.sh
 ```
