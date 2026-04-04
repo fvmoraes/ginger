@@ -560,7 +560,7 @@ exercise_service_integrations() {
 	assert_file "$SERVICE_PROJECT/platform/database/postgres.go"
 	assert_file "$SERVICE_PROJECT/platform/database/sqlite.go"
 	assert_file "$SERVICE_PROJECT/platform/nosql/mongo.go"
-	assert_file "$SERVICE_PROJECT/internal/api/handlers/swagger.go"
+	assert_file "$SERVICE_PROJECT/internal/api/swagger.go"
 }
 
 exercise_service_generators() {
@@ -600,6 +600,8 @@ run_service_project() {
 	wait_for_http "http://127.0.0.1:$SERVICE_PORT/health" 30 1
 	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/health" 200
 	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/api/v1/ping" 200
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/swagger" 200
+	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/swagger/openapi.json" 200
 	assert_http_status GET "http://127.0.0.1:$SERVICE_PORT/api/v1/users/123" 404
 	assert_http_status POST "http://127.0.0.1:$SERVICE_PORT/api/v1/users" 201 \
 		-H "Content-Type: application/json" \

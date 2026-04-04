@@ -188,3 +188,40 @@ func TestNewProjectServiceRouterIncludesPingAndGeneratedRegistrars(t *testing.T)
 		}
 	}
 }
+
+func TestNewProjectWorkerUsesStructuredLifecycle(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := NewProject("demo", "worker"); err != nil {
+		t.Fatalf("NewProject returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("demo", "cmd", "demo-worker", "main.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	content := string(data)
+	for _, want := range []string{
+		`logger.New(cfg.Log.Level, cfg.Log.Format)`,
+		`health.New()`,
+		`worker_health_started`,
+		`shutdown_signal_received`,
+		`server.Shutdown(shutdownCtx)`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("expected worker main to contain %q, got %s", want, content)
+		}
+	}
+}

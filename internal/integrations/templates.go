@@ -1252,21 +1252,17 @@ func (c *MongoChecker) Check(ctx context.Context) error {
 }
 `
 
-const swaggerTmpl = generatedGoFileHeader + `// Package handlers provides Swagger/OpenAPI endpoints.
-package handlers
+const swaggerTmpl = generatedGoFileHeader + `// Package api provides plug-and-play Swagger/OpenAPI endpoints.
+package api
 
 import (
-	"os"
 	"net/http"
+	"os"
 )
 
-// PT-BR: RegisterSwagger monta uma Swagger UI simples e um endpoint para a especificacao OpenAPI.
-// EN: RegisterSwagger mounts a simple Swagger UI and an OpenAPI spec endpoint.
-// PT-BR: Exemplos de montagem:
-// EN: Mount examples:
-//   r.GET("/swagger", handlers.SwaggerUI)
-//   r.GET("/swagger/openapi.json", handlers.OpenAPISpec)
-func RegisterSwagger(r interface {
+// PT-BR: registerSwaggerRoutes monta uma Swagger UI simples e um endpoint para a especificacao OpenAPI.
+// EN: registerSwaggerRoutes mounts a simple Swagger UI and an OpenAPI spec endpoint.
+func registerSwaggerRoutes(r interface {
 	GET(pattern string, h http.HandlerFunc)
 }) {
 	r.GET("/swagger", SwaggerUI)

@@ -65,7 +65,7 @@ ginger add <integration>
 | | `websocket` | stdlib only | `internal/api/handlers/ws_handler.go` |
 | **Observability** | `otel` | `go.opentelemetry.io/otel` | `platform/telemetry/otel.go` |
 | | `prometheus` | `github.com/prometheus/client_golang` | `platform/metrics/prometheus.go` |
-| **Docs** | `swagger` | stdlib + Swagger UI CDN | `internal/api/handlers/swagger.go` |
+| **Docs** | `swagger` | stdlib + Swagger UI CDN | `internal/api/swagger.go` |
 
 ---
 
@@ -725,16 +725,10 @@ Gera `internal/api/handlers/ws_handler.go` com exemplo completo.
 ginger add swagger
 ```
 
-Gera `internal/api/handlers/swagger.go` com:
+Gera `internal/api/swagger.go` e monta automaticamente:
 
 - `GET /swagger`
 - `GET /swagger/openapi.json`
-
-Exemplo de uso:
-
-```go
-handlers.RegisterSwagger(app.Router)
-```
 
 Para gerar a especificação OpenAPI editável:
 
@@ -749,7 +743,6 @@ Fluxo recomendado:
 
 1. `ginger add swagger`
 2. `ginger generate swagger foobar`
-3. `handlers.RegisterSwagger(app.Router)`
 
 O handler serve uma página Swagger UI via CDN e usa `docs/openapi.json` como fonte principal da especificação.
 

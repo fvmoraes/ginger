@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"gopkg.in/yaml.v3"
@@ -19,10 +20,11 @@ var ErrIntegrationExists = errors.New("integration already exists")
 var execCommand = exec.Command
 
 type integration struct {
-	name string
-	pkg  string // go get package
-	file string // output file path
-	tmpl string // file template
+	name         string
+	pkg          string // go get package
+	file         string // output file path
+	tmpl         string // file template
+	postGenerate func() error
 }
 
 type composeFile struct {
@@ -94,10 +96,11 @@ var registry = map[string]integration{
 		tmpl: mongoTmpl,
 	},
 	"swagger": {
-		name: "swagger",
-		pkg:  "",
-		file: "internal/api/handlers/swagger.go",
-		tmpl: swaggerTmpl,
+		name:         "swagger",
+		pkg:          "",
+		file:         "internal/api/swagger.go",
+		tmpl:         swaggerTmpl,
+		postGenerate: enableSwaggerRoutes,
 	},
 	"clickhouse": {
 		name: "clickhouse",
@@ -210,6 +213,13 @@ func Add(name string) error {
 	}
 	if err := tmpl.Execute(f, nil); err != nil {
 		return err
+	}
+
+	if intg.postGenerate != nil {
+		if err := intg.postGenerate(); err != nil {
+			_ = os.Remove(intg.file)
+			return err
+		}
 	}
 
 	fmt.Printf("  ✓ created %s\n", intg.file)
@@ -451,4 +461,32 @@ func contains(items []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func enableSwaggerRoutes() error {
+	routerPath := filepath.Join("internal", "api", "router.go")
+	data, err := os.ReadFile(routerPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("add swagger: internal/api/router.go not found; swagger integration requires a service project")
+		}
+		return fmt.Errorf("add swagger: read router: %w", err)
+	}
+
+	content := string(data)
+	if strings.Contains(content, "registerSwaggerRoutes(r)") {
+		return nil
+	}
+
+	const marker = "\tv1 := r.Group(\"/api/v1\", middlewares.RequestID)\n"
+	if !strings.Contains(content, marker) {
+		return fmt.Errorf("add swagger: could not locate API group registration in %s", routerPath)
+	}
+
+	updated := strings.Replace(content, marker, "\tregisterSwaggerRoutes(r)\n"+marker, 1)
+	if err := os.WriteFile(routerPath, []byte(updated), 0644); err != nil {
+		return fmt.Errorf("add swagger: write router: %w", err)
+	}
+
+	return nil
 }

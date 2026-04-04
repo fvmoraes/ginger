@@ -197,7 +197,7 @@ Exemplos:
 - `platform/database`, `platform/cache`, `platform/messaging`, `platform/telemetry`
 - `internal/api/handlers/sse_handler.go`
 - `internal/api/handlers/ws_handler.go`
-- `internal/api/handlers/swagger.go`
+- `internal/api/swagger.go`
 
 ### Convenções de Nomenclatura
 

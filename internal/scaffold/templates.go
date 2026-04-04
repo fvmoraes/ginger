@@ -69,50 +69,134 @@ const workerMainTmpl = generatedGoFileHeader + `package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"{{.Module}}/internal/adapters"
 	"{{.Module}}/internal/config"
 	"{{.Module}}/internal/worker"
+	"github.com/fvmoraes/ginger/pkg/health"
+	"github.com/fvmoraes/ginger/pkg/logger"
 )
 
 func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		os.Exit(1)
 	}
 
-	go startHealthServer(cfg.HTTP.Host, cfg.HTTP.Port)
+	log := logger.New(cfg.Log.Level, cfg.Log.Format)
+	healthHandler := health.New()
+	healthHandler.Register(staticChecker{name: "worker"})
+
+	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      healthHandler,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	consumer := adapters.NewMemoryConsumer()
 	w := worker.New(consumer, &worker.DefaultHandler{})
-	log.Println("worker starting...")
-	if err := w.Run(ctx); err != nil {
-		log.Fatalf("worker: %v", err)
+
+	workerCtx, stopWorker := context.WithCancel(context.Background())
+	defer stopWorker()
+
+	workerErrCh := make(chan error, 1)
+	serverErrCh := make(chan error, 1)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
+
+	go func() {
+		log.Info("worker_health_started", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrCh <- err
+		}
+	}()
+
+	go func() {
+		log.Info("worker_started", "name", cfg.App.Name)
+		workerErrCh <- w.Run(workerCtx)
+	}()
+
+	shutdownReason := "signal"
+	var (
+		workerErr   error
+		workerExited bool
+		exitCode    int
+	)
+
+	select {
+	case err := <-serverErrCh:
+		log.Error("worker_health_server_failed", "error", err)
+		shutdownReason = "health_server_error"
+		exitCode = 1
+	case err := <-workerErrCh:
+		workerExited = true
+		workerErr = err
+		if err != nil {
+			log.Error("worker_failed", "error", err)
+			shutdownReason = "worker_error"
+			exitCode = 1
+		} else {
+			log.Info("worker_completed")
+			shutdownReason = "worker_completed"
+		}
+	case sig := <-quit:
+		log.Info("shutdown_signal_received", "signal", sig.String())
 	}
-	log.Println("worker stopped")
+
+	stopWorker()
+
+	timeout := time.Duration(cfg.HTTP.ShutdownTimeout) * time.Second
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	log.Info("worker_stopping", "reason", shutdownReason, "timeout", timeout.String())
+
+	if err := server.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Error("worker_health_server_shutdown_error", "error", err)
+		exitCode = 1
+	}
+
+	if !workerExited {
+		select {
+		case err := <-workerErrCh:
+			workerErr = err
+			if err != nil {
+				log.Error("worker_shutdown_error", "error", err)
+				exitCode = 1
+			}
+		case <-shutdownCtx.Done():
+			log.Error("worker_shutdown_timeout", "error", shutdownCtx.Err())
+			os.Exit(1)
+		}
+	} else if workerErr != nil {
+		log.Error("worker_shutdown_error", "error", workerErr)
+	}
+
+	log.Info("worker_stopped")
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
 }
 
-func startHealthServer(host string, port int) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(` + "`" + `{"healthy":true}` + "`" + `))
-	})
-
-	addr := fmt.Sprintf("%s:%d", host, port)
-	log.Printf("worker health endpoint listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil && err != http.ErrServerClosed {
-		log.Printf("worker health server: %v", err)
-	}
+type staticChecker struct {
+	name string
 }
+
+func (c staticChecker) Name() string { return c.name }
+
+func (c staticChecker) Check(context.Context) error { return nil }
 `
 
 const workerTmpl = generatedGoFileHeader + `package worker

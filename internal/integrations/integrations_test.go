@@ -252,3 +252,58 @@ func TestRegistryUsesCurrentMongoAndPubSubModules(t *testing.T) {
 		t.Fatalf("expected pubsub integration to use v2 module, got %q", got)
 	}
 }
+
+func TestAddSwaggerRegistersRoutesInServiceRouter(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := os.MkdirAll(filepath.Join("internal", "api"), 0755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+
+	routerSource := `package api
+
+import (
+	"example/internal/api/middlewares"
+	"github.com/fvmoraes/ginger/pkg/router"
+)
+
+func Register(r *router.Router) {
+	v1 := r.Group("/api/v1", middlewares.RequestID)
+	_ = v1
+}
+`
+	if err := os.WriteFile(filepath.Join("internal", "api", "router.go"), []byte(routerSource), 0644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	if err := Add("swagger"); err != nil {
+		t.Fatalf("Add returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("internal", "api", "router.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(data), "registerSwaggerRoutes(r)") {
+		t.Fatalf("expected swagger integration to patch router registration, got:\n%s", string(data))
+	}
+
+	swaggerFile, err := os.ReadFile(filepath.Join("internal", "api", "swagger.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(swaggerFile), "package api") {
+		t.Fatalf("expected swagger integration file to be generated in package api, got:\n%s", string(swaggerFile))
+	}
+}
