@@ -237,6 +237,11 @@ echo "Generating RELEASE_NOTES.md in English..."
   echo 'See `checksums.txt` in the release assets.'
 } > "$RELEASE_DIR/RELEASE_NOTES.md"
 
+if rg -n '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "$RELEASE_DIR/RELEASE_NOTES.md" >/dev/null; then
+  echo "Generated RELEASE_NOTES.md contains an email address. Aborting release."
+  exit 1
+fi
+
 echo "Committing release files..."
 git add README.md CHANGELOG.md internal/buildinfo/version.txt "$RELEASE_DIR"
 git commit -m "release: $NEW_TAG - $RELEASE_MESSAGE"

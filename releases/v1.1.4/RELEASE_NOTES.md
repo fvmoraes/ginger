@@ -184,7 +184,6 @@ ginger add grpc        # gRPC protocol
 
 - **Issues:** [GitHub Issues](https://github.com/fvmoraes/ginger/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/fvmoraes/ginger/discussions)
-- **Email:** fvmoraes@gmail.com
 
 ---
 

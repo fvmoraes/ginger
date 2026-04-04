@@ -92,7 +92,6 @@ Your API is now running at `http://localhost:8080`
 
 - **Issues:** [GitHub Issues](https://github.com/fvmoraes/ginger/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/fvmoraes/ginger/discussions)
-- **Email:** fvmoraes@gmail.com
 
 ---
 

@@ -179,7 +179,6 @@ MIT License - see [LICENSE](https://github.com/fvmoraes/ginger/blob/main/LICENSE
 
 - **Issues:** [GitHub Issues](https://github.com/fvmoraes/ginger/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/fvmoraes/ginger/discussions)
-- **Email:** fvmoraes@gmail.com
 
 ---
 

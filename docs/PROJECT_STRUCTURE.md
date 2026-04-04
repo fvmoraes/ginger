@@ -268,7 +268,7 @@ Na prática:
 A estrutura atual está **correta** e **otimizada**:
 
 ```
-/Users/fvmoraes/Go/src/ginger/  ← Raiz do workspace
+/path/to/ginger/                ← Raiz do workspace
 ├── cmd/                         ← Direto na raiz
 ├── pkg/                         ← Direto na raiz
 ├── internal/                    ← Direto na raiz
@@ -280,7 +280,7 @@ A estrutura atual está **correta** e **otimizada**:
 A estrutura duplicada foi **removida**:
 
 ```
-/Users/fvmoraes/Go/src/ginger/
+/path/to/ginger/
 └── ginger/                      ← REMOVIDO
     ├── cmd/                     ← Movido para raiz
     ├── pkg/                     ← Movido para raiz
