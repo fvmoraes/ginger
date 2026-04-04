@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.3.3] - 2026-04-04
+
+### Fixed
+- Framework reliability, template correctness, and validation improvements
+
+### Commit Summary
+- fix: harden framework reliability and validation flow
+- feat: add massive validation script for end-to-end testing of Ginger
+
 ## [1.3.2] - 2026-04-03
 
 ### Fixed
@@ -261,3 +270,4 @@ Verify downloads with `checksums.txt`.
 [1.3.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.0
 [1.3.1]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.1
 [1.3.2]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.2
+[1.3.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.3
