@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.3.6] - 2026-04-04
+
+### Fixed
+- Release tooling, compose defaults, and integration documentation improvements
+
+### Commit Summary
+- fix: keep service compose minimal and document compose-aware integrations
+- fix: add validation in release script
+
 ## [1.3.5] - 2026-04-04
 
 ### Fixed
@@ -289,3 +298,4 @@ Verify downloads with `checksums.txt`.
 [1.3.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.3
 [1.3.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.4
 [1.3.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.5
+[1.3.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.6
