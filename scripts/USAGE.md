@@ -43,17 +43,20 @@ The `scripts/test-ginger-massive.sh` script performs a full end-to-end validatio
 - Runs `go test`, `go build`, `ginger build`, `ginger doctor`, and runtime checks
 - Streams colorful output in real time
 - Prints a final report with `OK` / `FAIL`, duration, and log path per step
+- Supports an optional `DEEP_MODE=1` for extra docker-compose smoke checks
 
 ### Defaults
 
 - `REPO_URL`: current repository root
 - `CHECKOUT_REF`: current branch
 - `WORKSPACE_DIR`: `./my-local/workspace`
+- `DEEP_MODE`: `0`
 
 ### Behavior notes
 
 - Local `REPO_URL` values validate the current filesystem state, including uncommitted changes
 - Remote `REPO_URL` values use `git clone --branch "$CHECKOUT_REF"`
+- `DEEP_MODE=1` requires Docker Compose and a running Docker daemon for runtime smoke checks
 
 ### Usage
 
@@ -76,4 +79,6 @@ WORKSPACE_DIR=/tmp/ginger-massive \
 VERBOSE=0 ./scripts/test-ginger-massive.sh
 FORCE_COLOR=1 ./scripts/test-ginger-massive.sh
 COLOR_ENABLED=0 ./scripts/test-ginger-massive.sh
+DEEP_MODE=1 ./scripts/test-ginger-massive.sh
+DEEP_MODE=1 DEEP_HEAVY=1 ./scripts/test-ginger-massive.sh
 ```

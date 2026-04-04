@@ -123,3 +123,36 @@ func TestTestsGeneratesFullResourceSuite(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandGeneratorCreatesFailingStub(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd returned error: %v", err)
+	}
+
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("Chdir returned error: %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(wd)
+	}()
+
+	if err := os.MkdirAll(filepath.Join("internal", "commands"), 0755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+
+	if err := Command("sync"); err != nil {
+		t.Fatalf("Command returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join("internal", "commands", "sync.go"))
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, `return fmt.Errorf("sync: not yet implemented")`) {
+		t.Fatalf("expected generated command to return a non-zero error, got %s", content)
+	}
+}

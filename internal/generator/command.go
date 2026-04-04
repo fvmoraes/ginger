@@ -19,8 +19,7 @@ var {{.Name}}Cmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// PT-BR: Implemente a lógica do subcomando aqui.
 		// EN: Implement subcommand logic here.
-		fmt.Println("{{.Slug}}: not yet implemented")
-		return nil
+		return fmt.Errorf("{{.Slug}}: not yet implemented")
 	},
 }
 

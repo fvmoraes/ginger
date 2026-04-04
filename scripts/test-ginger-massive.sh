@@ -13,6 +13,8 @@ SERVICE_PORT="${SERVICE_PORT:-18081}"
 WORKER_PORT="${WORKER_PORT:-18082}"
 VERBOSE="${VERBOSE:-1}"
 COLOR_ENABLED="${COLOR_ENABLED:-1}"
+DEEP_MODE="${DEEP_MODE:-0}"
+DEEP_HEAVY="${DEEP_HEAVY:-0}"
 
 if [[ -e "$BASE_WORKSPACE_DIR" ]]; then
 	WORKSPACE_DIR="${BASE_WORKSPACE_DIR%/}-$(date +%Y%m%d-%H%M%S)"
@@ -37,6 +39,7 @@ GENERIC_PID=""
 SERVICE_TAIL_PID=""
 WORKER_TAIL_PID=""
 GENERIC_TAIL_PID=""
+DEEP_COMPOSE_FILE=""
 STEP_COUNTER=0
 CURRENT_LOG=""
 CURRENT_STEP=""
@@ -129,9 +132,12 @@ Environment variables:
   WORKER_PORT    Port used for worker run validation (default: 18082)
   VERBOSE        1 shows live output and saves logs, 0 keeps terminal quieter
   COLOR_ENABLED  1 enables colorful terminal output, 0 disables colors
+  DEEP_MODE      1 enables extra docker-compose integration smoke checks
+  DEEP_HEAVY     1 includes heavier services such as Kafka and Couchbase in deep mode
 
 Examples:
   ./scripts/test-ginger-massive.sh
+  DEEP_MODE=1 ./scripts/test-ginger-massive.sh
   REPO_URL=https://github.com/fvmoraes/ginger.git CHECKOUT_REF=main ./scripts/test-ginger-massive.sh
 EOF
 }
@@ -145,6 +151,7 @@ cleanup() {
 	stop_process "$SERVICE_PID" "service project" "$SERVICE_TAIL_PID"
 	stop_process "$WORKER_PID" "worker project" "$WORKER_TAIL_PID"
 	stop_process "$GENERIC_PID" "generic project" "$GENERIC_TAIL_PID"
+	cleanup_compose
 }
 
 trap cleanup EXIT
@@ -161,6 +168,17 @@ require_commands() {
 	if [[ "$missing" -ne 0 ]]; then
 		exit 1
 	fi
+}
+
+compose_available() {
+	if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+		return 0
+	fi
+	command -v docker-compose >/dev/null 2>&1
+}
+
+compose_runtime_available() {
+	command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
 }
 
 safe_name() {
@@ -209,6 +227,36 @@ run_cmd() {
 run_cmd_discard_output() {
 	printf '%s[%s]%s %s$ %s%s\n' "$C_TIME" "$(timestamp)" "$C_RESET" "$C_CMD" "$(command_string "$@")" "$C_RESET"
 	"$@" >/dev/null
+}
+
+run_cmd_expect_failure() {
+	local expected_fragment="$1"
+	shift
+
+	local output_file
+	local exit_code
+	output_file="$(mktemp)"
+
+	printf '%s[%s]%s %s$ %s%s\n' "$C_TIME" "$(timestamp)" "$C_RESET" "$C_CMD" "$(command_string "$@")" "$C_RESET"
+	set +e
+	"$@" >"$output_file" 2>&1
+	exit_code="$?"
+	set -e
+	cat "$output_file"
+
+	if [[ "$exit_code" -eq 0 ]]; then
+		echo "Expected command to fail but it succeeded: $(command_string "$@")" >&2
+		rm -f "$output_file"
+		return 1
+	fi
+
+	if [[ -n "$expected_fragment" ]] && ! grep -Fq "$expected_fragment" "$output_file"; then
+		echo "Expected failure output to contain: $expected_fragment" >&2
+		rm -f "$output_file"
+		return 1
+	fi
+
+	rm -f "$output_file"
 }
 
 start_background() {
@@ -384,6 +432,24 @@ assert_file() {
 	}
 }
 
+assert_contains() {
+	local haystack="$1"
+	local needle="$2"
+	if [[ "$haystack" != *"$needle"* ]]; then
+		echo "Expected output to contain: $needle" >&2
+		return 1
+	fi
+}
+
+assert_not_contains() {
+	local haystack="$1"
+	local needle="$2"
+	if [[ "$haystack" == *"$needle"* ]]; then
+		echo "Expected output to not contain: $needle" >&2
+		return 1
+	fi
+}
+
 link_local_ginger() {
 	local project_dir="$1"
 	note "Linking local Ginger source into: $project_dir"
@@ -441,6 +507,67 @@ assert_http_status() {
 	rm -f "$body_file"
 }
 
+wait_for_port() {
+	local port="$1"
+	local retries="${2:-30}"
+	local sleep_seconds="${3:-1}"
+	local attempt
+
+	note "Waiting for TCP port: $port"
+	for attempt in $(seq 1 "$retries"); do
+		if port_is_open "$port"; then
+			note "TCP port ready: $port"
+			return 0
+		fi
+		if (( attempt == 1 || attempt % 5 == 0 )); then
+			note "Still waiting ($attempt/$retries): TCP $port"
+		fi
+		sleep "$sleep_seconds"
+	done
+
+	echo "Timed out waiting for TCP port $port" >&2
+	return 1
+}
+
+run_compose() {
+	local compose_file="$1"
+	shift
+
+	if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+		run_cmd docker compose -f "$compose_file" "$@"
+	else
+		run_cmd docker-compose -f "$compose_file" "$@"
+	fi
+}
+
+run_compose_discard_output() {
+	local compose_file="$1"
+	shift
+
+	if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+		run_cmd_discard_output docker compose -f "$compose_file" "$@"
+	else
+		run_cmd_discard_output docker-compose -f "$compose_file" "$@"
+	fi
+}
+
+cleanup_compose() {
+	if [[ -z "$DEEP_COMPOSE_FILE" ]]; then
+		return 0
+	fi
+
+	if compose_available; then
+		note "Cleaning docker-compose resources: $DEEP_COMPOSE_FILE"
+		if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+			docker compose -f "$DEEP_COMPOSE_FILE" down -v >/dev/null 2>&1 || true
+		else
+			docker-compose -f "$DEEP_COMPOSE_FILE" down -v >/dev/null 2>&1 || true
+		fi
+	fi
+
+	DEEP_COMPOSE_FILE=""
+}
+
 prepare_workspace() {
 	run_cmd mkdir -p "$BIN_DIR" "$PLAYGROUND_DIR" "$LOG_DIR"
 	note "Writing environment helper: $ENV_FILE"
@@ -478,6 +605,91 @@ clone_repo() {
 	fi
 
 	run_cmd git clone --depth 1 --branch "$CHECKOUT_REF" "$REPO_URL" "$SRC_DIR"
+}
+
+deep_validate_service_integrations() {
+	local compose_file="$SERVICE_PROJECT/devops/docker/docker-compose.yml"
+	local -a smoke_targets=(
+		"postgres:5432"
+		"mysql:3306"
+		"redis:6379"
+		"rabbitmq:5672"
+		"nats:4222"
+		"mongodb:27017"
+		"clickhouse:8123"
+		"prometheus:9090"
+		"otel-collector:4318"
+	)
+	local -a heavy_targets=(
+		"kafka:9092"
+		"couchbase:8091"
+	)
+	local -a targets=()
+	local -a services=()
+	local available_services
+	local entry
+	local service
+	local port
+
+	if [[ "$DEEP_MODE" != "1" ]]; then
+		return 0
+	fi
+
+	if ! compose_available; then
+		note "DEEP_MODE=1 requested, but docker compose is not available. Skipping deep smoke checks."
+		return 0
+	fi
+
+	if ! compose_runtime_available; then
+		note "DEEP_MODE=1 requested, but the Docker daemon is not running. Skipping deep runtime smoke checks."
+		return 0
+	fi
+
+	assert_file "$compose_file"
+	run_compose_discard_output "$compose_file" config
+	if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+		available_services="$(docker compose -f "$compose_file" config --services)"
+	else
+		available_services="$(docker-compose -f "$compose_file" config --services)"
+	fi
+
+	for entry in "${smoke_targets[@]}"; do
+		service="${entry%%:*}"
+		if printf '%s\n' "$available_services" | grep -Fxq "$service"; then
+			targets+=("$entry")
+			services+=("$service")
+		fi
+	done
+
+	if [[ "$DEEP_HEAVY" == "1" ]]; then
+		for entry in "${heavy_targets[@]}"; do
+			service="${entry%%:*}"
+			if printf '%s\n' "$available_services" | grep -Fxq "$service"; then
+				targets+=("$entry")
+				services+=("$service")
+			fi
+		done
+	else
+		note "Skipping heavy deep checks for kafka and couchbase. Set DEEP_HEAVY=1 to include them."
+	fi
+
+	if [[ "${#services[@]}" -eq 0 ]]; then
+		note "No docker-compose integration targets were selected for deep smoke checks."
+		return 0
+	fi
+
+	DEEP_COMPOSE_FILE="$compose_file"
+	run_compose "$compose_file" up -d "${services[@]}"
+
+	for entry in "${targets[@]}"; do
+		service="${entry%%:*}"
+		port="${entry##*:}"
+		note "Deep smoke validation for $service on localhost:$port"
+		wait_for_port "$port" 60 2
+	done
+
+	run_compose "$compose_file" down -v
+	DEEP_COMPOSE_FILE=""
 }
 
 install_ginger() {
@@ -675,6 +887,7 @@ create_cli_project() {
 
 exercise_cli_generators() {
 	export PATH="$BIN_DIR:$PATH"
+	local version_output
 	(
 		cd "$CLI_PROJECT"
 		run_cmd ginger generate command sync
@@ -683,10 +896,22 @@ exercise_cli_generators() {
 		run_cmd go test -v ./...
 		run_cmd go build ./...
 		run_cmd ginger build
-		run_cmd ginger run version
-		run_cmd ginger run sync
-		run_cmd "./bin/$(basename "$CLI_PROJECT")" version
-		run_cmd "./bin/$(basename "$CLI_PROJECT")" sync
+		version_output="$(ginger run version 2>&1)"
+		printf '%s\n' "$version_output"
+		assert_contains "$version_output" "ginger-cli"
+		assert_contains "$version_output" "commit:"
+		assert_contains "$version_output" "built:"
+		assert_not_contains "$version_output" "commit: none"
+		assert_not_contains "$version_output" "built: unknown"
+		run_cmd_expect_failure "not yet implemented" ginger run sync
+		version_output="$("./bin/$(basename "$CLI_PROJECT")" version 2>&1)"
+		printf '%s\n' "$version_output"
+		assert_contains "$version_output" "ginger-cli"
+		assert_contains "$version_output" "commit:"
+		assert_contains "$version_output" "built:"
+		assert_not_contains "$version_output" "commit: none"
+		assert_not_contains "$version_output" "built: unknown"
+		run_cmd_expect_failure "not yet implemented" "./bin/$(basename "$CLI_PROJECT")" sync
 	)
 
 	assert_file "$CLI_PROJECT/internal/commands/sync.go"
@@ -740,6 +965,7 @@ main() {
 
 	note "Verbose mode: $VERBOSE"
 	note "Color mode: $COLOR_ENABLED"
+	note "Deep mode: $DEEP_MODE"
 	note "Workspace base: $BASE_WORKSPACE_DIR"
 	note "Repository: $REPO_URL"
 	note "Checkout ref: $CHECKOUT_REF"
@@ -757,6 +983,9 @@ main() {
 
 	run_step "Create service project" create_service_project
 	run_step "Run every ginger add integration in the service project" exercise_service_integrations
+	if [[ "$DEEP_MODE" == "1" ]]; then
+		run_step "Run deep integration smoke checks via docker-compose" deep_validate_service_integrations
+	fi
 	run_step "Run every service generator and validate doctor/build/test" exercise_service_generators
 	run_step "Run service project and validate health, ping, and CRUD endpoints" run_service_project
 

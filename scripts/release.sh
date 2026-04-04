@@ -141,9 +141,8 @@ echo "Updating README version badge..."
 sed -E -i.bak "s/version-[0-9]+\.[0-9]+\.[0-9]+-blue/version-$NEW_VERSION-blue/g" README.md
 rm -f README.md.bak
 
-echo "Updating fallback Ginger version..."
-sed -E -i.bak "s/const FallbackVersion = \"[0-9]+\.[0-9]+\.[0-9]+\"/const FallbackVersion = \"$NEW_VERSION\"/g" internal/buildinfo/version.go
-rm -f internal/buildinfo/version.go.bak
+echo "Updating embedded Ginger release version..."
+printf '%s\n' "$NEW_VERSION" > internal/buildinfo/version.txt
 
 echo "Updating CHANGELOG.md..."
 CHANGELOG_SECTION_TITLE="Changed"
@@ -204,7 +203,9 @@ for platform in "${PLATFORMS[@]}"; do
     OUTPUT+=".exe"
   fi
 
-  GOOS="$GOOS" GOARCH="$GOARCH" go build -ldflags="-s -w" -o "$OUTPUT" ./cmd/ginger
+  GOOS="$GOOS" GOARCH="$GOARCH" go build \
+    -ldflags="-s -w -X github.com/fvmoraes/ginger/internal/buildinfo.releaseVersion=$NEW_VERSION" \
+    -o "$OUTPUT" ./cmd/ginger
 done
 
 echo "Generating checksums..."
@@ -237,7 +238,7 @@ echo "Generating RELEASE_NOTES.md in English..."
 } > "$RELEASE_DIR/RELEASE_NOTES.md"
 
 echo "Committing release files..."
-git add README.md CHANGELOG.md internal/buildinfo/version.go "$RELEASE_DIR"
+git add README.md CHANGELOG.md internal/buildinfo/version.txt "$RELEASE_DIR"
 git commit -m "release: $NEW_TAG - $RELEASE_MESSAGE"
 
 echo "Creating tag $NEW_TAG..."

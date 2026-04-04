@@ -32,38 +32,50 @@ type evaluatedCheck struct {
 	result checkResult
 }
 
-var (
-	lookPath    = exec.LookPath
-	execCommand = exec.Command
-)
-
-func defaultChecks() []check {
-	return []check{
-		{"valid project structure", checkStructure},
-		{"go.mod present", checkGoMod},
-		{"configs/app.yaml present when applicable", checkConfig},
-		{"DevOps Dockerfile present when applicable", checkDockerfile},
-		{"health check endpoint when applicable", checkHealthEndpoint},
-		{"graceful shutdown configured when applicable", checkGracefulShutdown},
-		{"tests present", checkTests},
-		{"go vet passes", checkGoVet},
-		{"lint (golangci-lint)", checkLint},
-	}
+type summary struct {
+	passed  int
+	failed  int
+	skipped int
 }
 
-func evaluateChecks(checks []check) ([]evaluatedCheck, bool) {
+var (
+	lookPath      = exec.LookPath
+	execCommand   = exec.Command
+	defaultChecks = func() []check {
+		return []check{
+			{"valid project structure", checkStructure},
+			{"go.mod present", checkGoMod},
+			{"configs/app.yaml present when applicable", checkConfig},
+			{"DevOps Dockerfile present when applicable", checkDockerfile},
+			{"health check endpoint when applicable", checkHealthEndpoint},
+			{"graceful shutdown configured when applicable", checkGracefulShutdown},
+			{"tests present", checkTests},
+			{"go vet passes", checkGoVet},
+			{"lint (golangci-lint)", checkLint},
+		}
+	}
+)
+
+func evaluateChecks(checks []check) ([]evaluatedCheck, summary, bool) {
 	results := make([]evaluatedCheck, 0, len(checks))
 	allOK := true
+	sum := summary{}
 
 	for _, c := range checks {
 		result := c.fn()
 		results = append(results, evaluatedCheck{label: c.label, result: result})
-		if result.state == checkFail {
+		switch result.state {
+		case checkPass:
+			sum.passed++
+		case checkSkip:
+			sum.skipped++
+		default:
+			sum.failed++
 			allOK = false
 		}
 	}
 
-	return results, allOK
+	return results, sum, allOK
 }
 
 func printResults(results []evaluatedCheck) {
@@ -87,14 +99,18 @@ func printResults(results []evaluatedCheck) {
 func Run() bool {
 	fmt.Print("\n🩺 Ginger Doctor\n\n")
 
-	results, allOK := evaluateChecks(defaultChecks())
+	results, sum, allOK := evaluateChecks(defaultChecks())
 	printResults(results)
 
 	fmt.Println()
 	if allOK {
-		fmt.Println("✓ All checks passed. Your project looks healthy!")
+		if sum.skipped > 0 {
+			fmt.Printf("✓ All executed checks passed. Passed: %d, Skipped: %d.\n", sum.passed, sum.skipped)
+		} else {
+			fmt.Printf("✓ All checks passed. Passed: %d.\n", sum.passed)
+		}
 	} else {
-		fmt.Println("■ Some checks failed. Review the items above.")
+		fmt.Printf("■ Some checks failed. Passed: %d, Failed: %d, Skipped: %d.\n", sum.passed, sum.failed, sum.skipped)
 	}
 	fmt.Println()
 	return allOK
