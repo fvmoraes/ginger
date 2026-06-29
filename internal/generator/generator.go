@@ -1,4 +1,4 @@
-// Package generator produces boilerplate Go files for handlers, services, ports, adapters, models and tests.
+// Package generator produces standardized Go source files for handlers, services, ports, adapters, models, and tests.
 package generator
 
 import (

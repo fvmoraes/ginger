@@ -18,7 +18,7 @@
 
 ## Visão Geral
 
-O comando `ginger add <integration>` gera código boilerplate e adiciona dependências automaticamente.
+O comando `ginger add <integration>` gera o código de integração e adiciona as dependências automaticamente.
 
 ### Convenção de Localização
 
