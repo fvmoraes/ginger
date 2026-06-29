@@ -5,9 +5,13 @@ All notable changes to the Ginger Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-29
 
+### Added
+- Project awareness, safe generation with --plan/--force, managed regions, ginger init/inspect commands, and .ginger/ manifest support
 
-
+### Commit Summary
+- feat: add project management and region handling features
 
 ## [1.3.6] - 2026-04-04
 
@@ -298,4 +302,5 @@ Verify downloads with `checksums.txt`.
 [1.3.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.3
 [1.3.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.4
 [1.3.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.5
+[1.4.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.0
 [1.3.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.6
