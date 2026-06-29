@@ -5,6 +5,18 @@ All notable changes to the Ginger Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-06-29
+
+### Fixed
+- Bug fixes and reliability improvements
+
+### Commit Summary
+- Revert "fix: trigger release pipeline for testing"
+- fix: trigger release pipeline for testing
+- fix: correct release workflow — path glob, git add, push logic
+- fix: refine package overview wording — replace boilerplate language
+- ci: add automated release workflow with conventional commit detection
+
 ## [1.4.0] - 2026-06-29
 
 ### Added
@@ -304,3 +316,4 @@ Verify downloads with `checksums.txt`.
 [1.3.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.5
 [1.3.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.6
 [1.4.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.0
+[1.4.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.3
