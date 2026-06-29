@@ -36,7 +36,7 @@ COPY . .
 RUN go build -o bin/foobar ./cmd/foobar
 
 # Runtime stage
-FROM alpine:3.19
+FROM alpine:3.21
 
 WORKDIR /app
 
@@ -544,10 +544,10 @@ jobs:
       packages: write
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       
       - name: Log in to Container Registry
         uses: docker/login-action@v2
@@ -583,7 +583,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3

@@ -18,6 +18,11 @@ ginger new foobar -w            # igual a --worker
 ginger new foobar --cli         # cli       -> cmd/foobar
 ginger new foobar -c            # igual a --cli
 
+# Inicializar / Inspecionar
+ginger init [--force]           # Inicializa ginger.yaml
+ginger inspect [--json]         # Analisa estrutura do projeto
+ginger docs [--plan]           # Gera documentação
+
 # Executar
 ginger run
 
@@ -25,7 +30,7 @@ ginger run
 ginger build
 ginger build ./bin/foobar
 
-# Gerar código
+# Gerar código (--plan preview / --force sobrescrever)
 ginger generate crud foobar
 ginger generate command deploy
 ginger generate handler order
@@ -34,8 +39,9 @@ ginger generate test foobar
 ginger generate smoke-test
 ginger generate swagger
 ginger generate swagger foobar
+ginger generate tests --scan    # Testes para código existente
 
-# Adicionar integrações
+# Adicionar integrações (--plan preview / --force sobrescrever)
 ginger add postgres
 ginger add mongodb
 ginger add redis
@@ -619,6 +625,52 @@ kubectl port-forward svc/foobar 8080:80
 
 ```bash
 curl http://localhost:8080/health
+```
+
+---
+
+## 🔐 Auth Middleware
+
+```go
+package middlewares
+
+import (
+    "net/http"
+    "strings"
+    "github.com/fvmoraes/ginger/pkg/middleware"
+    "github.com/fvmoraes/ginger/pkg/router"
+    apperrors "github.com/fvmoraes/ginger/pkg/errors"
+)
+
+func RequireAuth() middleware.Func {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+            if token == "" {
+                router.Error(w, apperrors.Unauthorized("token required"))
+                return
+            }
+            // Validate token and set user context
+            next.ServeHTTP(w, r)
+        })
+    }
+}
+```
+
+## 📤 File Upload
+
+```go
+func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
+    r.ParseMultipartForm(10 << 20) // 10 MB
+    file, header, err := r.FormFile("file")
+    if err != nil {
+        router.Error(w, apperrors.BadRequest("invalid file"))
+        return
+    }
+    defer file.Close()
+    // Save or process file...
+    response.Created(w, map[string]string{"filename": header.Filename})
+}
 ```
 
 ---

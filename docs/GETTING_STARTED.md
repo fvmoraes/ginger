@@ -44,6 +44,8 @@ go mod tidy
 Estrutura criada:
 ```
 foobar/
+├── ginger.yaml                  # Configuração do Ginger
+├── .ginger/                     # Estado interno do Ginger
 ├── cmd/foobar/main.go          # Ponto de entrada
 ├── internal/api/handlers/health.go
 ├── configs/app.yaml         # Configuração
@@ -265,7 +267,12 @@ ginger new <nome>            # genérico -> cmd/<nome>
 ginger new <nome> --service | -s   # service  -> cmd/<nome>
 ginger new <nome> --worker | -w    # worker   -> cmd/<nome>-worker
 ginger new <nome> --cli | -c       # cli      -> cmd/<nome>
-ginger new <nome> --cli | -c       # CLI      -> cmd/<nome>-cli
+
+# Inicializar / Inspecionar
+ginger init [--force]              # Inicializa ginger.yaml em projeto existente
+ginger inspect [--json]            # Analisa a estrutura do projeto
+ginger docs [--plan]              # Gera documentação
+ginger generate tests --scan       # Escaneia e gera testes para código existente
 
 # Gerar código
 ginger generate crud <recurso>
@@ -284,6 +291,8 @@ ginger build
 # Diagnosticar
 ginger doctor
 ```
+
+> **Dica:** Os comandos `ginger add` e `ginger generate` aceitam as flags `--plan` (pré-visualização sem modificar) e `--force` (sobrescrever arquivos existentes).
 
 ---
 

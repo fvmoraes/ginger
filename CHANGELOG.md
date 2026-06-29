@@ -229,7 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example application with full CRUD
 
 ### Technical Details
-- Go 1.25+ required (OpenTelemetry v1.42 dependency)
+- Core requires Go 1.22+ (only optional OpenTelemetry submodule requires Go 1.25+)
 - Zero external dependencies for core functionality
 - Stdlib-first approach
 - Fast compilation
@@ -302,5 +302,5 @@ Verify downloads with `checksums.txt`.
 [1.3.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.3
 [1.3.4]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.4
 [1.3.5]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.5
-[1.4.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.0
 [1.3.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.6
+[1.4.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.0

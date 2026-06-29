@@ -43,6 +43,12 @@ Por isso:
 ginger add <integration>
 ```
 
+> **Safe mode:** Use `--plan` to preview changes before applying, and `--force` to overwrite existing files.
+> ```bash
+> ginger add postgres --plan    # preview only
+> ginger add postgres --force   # overwrite existing files
+> ```
+
 Se `devops/docker/docker-compose.yml` já existir, apenas parte das integrações também atualiza o compose automaticamente.
 
 ### Integrações Disponíveis
@@ -53,6 +59,9 @@ Se `devops/docker/docker-compose.yml` já existir, apenas parte das integraçõe
 | | `mysql` | `github.com/go-sql-driver/mysql` | `platform/database/mysql.go` | sim |
 | | `sqlite` | `github.com/mattn/go-sqlite3` | `platform/database/sqlite.go` | não |
 | | `sqlserver` | `github.com/microsoft/go-mssqldb` | `platform/database/sqlserver.go` | não |
+| **ORMs** | `gorm` | `gorm.io/gorm` | `platform/database/gorm.go` | não |
+| | `sqlx` | `github.com/jmoiron/sqlx` | `platform/database/sqlx.go` | não |
+| | `bun` | `github.com/uptrace/bun` | `platform/database/bun.go` | não |
 | **NoSQL** | `couchbase` | `github.com/couchbase/gocb/v2` | `platform/nosql/couchbase.go` | sim |
 | | `mongodb` | `go.mongodb.org/mongo-driver/v2` | `platform/nosql/mongo.go` | sim |
 | **Analytical** | `clickhouse` | `github.com/ClickHouse/clickhouse-go/v2` | `platform/database/clickhouse.go` | sim |

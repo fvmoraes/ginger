@@ -653,6 +653,81 @@ const totalPages = page.pagination.total_pages;
 
 ---
 
+## pkg/telemetry
+
+**Propósito:** OpenTelemetry com exporters stdout e OTLP
+
+### API Completa
+
+```go
+type Config struct {
+    ServiceName    string
+    ServiceVersion string
+    Exporter       string // "stdout" (default) ou "otlp"
+}
+
+type Provider struct { /* ... */ }
+
+func Setup(ctx context.Context, cfg Config) (*Provider, error)
+func (p *Provider) Shutdown(ctx context.Context) error
+func Tracer(name string) trace.Tracer
+```
+
+### Uso Básico
+
+```go
+provider, err := telemetry.Setup(ctx, telemetry.Config{
+    ServiceName:    "myapp",
+    ServiceVersion: "1.0.0",
+    Exporter:       "stdout",
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer provider.Shutdown(ctx)
+```
+
+### Exporter OTLP
+
+```go
+provider, err := telemetry.Setup(ctx, telemetry.Config{
+    ServiceName:    "myapp",
+    ServiceVersion: "1.0.0",
+    Exporter:       "otlp",
+})
+defer provider.Shutdown(ctx)
+```
+
+Define o endpoint via env var `OTEL_EXPORTER_OTLP_ENDPOINT`.
+
+### Integração com App
+
+```go
+provider, err := telemetry.Setup(ctx, telemetry.Config{
+    ServiceName:    cfg.App.Name,
+    ServiceVersion: cfg.App.Version,
+    Exporter:       "stdout",
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+app.OnStop(func(ctx context.Context) error {
+    return provider.Shutdown(ctx)
+})
+```
+
+### Tracer
+
+```go
+tracer := telemetry.Tracer("myapp/user-service")
+ctx, span := tracer.Start(ctx, "operation-name")
+// ...
+span.End()
+```
+
+---
+
 ## pkg/sse
 
 **Propósito:** Server-Sent Events para streaming unidirecional

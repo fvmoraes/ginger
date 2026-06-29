@@ -47,6 +47,9 @@
 # Gera testes unitários para handler, service e adapter in-memory
 ginger generate test foobar
 
+# Escaneia código existente e gera testes com TODOs
+ginger generate tests --scan
+
 # Gera só o smoke test da aplicação
 ginger generate smoke-test
 ```

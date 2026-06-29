@@ -8,21 +8,6 @@ Bem-vindo à documentação completa do Ginger Framework. Esta documentação co
 
 ## 📖 Guias Principais
 
-### ⚡ [Copy-Paste Ready](./COPY_PASTE.md)
-**Código pronto para usar — ZERO configuração**
-
-Exemplos completos prontos para copiar e colar:
-- Setup completo em 1 minuto
-- Handler, Service, Repository completos
-- Autenticação, Paginação, Upload
-- SSE, WebSocket
-- Docker, Kubernetes
-- Testes
-
-**Ideal para:** Quem quer código funcionando AGORA.
-
----
-
 ### 🚀 [Guia de Início Rápido](./GETTING_STARTED.md)
 **Comece em 5 minutos**
 
@@ -229,7 +214,7 @@ Deploy completo do desenvolvimento à produção:
 
 ### 1. Iniciante (Preguiçoso)
 1. Veja o [Quick Start no README](../README.md#-quick-start) — 3 comandos
-2. Copie código do [Copy-Paste Ready](./COPY_PASTE.md) — código pronto
+2. Copie código do [Guia de Início Rápido](./GETTING_STARTED.md) — exemplos práticos
 3. Rode e teste — funciona imediatamente
 
 ### 2. Iniciante (Curioso)
@@ -239,7 +224,7 @@ Deploy completo do desenvolvimento à produção:
 4. Consulte a [Referência de Pacotes](./PACKAGES.md) conforme necessário
 
 ### 3. Intermediário
-1. Use [Copy-Paste Ready](./COPY_PASTE.md) para código base
+1. Use [Guia de Início Rápido](./GETTING_STARTED.md) para exemplos práticos
 2. Adicione integrações com o [Guia de Integrações](./INTEGRATIONS.md)
 3. Implemente testes seguindo o [Guia de Testes](./TESTING.md)
 4. Gere código com `ginger generate crud <resource>`

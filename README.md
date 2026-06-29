@@ -44,7 +44,6 @@ ginger inspect        # analyze project
 ginger add swagger --plan    # see what would be created
 ginger add postgres --plan
 ginger generate crud foobar --plan
-ginger generate service deployer # Generate a business service for --cli/--worker
 ginger generate test foobar     # Generate tests for handler/service/adapter
 ginger generate smoke-test      # Generate app smoke test
 ginger add postgres             # Add PostgreSQL
@@ -275,6 +274,8 @@ ginger new <name>                  Scaffold a generic project  → cmd/<name>
 ginger new <name> --service | -s   Service project            → cmd/<name>
 ginger new <name> --worker  | -w   Worker project             → cmd/<name>-worker
 ginger new <name> --cli     | -c   CLI project                → cmd/<name>
+ginger init [--force]              Initialize ginger.yaml in an existing project
+ginger inspect [--json]            Analyze current project structure
 ginger run                         Run the app in dev mode
 ginger build [output]              Build the binary
 ginger generate crud <name>        Generate model+handler+service+port+adapter
@@ -282,12 +283,18 @@ ginger generate command <name>     Generate a Cobra subcommand for --cli project
 ginger generate handler <name>     Generate a worker handler for --worker projects
 ginger generate service <name>     Generate a business service for --cli/--worker projects
 ginger generate test <name>        Generate handler+service+repository tests
+ginger generate tests --scan       Scan and generate tests for existing code
 ginger generate smoke-test         Generate app smoke test under tests/integration
 ginger generate swagger [name]     Generate docs/openapi.json starter or CRUD example
 ginger add <integration>           Add an integration to the project
 ginger doctor                      Run project health diagnostics
+ginger docs [--plan]               Generate documentation based on project structure
 ginger version                     Print ginger x.y.z
 ginger help                        Show help
+
+Safe generation flags (available on `add`, `generate`, `docs`):
+  --plan                           Preview what would be done without applying
+  --force                          Overwrite existing files
 ```
 
 ### Integrations (`ginger add`)
@@ -298,14 +305,17 @@ ginger help                        Show help
 |             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
 |             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
 |             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
+| ORMs        | `ginger add gorm`          | `gorm.io/gorm`                       |
+|             | `ginger add sqlx`          | `github.com/jmoiron/sqlx`            |
+|             | `ginger add bun`           | `github.com/uptrace/bun`             |
 | NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
-|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
+|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver/v2/mongo` |
 | Analytical  | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
 | Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
 | Messaging   | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
 |             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
-|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
+|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub/v2`      |
 | Protocols   | `ginger add grpc`          | `google.golang.org/grpc`             |
 |             | `ginger add mcp`           | stdlib only                          |
 | Real-time   | `ginger add sse`           | stdlib only                          |
@@ -877,16 +887,27 @@ ginger new <nome>                  Scaffold genérico          → cmd/<nome>
 ginger new <nome> --service | -s   Projeto Service            → cmd/<nome>
 ginger new <nome> --worker | -w    Projeto Worker             → cmd/<nome>-worker
 ginger new <nome> --cli | -c       Projeto CLI                → cmd/<nome>
+ginger init [--force]              Inicializa ginger.yaml em um projeto existente
+ginger inspect [--json]            Analisa a estrutura do projeto atual
 ginger run                         Executa a aplicação em modo dev
 ginger build [saída]               Compila o binário
 ginger generate crud <nome>        Gera model+handler+service+port+adapter
+ginger generate command <nome>     Gera um subcomando Cobra para projetos --cli
+ginger generate handler <nome>     Gera um worker handler para projetos --worker
+ginger generate service <nome>     Gera um serviço de negócio para projetos --cli/--worker
 ginger generate test <nome>        Gera testes de handler+service+adapter
+ginger generate tests --scan       Escaneia e gera testes para código existente
 ginger generate smoke-test         Gera smoke test da aplicação
 ginger generate swagger [nome]     Gera docs/openapi.json base ou exemplo CRUD
 ginger add <integração>            Adiciona uma integração ao projeto
 ginger doctor                      Diagnóstico de saúde do projeto
+ginger docs [--plan]               Gera documentação baseada na estrutura do projeto
 ginger version                     Exibe ginger x.y.z
 ginger help                        Exibe a ajuda
+
+Flags de geração segura (disponíveis em `add`, `generate`, `docs`):
+  --plan                           Visualiza o que seria feito sem aplicar
+  --force                          Sobrescreve arquivos existentes
 ```
 
 ### Integrações (`ginger add`)
@@ -897,19 +918,22 @@ ginger help                        Exibe a ajuda
 |             | `ginger add mysql`         | `github.com/go-sql-driver/mysql`     |
 |             | `ginger add sqlite`        | `github.com/mattn/go-sqlite3`        |
 |             | `ginger add sqlserver`     | `github.com/microsoft/go-mssqldb`    |
+| ORMs        | `ginger add gorm`          | `gorm.io/gorm`                       |
+|             | `ginger add sqlx`          | `github.com/jmoiron/sqlx`            |
+|             | `ginger add bun`           | `github.com/uptrace/bun`             |
 | NoSQL       | `ginger add couchbase`     | `github.com/couchbase/gocb/v2`       |
-|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver`        |
+|             | `ginger add mongodb`       | `go.mongodb.org/mongo-driver/v2/mongo` |
 | Analítico   | `ginger add clickhouse`    | `github.com/ClickHouse/clickhouse-go/v2` |
-| Docs        | `ginger add swagger`       | stdlib + Swagger UI CDN              |
 | Cache       | `ginger add redis`         | `github.com/redis/go-redis/v9`       |
 | Mensageria  | `ginger add kafka`         | `github.com/segmentio/kafka-go`      |
 |             | `ginger add rabbitmq`      | `github.com/rabbitmq/amqp091-go`     |
 |             | `ginger add nats`          | `github.com/nats-io/nats.go`         |
-|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub`         |
+|             | `ginger add pubsub`        | `cloud.google.com/go/pubsub/v2`      |
 | Protocolos  | `ginger add grpc`          | `google.golang.org/grpc`             |
 |             | `ginger add mcp`           | stdlib only                          |
 | Tempo real  | `ginger add sse`           | stdlib only                          |
 |             | `ginger add websocket`     | stdlib only                          |
+| Docs        | `ginger add swagger`       | stdlib + Swagger UI CDN              |
 | Observ.     | `ginger add otel`          | `go.opentelemetry.io/otel`           |
 |             | `ginger add prometheus`    | `github.com/prometheus/client_golang`|
 
@@ -1229,7 +1253,7 @@ provider, _ := telemetry.Setup(ctx, telemetry.Config{
 
 ## Docker e Kubernetes
 
-Um pacote DevOps é gerado apenas para tipos de projeto que precisam dele. Em `api` e `service`, o Ginger cria:
+Um pacote DevOps é gerado apenas para tipos de projeto que precisam dele. Em `service` e `worker`, o Ginger cria:
 
 - `devops/docker/Dockerfile`
 - `devops/docker/docker-compose.yml`
@@ -1262,7 +1286,16 @@ ginger build                   # Build (prod)
 ```bash
 ginger generate crud foobar      # Estrutura completa do recurso
 ginger generate test foobar      # Testes do recurso
+ginger generate tests --scan     # Testes para código existente
+ginger generate smoke-test       # Smoke test da aplicação
 ginger generate swagger foobar   # OpenAPI do recurso
+```
+
+### Gerenciar Projeto
+```bash
+ginger init [--force]              # Inicializar ginger.yaml
+ginger inspect                     # Analisar estrutura
+ginger docs --plan                 # Gerar documentação
 ```
 
 ### Adicionar Integrações

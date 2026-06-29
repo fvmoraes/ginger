@@ -37,8 +37,22 @@ ginger/                          # Raiz do projeto
 │   ├── integrations/            # Sistema de integrações
 │   │   ├── integrations.go
 │   │   └── templates.go
-│   └── doctor/                  # Diagnóstico de projetos
-│       └── doctor.go
+│   ├── doctor/                  # Diagnóstico de projetos
+│   │   └── doctor.go
+│   ├── buildinfo/               # Informações de build (versão, commit)
+│   │   └── buildinfo.go
+│   ├── capability/              # Detecção de capacidades
+│   │   └── capability.go
+│   ├── docsgen/                 # Gerador de documentação
+│   │   └── docsgen.go
+│   ├── manifest/                # Manipulação de manifestos do projeto
+│   │   └── manifest.go
+│   ├── plan/                    # Planejamento de evolução
+│   │   └── plan.go
+│   ├── project/                 # Gerenciamento de projetos
+│   │   └── project.go
+│   └── region/                  # Detecção de regiões de arquivos
+│       └── region.go
 │
 ├── pkg/                         # Código público reutilizável
 │   ├── app/                     # Bootstrap da aplicação
@@ -81,7 +95,8 @@ ginger/                          # Raiz do projeto
 │   ├── DEPLOYMENT.md            # Guia de deploy
 │   ├── QUICK_REFERENCE.md       # Referência rápida
 │   ├── SUMMARY.md               # Sumário visual
-│   └── CHANGELOG.md             # Histórico
+│   ├── CHANGELOG.md             # Histórico
+│   └── SAFE_EVOLUTION_PLAN.md   # Plano de evolução segura
 │
 ├── templates/                   # Templates de projeto
 │   ├── k8s/                     # Kubernetes
@@ -99,6 +114,8 @@ ginger/                          # Raiz do projeto
 │   ├── configs/app.yaml         # Configuração
 │   ├── go.mod                   # Módulo separado
 │   └── go.sum
+│
+├── plan/                        # Plano de evolução (documentação)
 │
 ├── bin/                         # Binários compilados
 │   └── ginger                   # CLI compilada

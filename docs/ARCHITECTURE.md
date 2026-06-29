@@ -132,7 +132,7 @@ foobar/
 │   └── foobar/
 │       └── main.go              # Entrypoint — wiring de dependências
 │
-├── internal/                    # Código privado da aplicação
+├── internal/
 │   ├── api/
 │   │   ├── handlers/            # HTTP handlers (thin layer)
 │   │   │   ├── user_handler.go
@@ -145,8 +145,20 @@ foobar/
 │   │       └── auth.go
 │   ├── models/                  # Domain models
 │   │   └── user.go
-│   └── config/                  # Config loader wrapper
-│       └── config.go
+│   ├── config/                  # Config loader wrapper
+│   │   └── config.go
+│   ├── buildinfo/               # version resolution
+│   ├── capability/              # modular feature registry
+│   ├── cli/                     # CLI commands
+│   ├── docsgen/                 # documentation generation
+│   ├── doctor/                  # project health checks
+│   ├── generator/               # code generation
+│   ├── integrations/            # third-party integration scaffolding
+│   ├── manifest/                # .ginger/manifest.yaml ownership tracking
+│   ├── plan/                    # plan/apply safe generation
+│   ├── project/                 # root detection, ginger.yaml loading, inspection
+│   ├── region/                  # managed code regions
+│   └── scaffold/                # new project scaffolding
 │
 ├── pkg/                         # Código reutilizável interno
 │   └── validator/               # Exemplo: validação customizada
@@ -186,6 +198,10 @@ foobar/
 ```
 
 Observação: esta é uma visão de um projeto já expandido. O `ginger new` começa menor, e diretórios como `platform/`, `tests/`, `docs/` e camadas extras em `internal/api/...` só aparecem quando algum fluxo realmente gera arquivos neles.
+
+> O Ginger também é um **framework seguro para projetos**: `ginger init` detecta a estrutura
+> de projetos existentes, `ginger inspect` analisa, e a geração de código usa o sistema de
+> **plan/apply** (com `--plan` para preview e `--force` para overwrite).
 
 ### Regra de Organização das Integrações
 
