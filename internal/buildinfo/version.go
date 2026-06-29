@@ -51,3 +51,4 @@ func selectVersion(candidates ...string) string {
 
 	return FallbackVersion
 }
+
