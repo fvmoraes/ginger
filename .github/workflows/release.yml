@@ -3,14 +3,6 @@ name: Release
 on:
   push:
     branches: [main]
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - 'internal/**'
-      - 'pkg/**'
-      - 'cmd/**'
-      - 'templates/**'
   workflow_dispatch:
     inputs:
       bump:
@@ -188,17 +180,11 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.tag }}"
-          RELEASE_DIR="releases/$TAG"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add internal/buildinfo/version.txt README.md CHANGELOG.md "$RELEASE_DIR"/
-          git add -f "$RELEASE_DIR/ginger-windows-amd64.exe" 2>/dev/null || true
-          git commit -m "release: $TAG" || echo "Nothing to commit"
-
           git tag -a "$TAG" -m "$TAG"
-          git push origin main
           git push origin "$TAG"
 
       - name: Create GitHub Release
