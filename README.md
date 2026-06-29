@@ -124,9 +124,7 @@ patches, and preservation of existing tests.
 
 ## What is Ginger?
 
-Ginger is a CLI tool and set of packages that accelerates and standardizes Go projects across teams. It is not a replacement for the standard library — it is a thin layer on top of it that enforces conventions, eliminates boilerplate, and ships with a CLI to scaffold new projects and generate code.
-
-**Ginger does not hide Go from you. It organizes it.**
+Ginger is a **safe project framework** for Go. It handles project structure, scaffolding, and generation so you can focus on business logic instead of repetitive setup. It does not hide Go — it organizes it.
 
 ## Core Principles
 
@@ -774,9 +772,7 @@ Production deployment with Docker, Kubernetes, and Helm:
 
 ## O que é o Ginger?
 
-Ginger é uma CLI e um conjunto de pacotes que agiliza e padroniza projetos Go entre equipes. Ele não substitui a biblioteca padrão — é uma camada fina sobre ela que impõe convenções, elimina boilerplate e vem com uma CLI para criar projetos e gerar código.
-
-**O Ginger não esconde o Go de você. Ele o organiza.**
+Ginger é um **framework seguro para projetos** Go. Ele cuida da estrutura, scaffolding e geração de código para que você foque na lógica de negócio em vez de setup repetitivo. Ele não esconde o Go — ele o organiza.
 
 ## Princípios
 
