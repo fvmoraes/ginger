@@ -1,8 +1,8 @@
 // Package ginger is a safe project framework for Go.
 //
 // Ginger helps you create, organize, inspect, and evolve Go projects without
-// overwriting your work. It understands your codebase, keeps your structure
-// organized, and evolves your application safely.
+// overwriting your work. It handles scaffolding, generation, and evolution so
+// you can focus on business logic instead of repetitive setup.
 //
 // Ginger is not just another web framework. It is a project framework +
 // safe generator + structure toolkit.
