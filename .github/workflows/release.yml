@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '**/*.go'
+      - '**.go'
       - 'go.mod'
       - 'go.sum'
       - 'internal/**'
@@ -26,12 +26,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-go@v5
         with:
@@ -51,14 +49,14 @@ jobs:
           # Get latest tag
           LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
           if [[ -z "$LATEST_TAG" ]]; then
-            echo "No tags found — skipping release"
+            echo "No tags found — skipping"
             echo "type=skip" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           # Check if current HEAD is already tagged
           if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
-            echo "HEAD already tagged — skipping release"
+            echo "HEAD already tagged — skipping"
             echo "type=skip" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -71,9 +69,9 @@ jobs:
             exit 0
           fi
 
-          HAS_BREAKING=$(echo "$COMMITS" | grep -cE '^[a-z]+(\(.+\))?!:')
-          HAS_FEAT=$(echo "$COMMITS" | grep -cE '^feat(\(.+\))?:')
-          HAS_FIX=$(echo "$COMMITS" | grep -cE '^fix(\(.+\))?:')
+          HAS_BREAKING=$(echo "$COMMITS" | grep -cE '^[a-z]+(\(.+\))?!:' || true)
+          HAS_FEAT=$(echo "$COMMITS" | grep -cE '^feat(\(.+\))?:' || true)
+          HAS_FIX=$(echo "$COMMITS" | grep -cE '^fix(\(.+\))?:' || true)
 
           if [[ $HAS_BREAKING -gt 0 ]]; then
             echo "type=major" >> $GITHUB_OUTPUT
@@ -124,14 +122,12 @@ jobs:
           TAG="v$VERSION"
           COMMITS=$(git log --pretty=format:'%s' "$LATEST_TAG..HEAD")
 
-          # Determine changelog section
           case "${{ steps.bump.outputs.type }}" in
             major) SECTION="Changed" ;;
             minor) SECTION="Added" ;;
             patch) SECTION="Fixed" ;;
           esac
 
-          # Detect release message
           HAS_FEAT=$(echo "$COMMITS" | grep -cE '^feat(\(.+\))?:' || true)
           HAS_FIX=$(echo "$COMMITS" | grep -cE '^fix(\(.+\))?:' || true)
 
@@ -145,14 +141,13 @@ jobs:
             MSG="Maintenance and internal improvements"
           fi
 
-          # Insert new entry after the header block
+          # Build changelog entry
           ENTRY=$'## ['$VERSION$'] - '$DATE$'\n\n### '$SECTION$'\n- '$MSG$'\n\n### Commit Summary'
           while IFS= read -r line; do
             ENTRY+=$'\n- '$line
           done <<< "$COMMITS"
           ENTRY+=$'\n'
 
-          # Insert before first ## [ pattern
           awk -v entry="$ENTRY" '
             BEGIN { inserted=0 }
             {
@@ -164,7 +159,6 @@ jobs:
             }
           ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
 
-          # Add version link if missing
           if ! grep -q "\[$VERSION\]:" CHANGELOG.md; then
             echo "[$VERSION]: https://github.com/${{ github.repository }}/releases/tag/$TAG" >> CHANGELOG.md
           fi
@@ -192,15 +186,20 @@ jobs:
       - name: Commit, tag, and push
         if: steps.bump.outputs.type != 'skip'
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          RELEASE_DIR="releases/$TAG"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add internal/buildinfo/version.txt README.md CHANGELOG.md "releases/v${{ steps.version.outputs.version }}/"
-          git commit -m "release: ${{ steps.version.outputs.tag }}"
+          git add internal/buildinfo/version.txt README.md CHANGELOG.md "$RELEASE_DIR"/
+          git add -f "$RELEASE_DIR/ginger-windows-amd64.exe" 2>/dev/null || true
+          git commit -m "release: $TAG" || echo "Nothing to commit"
 
-          git tag -a "${{ steps.version.outputs.tag }}" -m "${{ steps.version.outputs.tag }}"
+          git tag -a "$TAG" -m "$TAG"
           git push origin main
-          git push origin "${{ steps.version.outputs.tag }}"
+          git push origin "$TAG"
 
       - name: Create GitHub Release
         if: steps.bump.outputs.type != 'skip'
