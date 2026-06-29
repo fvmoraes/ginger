@@ -39,7 +39,6 @@ $RECYCLE.BIN/
 
 # Local
 my-local/
-/plan/
 
 # Build artifacts
 bin/
@@ -59,3 +58,4 @@ AGENTS.md
 *mcp.json
 *opencode.json
 # dwyt end
+/plan/
