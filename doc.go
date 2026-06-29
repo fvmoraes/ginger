@@ -1,4 +1,11 @@
-// Package ginger provides a lightweight, opinionated Go framework for building web applications and APIs.
+// Package ginger is a safe project framework for Go.
+//
+// Ginger helps you create, organize, inspect, and evolve Go projects without
+// overwriting your work. It understands your codebase, keeps your structure
+// organized, and evolves your application safely.
+//
+// Ginger is not just another web framework. It is a project framework +
+// safe generator + structure toolkit.
 //
 // # Install
 //
@@ -6,13 +13,24 @@
 //
 // # Create a new project
 //
-//	Both long and short flags work for project types.
-//	As flags longas e curtas funcionam para os tipos de projeto.
+//	ginger new foobar --service
+//	ginger new foobar --worker
+//	ginger new foobar --cli
+//	ginger new foobar                # generic
 //
-//	ginger new foobar --service | -s   # Service → cmd/foobar
-//	ginger new foobar --worker | -w    # Worker  → cmd/foobar-worker
-//	ginger new foobar --cli | -c       # CLI     → cmd/foobar
-//	ginger new foobar                  # Generic → cmd/foobar
+// # Initialize an existing project
+//
+//	ginger init                      # detects structure, creates ginger.yaml
+//	ginger inspect                   # analyze project structure
+//
+// # Safe generation (plan before apply)
+//
+//	ginger add swagger --plan        # see what would be created
+//	ginger add postgres --plan       # plan without applying
+//	ginger add redis --force         # overwrite existing files
+//
+//	ginger generate crud user --plan
+//	ginger generate tests --scan --plan
 //
 // # Core Packages
 //
@@ -24,7 +42,16 @@
 //	import "github.com/fvmoraes/ginger/pkg/response"
 //	import "github.com/fvmoraes/ginger/pkg/logger"
 //	import "github.com/fvmoraes/ginger/pkg/config"
-//	import "github.com/fvmoraes/ginger/pkg/telemetry"
+//
+// Optional OpenTelemetry support is a separate module (Go 1.25+):
+//
+//	go get github.com/fvmoraes/ginger/pkg/telemetry
+//
+// # Positioning
+//
+// Gin/Echo/Fiber are HTTP frameworks.
+// Cobra is a CLI framework.
+// Ginger is a project framework — it works with your existing code.
 //
 // # Documentation
 //

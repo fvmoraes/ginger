@@ -39,6 +39,7 @@ $RECYCLE.BIN/
 
 # Local
 my-local/
+/plan/
 
 # Build artifacts
 bin/
@@ -53,3 +54,8 @@ AGENTS.md
 .github/copilot-instructions.md
 .cursor/
 .kiro/
+
+# dwyt start
+*mcp.json
+*opencode.json
+# dwyt end

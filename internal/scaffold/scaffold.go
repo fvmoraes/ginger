@@ -7,11 +7,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/fvmoraes/ginger/internal/buildinfo"
+	"github.com/fvmoraes/ginger/internal/project"
+	"gopkg.in/yaml.v3"
 )
 
 // ErrProjectExists is returned when the target project directory already exists.
@@ -93,11 +96,45 @@ func NewProject(name, projectType string) error {
 		}
 	}
 
+	// Generate ginger.yaml for the new project
+	if err := writeGingerYAML(name, data); err != nil {
+		return fmt.Errorf("scaffold: ginger.yaml: %w", err)
+	}
+
+	// Create .ginger/ directory for managed files
+	gingerDir := filepath.Join(name, ".ginger")
+	if err := os.MkdirAll(gingerDir, 0755); err != nil {
+		return fmt.Errorf("scaffold: .ginger: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Join(gingerDir, "patches"), 0755); err != nil {
+		return fmt.Errorf("scaffold: .ginger/patches: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Join(gingerDir, "backups"), 0755); err != nil {
+		return fmt.Errorf("scaffold: .ginger/backups: %w", err)
+	}
+	// Write manifest
+	if err := writeManifest(name, data); err != nil {
+		return fmt.Errorf("scaffold: manifest: %w", err)
+	}
+
+	// Generate .gitignore entry for backups
+	gitignorePath := filepath.Join(name, ".gitignore")
+	gitignoreData, err := os.ReadFile(gitignorePath)
+	if err == nil {
+		gitignore := string(gitignoreData)
+		if !strings.Contains(gitignore, ".ginger/backups/") {
+			gitignore += "\n# Ginger managed files\n.ginger/backups/\n"
+			if err := os.WriteFile(gitignorePath, []byte(gitignore), 0644); err != nil {
+				return fmt.Errorf("scaffold: update .gitignore: %w", err)
+			}
+		}
+	}
+
 	fmt.Printf("  created %s/ (%s → %s)\n", name, projectType, cmdDir)
 	return nil
 }
 
-const minGoVersion = "1.25"
+const minGoVersion = "1.22"
 
 // detectGoVersion returns the local Go version if >= minGoVersion, otherwise minGoVersion.
 func detectGoVersion() string {
@@ -253,4 +290,59 @@ func titleCase(s string) string {
 		r[0] -= 32
 	}
 	return string(r)
+}
+
+// writeGingerYAML creates a ginger.yaml for a new project.
+func writeGingerYAML(projectDir string, data projectData) error {
+	gy := project.DefaultGingerYAML(data.Type)
+	gy.Project.Root = "."
+
+	// Adjust cmd dir for worker projects
+	if data.Type == "worker" {
+		gy.Structure.Cmd = data.CmdDir
+	} else {
+		gy.Structure.Cmd = "cmd/" + data.Name
+	}
+
+	gingerData, err := yaml.Marshal(gy)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(projectDir, "ginger.yaml")
+	return os.WriteFile(path, gingerData, 0644)
+}
+
+// writeManifest creates the .ginger/manifest.yaml for a new project.
+func writeManifest(projectDir string, data projectData) error {
+	type managedEntry struct {
+		Path     string   `yaml:"path"`
+		FullFile bool     `yaml:"full_file,omitempty"`
+		Regions  []string `yaml:"regions,omitempty"`
+	}
+	type manifest struct {
+		Managed []managedEntry `yaml:"managed"`
+	}
+
+	m := manifest{Managed: []managedEntry{{Path: "ginger.yaml", FullFile: true}}}
+	paths := make([]string, 0, len(baseFiles(data)))
+	for path := range baseFiles(data) {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		entry := managedEntry{Path: filepath.ToSlash(path), FullFile: true}
+		if path == "internal/api/router.go" {
+			entry.Regions = []string{"routes"}
+		}
+		m.Managed = append(m.Managed, entry)
+	}
+
+	manifestData, err := yaml.Marshal(m)
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(projectDir, ".ginger", "manifest.yaml")
+	return os.WriteFile(path, manifestData, 0644)
 }

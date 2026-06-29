@@ -53,23 +53,23 @@ func TestResolveGoVersion(t *testing.T) {
 		},
 		{
 			name:  "version equal to minimum",
-			input: "go version go1.25.0 linux/amd64",
-			want:  "1.25",
+			input: "go version go1.22.0 linux/amd64",
+			want:  minGoVersion,
 		},
 		{
 			name:  "version below minimum",
 			input: "go version go1.21.5 linux/amd64",
-			want:  "1.25",
+			want:  minGoVersion,
 		},
 		{
 			name:  "detection failure empty string",
 			input: "",
-			want:  "1.25",
+			want:  minGoVersion,
 		},
 		{
 			name:  "detection failure garbage output",
 			input: "not a go version string",
-			want:  "1.25",
+			want:  minGoVersion,
 		},
 	}
 

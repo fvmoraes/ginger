@@ -8,7 +8,7 @@ Comece a usar o Ginger em 5 minutos.
 
 ## 1. Instalar o Ginger
 
-> Requer **Go 1.25+**.
+> O core requer **Go 1.22+**. A capability opcional OpenTelemetry requer Go 1.25+.
 
 **Opção recomendada (Go install):**
 ```bash

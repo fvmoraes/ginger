@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/fvmoraes/ginger/internal/plan"
+	"github.com/fvmoraes/ginger/internal/project"
 )
 
 func TestNewDataNormalizesKebabCase(t *testing.T) {
@@ -24,6 +27,99 @@ func TestNewDataNormalizesKebabCase(t *testing.T) {
 	}
 	if data.NamePlural != "order-processors" {
 		t.Fatalf("expected NamePlural order-processors, got %q", data.NamePlural)
+	}
+}
+
+func TestBuildPlanRespectsConfiguredStructureWithoutWriting(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "go.mod"), "module example.com/custom\n\ngo 1.25\n")
+	mustWriteFile(t, filepath.Join(dir, "ginger.yaml"), `project:
+  type: service
+  root: .
+structure:
+  api: internal/transport/http
+  handlers: internal/transport/http/endpoints
+  models: internal/domain
+  services: internal/usecases
+  ports: internal/contracts
+  adapters: internal/storage
+  config: internal/settings
+  tests: test
+`)
+	mustMkdirAll(t, filepath.Join(dir, "internal", "transport", "http"))
+	mustWriteFile(t, filepath.Join(dir, "internal", "transport", "http", "router.go"), "package httpapi\n\nvar generatedRouteRegistrars []func()\n")
+
+	prj, err := project.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	p, err := BuildPlan(prj, "crud", "user", false)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if p.HasErrors() {
+		t.Fatalf("unexpected plan errors: %v", p.Errors)
+	}
+	want := filepath.Join(dir, "internal", "transport", "http", "endpoints", "user_handler.go")
+	found := false
+	for _, change := range p.Changes {
+		if change.Path == want && change.Type == plan.ChangeCreate {
+			found = strings.Contains(string(change.Content), `models "example.com/custom/internal/domain"`)
+		}
+	}
+	if !found {
+		t.Fatalf("configured handler path/import not found in plan: %+v", p.Changes)
+	}
+	if _, err := os.Stat(want); !os.IsNotExist(err) {
+		t.Fatalf("planning wrote a target file, stat err=%v", err)
+	}
+}
+
+func TestBuildScanTestsPlanPreservesExistingTests(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteFile(t, filepath.Join(dir, "go.mod"), "module example.com/existing\n\ngo 1.22\n")
+	for _, path := range []string{"internal/httpapi/handlers", "internal/core", "internal/store"} {
+		mustMkdirAll(t, filepath.Join(dir, path))
+	}
+	mustWriteFile(t, filepath.Join(dir, "internal/httpapi/handlers/user.go"), "package handlers\n")
+	mustWriteFile(t, filepath.Join(dir, "internal/httpapi/handlers/user_test.go"), "package handlers\n")
+	mustWriteFile(t, filepath.Join(dir, "internal/core/user_service.go"), "package core\n")
+	mustWriteFile(t, filepath.Join(dir, "internal/store/user_repository.go"), "package store\n")
+	prj, err := project.Detect(dir)
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	p, err := BuildScanTestsPlan(prj, false)
+	if err != nil {
+		t.Fatalf("BuildScanTestsPlan: %v", err)
+	}
+	var skipped, creates int
+	for _, change := range p.Changes {
+		switch change.Type {
+		case plan.ChangeSkip:
+			skipped++
+		case plan.ChangeCreate:
+			if strings.HasSuffix(change.Path, "_test.go") {
+				creates++
+			}
+		}
+	}
+	if skipped != 1 || creates != 2 {
+		t.Fatalf("expected one preserved test and two new tests, got skipped=%d creates=%d changes=%+v", skipped, creates, p.Changes)
+	}
+}
+
+func mustWriteFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile(%s): %v", path, err)
+	}
+}
+
+func mustMkdirAll(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0755); err != nil {
+		t.Fatalf("MkdirAll(%s): %v", path, err)
 	}
 }
 

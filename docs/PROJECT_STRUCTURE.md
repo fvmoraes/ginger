@@ -113,7 +113,7 @@ ginger/                          # Raiz do projeto
 
 ```
 module github.com/fvmoraes/ginger
-go 1.25.0
+go 1.22.0
 ```
 
 **Localização:** `go.mod` na raiz
@@ -127,7 +127,7 @@ go 1.25.0
 
 ```
 module github.com/fvmoraes/ginger/example
-go 1.25.0
+go 1.22.0
 
 replace github.com/fvmoraes/ginger => ../
 ```

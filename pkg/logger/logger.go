@@ -11,13 +11,17 @@ import (
 	"os"
 	"strings"
 	"sync"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 // contextKey is an unexported type for context keys in this package.
 // Using a named type prevents collisions with keys from other packages.
 type contextKey struct{}
+type traceContextKey struct{}
+
+type traceContext struct {
+	traceID string
+	spanID  string
+}
 
 // nopLogger is a shared no-op fallback used by FromContext when no logger
 // is stored in the context. Allocated once to avoid per-call heap pressure.
@@ -56,22 +60,29 @@ func WithContext(ctx context.Context, l *Logger) context.Context {
 
 // FromContext retrieves the logger stored by WithContext.
 // Returns a shared no-op logger (level=error) when none is found.
-// When an OTel span is present, trace identifiers are attached automatically.
+// Trace identifiers supplied with WithTraceContext are attached automatically.
 func FromContext(ctx context.Context) *Logger {
 	base := nopLogger
 	if l, ok := ctx.Value(contextKey{}).(*Logger); ok {
 		base = l
 	}
 
-	spanCtx := trace.SpanContextFromContext(ctx)
-	if !spanCtx.IsValid() {
+	trace, ok := ctx.Value(traceContextKey{}).(traceContext)
+	if !ok || trace.traceID == "" {
 		return base
 	}
 
 	return base.With(
-		"trace_id", spanCtx.TraceID().String(),
-		"span_id", spanCtx.SpanID().String(),
+		"trace_id", trace.traceID,
+		"span_id", trace.spanID,
 	)
+}
+
+// WithTraceContext attaches provider-neutral trace identifiers to ctx. Optional
+// telemetry integrations can bridge their span context without coupling the
+// logger or Ginger's core module to a tracing SDK.
+func WithTraceContext(ctx context.Context, traceID, spanID string) context.Context {
+	return context.WithValue(ctx, traceContextKey{}, traceContext{traceID: traceID, spanID: spanID})
 }
 
 // With returns a new Logger with additional structured key-value pairs.
@@ -122,10 +133,11 @@ func (h *prettyJSONHandler) Handle(ctx context.Context, record slog.Record) erro
 		return true
 	})
 
-	spanCtx := trace.SpanContextFromContext(ctx)
-	if spanCtx.IsValid() {
-		payload["trace_id"] = spanCtx.TraceID().String()
-		payload["span_id"] = spanCtx.SpanID().String()
+	if trace, ok := ctx.Value(traceContextKey{}).(traceContext); ok && trace.traceID != "" {
+		payload["trace_id"] = trace.traceID
+		if trace.spanID != "" {
+			payload["span_id"] = trace.spanID
+		}
 	}
 
 	data, err := json.MarshalIndent(payload, "", "  ")

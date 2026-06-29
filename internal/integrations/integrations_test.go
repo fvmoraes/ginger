@@ -6,7 +6,90 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/fvmoraes/ginger/internal/plan"
+	"github.com/fvmoraes/ginger/internal/project"
 )
+
+func TestSwaggerPlanUsesConfiguredPathsAndPreservesUnmanagedRouter(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteIntegrationFile(t, filepath.Join(dir, "go.mod"), "module example.com/existing\n\ngo 1.22\n")
+	mustWriteIntegrationFile(t, filepath.Join(dir, "ginger.yaml"), `project:
+  type: service
+structure:
+  api: internal/httpapi
+  handlers: internal/httpapi/handlers
+  docs: documentation
+`)
+	if err := os.MkdirAll(filepath.Join(dir, "internal", "httpapi"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	routerPath := filepath.Join(dir, "internal", "httpapi", "router.go")
+	router := "package httpapi\n\nfunc Register() { /* user code */ }\n"
+	mustWriteIntegrationFile(t, routerPath, router)
+	prj, err := project.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	p, err := Plan("swagger", prj, false)
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	for _, change := range p.Changes {
+		if change.Path == routerPath && change.Type == plan.ChangeModify {
+			t.Fatal("unmanaged router must not be modified")
+		}
+	}
+	if err := p.Apply(); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	data, _ := os.ReadFile(routerPath)
+	if string(data) != router {
+		t.Fatalf("router changed unexpectedly:\n%s", data)
+	}
+	for _, path := range []string{
+		"internal/httpapi/swagger.go", "documentation/openapi.json",
+		".ginger/patches/internal/httpapi/router.go.patch", ".ginger/manifest.yaml",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
+			t.Fatalf("expected planned file %s: %v", path, err)
+		}
+	}
+}
+
+func TestSwaggerPlanUpdatesOnlyManagedRoutesRegion(t *testing.T) {
+	dir := t.TempDir()
+	mustWriteIntegrationFile(t, filepath.Join(dir, "go.mod"), "module example.com/service\n\ngo 1.25\n")
+	mustWriteIntegrationFile(t, filepath.Join(dir, "ginger.yaml"), "project:\n  type: service\n")
+	if err := os.MkdirAll(filepath.Join(dir, "internal", "api"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	routerPath := filepath.Join(dir, "internal", "api", "router.go")
+	router := "package api\n\nimport \"github.com/fvmoraes/ginger/pkg/router\"\n\nfunc Register(r *router.Router) {\n\t// user-before\n\t// ginger:begin routes\n\tr.GET(\"/health\", nil)\n\t// ginger:end routes\n\t// user-after\n}\n"
+	mustWriteIntegrationFile(t, routerPath, router)
+	prj, _ := project.Load(dir)
+	p, err := Plan("swagger", prj, false)
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := p.Apply(); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	data, _ := os.ReadFile(routerPath)
+	content := string(data)
+	for _, want := range []string{"user-before", "user-after", `r.GET("/health", nil)`, "registerSwaggerRoutes(r)"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("managed update lost %q:\n%s", want, content)
+		}
+	}
+}
+
+func mustWriteIntegrationFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile(%s): %v", path, err)
+	}
+}
 
 func TestAddRemovesCreatedFileWhenDependencyInstallFails(t *testing.T) {
 	wd, err := os.Getwd()

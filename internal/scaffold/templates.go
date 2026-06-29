@@ -349,15 +349,6 @@ services:
       HTTP_PORT: 8080
 `
 
-const prometheusConfigTmpl = `global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: "{{.Name}}"
-    static_configs:
-      - targets: ["{{.Name}}:8080"]
-`
-
 const k8sDeploymentTmpl = `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -539,6 +530,9 @@ const gitignoreTmpl = `bin/
 .DS_Store
 .vscode/
 .idea/
+
+# Ginger managed
+.ginger/backups/
 `
 
 const readmeTmpl = `# {{.Name}}
@@ -1055,11 +1049,13 @@ var generatedRouteRegistrars []func(*router.Router)
 
 // Register wires starter routes onto Ginger's shared router.
 func Register(r *router.Router) {
+	// ginger:begin routes
 	// PT-BR: Agrupe as rotas da API sob /api/v1.
 	// EN: Group API routes under /api/v1.
 	v1 := r.Group("/api/v1", middlewares.RequestID)
 	registerCoreRoutes(v1)
 	registerGeneratedRoutes(v1)
+	// ginger:end routes
 }
 
 func registerCoreRoutes(v1 *router.Router) {

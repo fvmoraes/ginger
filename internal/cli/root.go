@@ -30,6 +30,12 @@ func Run() {
 		runGenerate(args)
 	case "add":
 		runAdd(args)
+	case "init":
+		runInit(args)
+	case "inspect":
+		runInspect(args)
+	case "docs":
+		runDocs(args)
 	case "doctor":
 		runDoctor(args)
 	case "version", "--version", "-v":
@@ -45,7 +51,8 @@ func Run() {
 
 func printUsage() {
 	fmt.Print(`Ginger
-Minimal Go scaffolding that starts small and grows on demand.
+Safe project framework for Go.
+It helps you create, organize, inspect and evolve Go projects without overwriting your work.
 
 Usage:
   ginger <command> [arguments]
@@ -57,28 +64,34 @@ Project Commands:
     --worker  worker   -> cmd/<name>-worker
     --cli     cli      -> cmd/<name>
 
-  run [args...]                                Run the detected app entrypoint
-  build [output]                               Build the detected app entrypoint
-  doctor                                       Diagnose project health
+  init [--force]                                Initialize ginger.yaml in an existing project
+  inspect [--json]                              Analyze current project structure
+  docs [--plan] [--force]                       Generate inspection-based documentation safely
+  run [args...]                                 Run the detected app entrypoint
+  build [output]                                Build the detected app entrypoint
+  doctor                                        Diagnose project health
 
 Generation Commands:
-  generate crud <name>                         Generate a REST CRUD base (--service projects)
-  generate command <name>                      Generate a Cobra subcommand (--cli projects)
-  generate handler <name>                      Generate a worker handler (--worker projects)
-  generate service <name>                      Generate a business service (--cli/--worker projects)
-  generate test <name>                         Generate tests for a generated resource
-  generate smoke-test                          Generate app smoke test under tests/integration
-  generate swagger [name]                      Generate docs/openapi.json
-                                               no name = starter spec
-                                               name    = CRUD example for that resource
+  generate crud <name> [--plan] [--force]       Generate a REST CRUD base (--service projects)
+  generate command <name>                       Generate a Cobra subcommand (--cli projects)
+  generate handler <name>                       Generate a worker handler (--worker projects)
+  generate service <name>                       Generate a business service (--cli/--worker projects)
+  generate test <name>                          Generate tests for a generated resource
+  generate tests --scan [--plan]                Generate TODO tests for existing code safely
+  generate smoke-test                           Generate app smoke test under tests/integration
+  generate swagger [name]                       Generate docs/openapi.json
 
 Integration Commands:
-  add <integration>                            Add an integration file to the current project
+  add <integration> [--plan] [--force]          Add an integration to the current project
+    --plan    show what would be done without applying
+    --force   overwrite existing files
+
     infrastructure adapters -> platform/...
     ready-to-mount HTTP endpoints -> internal/api/handlers/...
-    updates devops/docker/docker-compose.yml when local infra is available
+    proposes a patch for unowned docker-compose files
 
     databases   : postgres, mysql, sqlite, sqlserver
+    orm         : gorm, sqlx, bun
     nosql       : couchbase, mongodb
     analytical  : clickhouse
     cache       : redis
@@ -99,18 +112,11 @@ Aliases:
 
 Examples:
   ginger new foobar --service
-  ginger new foobar --worker
-  ginger new foobar --cli
+  ginger init
+  ginger inspect
   ginger generate crud foobar
-  ginger generate command deploy
-  ginger generate handler order
-  ginger generate service deployer
-  ginger generate test foobar
-  ginger generate smoke-test
-  ginger generate swagger
-  ginger generate swagger foobar
+  ginger add swagger --plan
   ginger add postgres
-  ginger add swagger
   ginger doctor
   ginger run
 `)

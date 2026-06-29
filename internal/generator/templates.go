@@ -5,13 +5,13 @@ const generatedGoFileHeader = `// PT-BR: Arquivo gerado pelo Ginger. Revise e ad
 
 `
 
-const handlerTmpl = generatedGoFileHeader + `package handlers
+const handlerTmpl = generatedGoFileHeader + `package {{.HandlersPackage}}
 
 import (
 	"net/http"
 
-	"{{.Module}}/internal/models"
-	"{{.Module}}/internal/services"
+	models "{{.ModelsImport}}"
+	services "{{.ServicesImport}}"
 	"github.com/fvmoraes/ginger/pkg/response"
 	"github.com/fvmoraes/ginger/pkg/router"
 )
@@ -90,12 +90,12 @@ func (h *{{.NameTitle}}Handler) delete(w http.ResponseWriter, r *http.Request) {
 }
 `
 
-const apiRoutesTmpl = generatedGoFileHeader + `package api
+const apiRoutesTmpl = generatedGoFileHeader + `package {{.APIPackage}}
 
 import (
-	"{{.Module}}/internal/adapters"
-	"{{.Module}}/internal/api/handlers"
-	"{{.Module}}/internal/services"
+	adapters "{{.AdaptersImport}}"
+	handlers "{{.HandlersImport}}"
+	services "{{.ServicesImport}}"
 	"github.com/fvmoraes/ginger/pkg/router"
 )
 
@@ -110,14 +110,14 @@ func register{{.NameTitle}}Routes(r *router.Router) {
 }
 `
 
-const serviceTmpl = generatedGoFileHeader + `package services
+const serviceTmpl = generatedGoFileHeader + `package {{.ServicesPackage}}
 
 import (
 	"context"
 	"time"
 
-	"{{.Module}}/internal/models"
-	"{{.Module}}/internal/ports"
+	models "{{.ModelsImport}}"
+	ports "{{.PortsImport}}"
 )
 
 type {{.NameTitle}}Service interface {
@@ -171,12 +171,12 @@ func (s *{{.Name}}Service) Delete(ctx context.Context, id string) error {
 }
 `
 
-const repositoryTmpl = generatedGoFileHeader + `package ports
+const repositoryTmpl = generatedGoFileHeader + `package {{.PortsPackage}}
 
 import (
 	"context"
 
-	"{{.Module}}/internal/models"
+	models "{{.ModelsImport}}"
 )
 
 type {{.NameTitle}}Repository interface {
@@ -188,14 +188,14 @@ type {{.NameTitle}}Repository interface {
 }
 `
 
-const adapterTmpl = generatedGoFileHeader + `package adapters
+const adapterTmpl = generatedGoFileHeader + `package {{.AdaptersPackage}}
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	"{{.Module}}/internal/models"
+	models "{{.ModelsImport}}"
 	apperrors "github.com/fvmoraes/ginger/pkg/errors"
 )
 
@@ -259,7 +259,7 @@ func (r *{{.NameTitle}}MemoryRepository) Delete(_ context.Context, id string) er
 }
 `
 
-const modelTmpl = generatedGoFileHeader + `package models
+const modelTmpl = generatedGoFileHeader + `package {{.ModelsPackage}}
 
 import "time"
 
@@ -279,14 +279,14 @@ type Update{{.NameTitle}}Input struct {
 }
 `
 
-const handlerTestTmpl = generatedGoFileHeader + `package handlers
+const handlerTestTmpl = generatedGoFileHeader + `package {{.HandlersPackage}}
 
 import (
 	"net/http"
 	"testing"
 
-	"{{.Module}}/internal/adapters"
-	"{{.Module}}/internal/services"
+	adapters "{{.AdaptersImport}}"
+	services "{{.ServicesImport}}"
 	"github.com/fvmoraes/ginger/pkg/router"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
@@ -325,14 +325,14 @@ func Test{{.NameTitle}}Handler_Register(t *testing.T) {
 }
 `
 
-const serviceTestTmpl = generatedGoFileHeader + `package services
+const serviceTestTmpl = generatedGoFileHeader + `package {{.ServicesPackage}}
 
 import (
 	"context"
 	"testing"
 
-	"{{.Module}}/internal/adapters"
-	"{{.Module}}/internal/models"
+	adapters "{{.AdaptersImport}}"
+	models "{{.ModelsImport}}"
 )
 
 func Test{{.NameTitle}}Service_CRUD(t *testing.T) {
@@ -357,14 +357,14 @@ func Test{{.NameTitle}}Service_CRUD(t *testing.T) {
 }
 `
 
-const repositoryTestTmpl = generatedGoFileHeader + `package adapters
+const repositoryTestTmpl = generatedGoFileHeader + `package {{.AdaptersPackage}}
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"{{.Module}}/internal/models"
+	models "{{.ModelsImport}}"
 )
 
 func Test{{.NameTitle}}MemoryRepository_CRUD(t *testing.T) {
@@ -398,9 +398,9 @@ import (
 	"net/http"
 	"testing"
 
-	"{{.Module}}/internal/api"
-	"{{.Module}}/internal/api/handlers"
-	"{{.Module}}/internal/config"
+	api "{{.APIImport}}"
+	handlers "{{.HandlersImport}}"
+	config "{{.ConfigImport}}"
 	gingerapp "github.com/fvmoraes/ginger/pkg/app"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )
@@ -431,9 +431,9 @@ import (
 	"net/http"
 	"testing"
 
-	"{{.Module}}/internal/api"
-	"{{.Module}}/internal/api/handlers"
-	"{{.Module}}/internal/config"
+	api "{{.APIImport}}"
+	handlers "{{.HandlersImport}}"
+	config "{{.ConfigImport}}"
 	gingerapp "github.com/fvmoraes/ginger/pkg/app"
 	"github.com/fvmoraes/ginger/pkg/testhelper"
 )

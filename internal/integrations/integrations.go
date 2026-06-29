@@ -3,14 +3,22 @@
 package integrations
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/fvmoraes/ginger/internal/manifest"
+	"github.com/fvmoraes/ginger/internal/plan"
+	"github.com/fvmoraes/ginger/internal/project"
+	"github.com/fvmoraes/ginger/internal/region"
 	"gopkg.in/yaml.v3"
 )
 
@@ -75,6 +83,17 @@ var registry = map[string]integration{
 		file: "platform/database/sqlserver.go",
 		tmpl: sqlserverTmpl,
 	},
+	"gorm": {
+		name: "gorm", pkg: "gorm.io/gorm", file: "platform/database/gorm.go", tmpl: gormTmpl,
+	},
+	"sqlx": {
+		name: "sqlx", pkg: "github.com/jmoiron/sqlx github.com/lib/pq", file: "platform/database/sqlx.go", tmpl: sqlxTmpl,
+	},
+	"bun": {
+		name: "bun",
+		pkg:  "github.com/uptrace/bun github.com/uptrace/bun/dialect/pgdialect github.com/uptrace/bun/driver/pgdriver",
+		file: "platform/database/bun.go", tmpl: bunTmpl,
+	},
 	// ── Cache ──────────────────────────────────────────────────────────────
 	"redis": {
 		name: "redis",
@@ -100,7 +119,7 @@ var registry = map[string]integration{
 		pkg:          "",
 		file:         "internal/api/swagger.go",
 		tmpl:         swaggerTmpl,
-		postGenerate: enableSwaggerRoutes,
+		postGenerate: enableSwaggerRoutesWrapper,
 	},
 	"clickhouse": {
 		name: "clickhouse",
@@ -149,7 +168,9 @@ var registry = map[string]integration{
 	// ── Observability ──────────────────────────────────────────────────────
 	"otel": {
 		name: "otel",
-		pkg:  "go.opentelemetry.io/otel",
+		pkg: "go.opentelemetry.io/otel@v1.42.0 " +
+			"go.opentelemetry.io/otel/sdk@v1.42.0 " +
+			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.42.0",
 		file: "platform/telemetry/otel.go",
 		tmpl: otelTmpl,
 	},
@@ -181,6 +202,7 @@ func Add(name string) error {
 		return fmt.Errorf(
 			"unknown integration: %s\n\navailable integrations:\n"+
 				"  databases  : postgres, mysql, sqlite, sqlserver\n"+
+				"  orm        : gorm, sqlx, bun\n"+
 				"  nosql      : couchbase, mongodb\n"+
 				"  analytical : clickhouse\n"+
 				"  cache      : redis\n"+
@@ -235,7 +257,8 @@ func Add(name string) error {
 
 	// go get the dependency
 	fmt.Printf("  → go get %s\n", intg.pkg)
-	cmd := execCommand("go", "get", intg.pkg)
+	args := append([]string{"get"}, strings.Fields(intg.pkg)...)
+	cmd := execCommand("go", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -344,16 +367,16 @@ func ensurePrometheusConfig(composePath, appName string) (bool, error) {
 }
 
 func detectComposeAppService(services map[string]composeService) string {
-	wd, err := os.Getwd()
-	if err == nil {
-		projectName := filepath.Base(wd)
-		if _, ok := services[projectName]; ok {
-			return projectName
-		}
+	if _, ok := services["app"]; ok {
+		return "app"
 	}
-
+	names := make([]string, 0, len(services))
 	for name := range services {
-		return name
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	if len(names) > 0 {
+		return names[0]
 	}
 
 	return "app"
@@ -505,8 +528,306 @@ func contains(items []string, target string) bool {
 	return false
 }
 
+// Plan builds a root-aware plan for adding an integration. Existing user files
+// are modified only when owned by the manifest or through a managed region.
+func Plan(name string, prj *project.Project, overwrite bool) (*plan.Plan, error) {
+	intg, ok := registry[name]
+	if !ok {
+		return nil, fmt.Errorf(
+			"unknown integration: %s\n\navailable integrations:\n"+
+				"  databases  : postgres, mysql, sqlite, sqlserver\n"+
+				"  orm        : gorm, sqlx, bun\n"+
+				"  nosql      : couchbase, mongodb\n"+
+				"  analytical : clickhouse\n"+
+				"  cache      : redis\n"+
+				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
+				"  protocols  : grpc, mcp\n"+
+				"  realtime   : sse, websocket\n"+
+				"  observ.    : otel, prometheus\n"+
+				"  docs       : swagger",
+			name,
+		)
+	}
+
+	p := plan.New(prj.Root)
+	p.CreateMissingDirs = prj.YAML.Rules.CreateMissingDirs
+	filePath, err := integrationPath(prj, name, intg.file)
+	if err != nil {
+		return nil, err
+	}
+	ownership, err := manifest.Load(prj.Root)
+	if err != nil {
+		return nil, err
+	}
+
+	// Render template
+	var buf strings.Builder
+	tmpl, err := template.New("").Parse(intg.tmpl)
+	if err != nil {
+		return nil, fmt.Errorf("parse template: %w", err)
+	}
+	if err := tmpl.Execute(&buf, nil); err != nil {
+		return nil, fmt.Errorf("render template: %w", err)
+	}
+	content := []byte(buf.String())
+	if name == "swagger" || name == "sse" || name == "websocket" {
+		pkg := detectGoPackage(filepath.Dir(filePath), map[string]string{
+			"swagger": "api", "sse": "handlers", "websocket": "handlers",
+		}[name])
+		content = []byte(strings.Replace(string(content), "package "+map[string]string{
+			"swagger": "api", "sse": "handlers", "websocket": "handlers",
+		}[name], "package "+pkg, 1))
+	}
+	relMain, _ := filepath.Rel(prj.Root, filePath)
+	before := len(p.Changes)
+	p.AddCreate(filePath, content, overwrite || ownership.ManagesFullFile(relMain))
+	var ownedEntries []manifest.Entry
+	if len(p.Changes) > before && isWritable(p.Changes[len(p.Changes)-1]) {
+		ownedEntries = append(ownedEntries, manifest.Entry{Path: filepath.ToSlash(relMain), FullFile: true})
+	}
+
+	if intg.pkg != "" {
+		p.AddWarning(fmt.Sprintf("apply will run 'go get %s' from the project root", intg.pkg))
+	}
+
+	// Swagger adds a configured OpenAPI document and proposes router wiring.
+	if name == "swagger" {
+		docsDir, resolveErr := prj.ResolvePath("docs")
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		docPath := filepath.Join(docsDir, "openapi.json")
+		relDoc, _ := filepath.Rel(prj.Root, docPath)
+		docContent, routeCount, docErr := buildOpenAPI(prj)
+		if docErr != nil {
+			return nil, docErr
+		}
+		before = len(p.Changes)
+		p.AddCreate(docPath, docContent, overwrite || ownership.ManagesFullFile(relDoc))
+		if len(p.Changes) > before && isWritable(p.Changes[len(p.Changes)-1]) {
+			ownedEntries = append(ownedEntries, manifest.Entry{Path: filepath.ToSlash(relDoc), FullFile: true})
+		}
+		if routeCount > 0 {
+			p.AddWarning(fmt.Sprintf("detected %d route(s); response schemas remain TODO because they could not be inferred safely", routeCount))
+		} else {
+			p.AddWarning("no routes were inferred; add // ginger:route METHOD /path annotations")
+		}
+		routerEntry, routerErr := planSwaggerRouter(prj, p, ownership)
+		if routerErr != nil {
+			return nil, routerErr
+		}
+		if routerEntry != nil {
+			ownedEntries = append(ownedEntries, *routerEntry)
+		}
+	}
+
+	composeEntry, err := planComposePatch(prj, p, ownership, name)
+	if err != nil {
+		return nil, err
+	}
+	if composeEntry != nil {
+		ownedEntries = append(ownedEntries, *composeEntry)
+	}
+	if len(ownedEntries) > 0 {
+		if err := manifest.PlanUpdate(p, ownedEntries...); err != nil {
+			return nil, err
+		}
+	}
+
+	return p, nil
+}
+
+// PostApply installs a declared Go dependency. File changes, including compose
+// changes, are always handled by the plan itself.
+func PostApply(name, projectRoot string) error {
+	intg, ok := registry[name]
+	if !ok {
+		return fmt.Errorf("unknown integration: %s", name)
+	}
+
+	if intg.pkg != "" {
+		fmt.Printf("  → go get %s\n", intg.pkg)
+		args := append([]string{"get"}, strings.Fields(intg.pkg)...)
+		cmd := execCommand("go", args...)
+		cmd.Dir = projectRoot
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("go get %s: %w", intg.pkg, err)
+		}
+		fmt.Printf("  ✓ dependency added\n")
+	}
+
+	return nil
+}
+
+// NeedsPostApply reports whether the plan created or replaced the integration
+// implementation and therefore needs dependency installation.
+func NeedsPostApply(name string, p *plan.Plan) bool {
+	intg, ok := registry[name]
+	if !ok || intg.pkg == "" {
+		return false
+	}
+	base := filepath.Base(intg.file)
+	for _, change := range p.Changes {
+		if isWritable(change) && filepath.Base(change.Path) == base {
+			return true
+		}
+	}
+	return false
+}
+
+func buildOpenAPI(prj *project.Project) ([]byte, int, error) {
+	report, err := project.Inspect(prj)
+	if err != nil {
+		return nil, 0, err
+	}
+	paths := make(map[string]map[string]any)
+	for _, route := range report.Routes {
+		if route.Method == "ANY" {
+			continue
+		}
+		method := strings.ToLower(route.Method)
+		if paths[route.Path] == nil {
+			paths[route.Path] = make(map[string]any)
+		}
+		paths[route.Path][method] = map[string]any{
+			"summary":         fmt.Sprintf("TODO: document %s %s", route.Method, route.Path),
+			"x-ginger-source": fmt.Sprintf("%s:%d", route.File, route.Line),
+			"responses":       map[string]any{"200": map[string]any{"description": "TODO: describe response"}},
+		}
+	}
+	document := map[string]any{
+		"openapi": "3.0.3",
+		"info":    map[string]any{"title": "Existing Go API", "version": "0.1.0"},
+		"paths":   paths,
+	}
+	data, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		return nil, 0, fmt.Errorf("marshal OpenAPI document: %w", err)
+	}
+	return append(data, '\n'), len(paths), nil
+}
+
+func integrationPath(prj *project.Project, name, registered string) (string, error) {
+	switch name {
+	case "swagger":
+		dir, err := prj.ResolvePath("api")
+		return filepath.Join(dir, "swagger.go"), err
+	case "sse", "websocket":
+		dir, err := prj.ResolvePath("handlers")
+		return filepath.Join(dir, filepath.Base(registered)), err
+	default:
+		return prj.ResolveRelative(registered)
+	}
+}
+
+func detectGoPackage(dir, fallback string) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fallback
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		file, parseErr := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, entry.Name()), nil, parser.PackageClauseOnly)
+		if parseErr == nil && file.Name != nil {
+			return file.Name.Name
+		}
+	}
+	return fallback
+}
+
+func planSwaggerRouter(prj *project.Project, p *plan.Plan, ownership *manifest.Manifest) (*manifest.Entry, error) {
+	apiDir, err := prj.ResolvePath("api")
+	if err != nil {
+		return nil, err
+	}
+	routerPath := filepath.Join(apiDir, "router.go")
+	data, err := os.ReadFile(routerPath)
+	if os.IsNotExist(err) {
+		p.AddWarning("router.go was not found; register SwaggerUI and OpenAPISpec manually")
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read router for swagger: %w", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "registerSwaggerRoutes(r)") {
+		p.AddWarning("swagger routes are already registered")
+		return nil, nil
+	}
+	rel, _ := filepath.Rel(prj.Root, routerPath)
+	gingerRouter := strings.Contains(content, "github.com/fvmoraes/ginger/pkg/router") || strings.Contains(content, "*router.Router")
+	if current := region.FindRegion(content, "routes"); current != nil && gingerRouter && strings.Contains(current.Content, "r.") {
+		replacement := strings.TrimRight(current.Content, "\n") + "\n\tregisterSwaggerRoutes(r)"
+		updated, replaceErr := region.ReplaceRegion(content, "routes", replacement)
+		if replaceErr != nil {
+			return nil, replaceErr
+		}
+		p.AddModify(routerPath, []byte(updated), true)
+		entry := manifest.Entry{Path: filepath.ToSlash(rel), Regions: []string{"routes"}}
+		return &entry, nil
+	}
+
+	patchPath := filepath.Join(prj.Root, ".ginger", "patches", filepath.FromSlash(filepath.ToSlash(rel)+".patch"))
+	patch := fmt.Sprintf("# Ginger suggestion for %s\n# No source file was modified.\n\nInside your router setup, register:\n\n    registerSwaggerRoutes(r)\n", filepath.ToSlash(rel))
+	patchRel, _ := filepath.Rel(prj.Root, patchPath)
+	p.AddCreate(patchPath, []byte(patch), ownership.ManagesFullFile(patchRel))
+	p.AddWarning(fmt.Sprintf("router has no managed 'routes' region; review %s", filepath.ToSlash(patchRel)))
+	entry := manifest.Entry{Path: filepath.ToSlash(patchRel), FullFile: true}
+	return &entry, nil
+}
+
+func planComposePatch(prj *project.Project, p *plan.Plan, ownership *manifest.Manifest, name string) (*manifest.Entry, error) {
+	composePath := filepath.Join(prj.Root, "devops", "docker", "docker-compose.yml")
+	data, err := os.ReadFile(composePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read compose file: %w", err)
+	}
+	var compose composeFile
+	if err := yaml.Unmarshal(data, &compose); err != nil {
+		return nil, fmt.Errorf("parse compose file: %w", err)
+	}
+	if compose.Services == nil {
+		compose.Services = make(map[string]composeService)
+	}
+	if compose.Volumes == nil {
+		compose.Volumes = make(map[string]map[string]string)
+	}
+	appName := detectComposeAppService(compose.Services)
+	app := compose.Services[appName]
+	if !mergeIntegrationIntoCompose(&compose, appName, &app, name) {
+		return nil, nil
+	}
+	compose.Services[appName] = app
+	out, err := yaml.Marshal(&compose)
+	if err != nil {
+		return nil, err
+	}
+	rel, _ := filepath.Rel(prj.Root, composePath)
+	if ownership.ManagesFullFile(rel) {
+		p.AddModify(composePath, out, true)
+		return nil, nil
+	}
+	patchPath := filepath.Join(prj.Root, ".ginger", "patches", filepath.FromSlash(filepath.ToSlash(rel)+".patch"))
+	patchRel, _ := filepath.Rel(prj.Root, patchPath)
+	p.AddCreate(patchPath, out, ownership.ManagesFullFile(patchRel))
+	p.AddWarning(fmt.Sprintf("compose file is not Ginger-owned; proposed content written to %s", filepath.ToSlash(patchRel)))
+	return &manifest.Entry{Path: filepath.ToSlash(patchRel), FullFile: true}, nil
+}
+
+func isWritable(change plan.PlannedChange) bool {
+	return change.Type == plan.ChangeCreate || change.Type == plan.ChangeModify
+}
+
 func enableSwaggerRoutes() error {
-	routerPath := filepath.Join("internal", "api", "router.go")
+	projectRoot := "."
+	routerPath := filepath.Join(projectRoot, "internal", "api", "router.go")
 	data, err := os.ReadFile(routerPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -531,4 +852,9 @@ func enableSwaggerRoutes() error {
 	}
 
 	return nil
+}
+
+// enableSwaggerRoutesWrapper wraps enableSwaggerRoutes for the registry (legacy API).
+func enableSwaggerRoutesWrapper() error {
+	return enableSwaggerRoutes()
 }

@@ -1,21 +1,23 @@
 <div align="center">
   <img src="./assets/logo.png" alt="Ginger Logo" width="180"/>
   <h1>Ginger</h1>
-  <p><strong>Accelerate and standardize Go projects</strong></p>
-  <p><strong>Agilize e padronize projetos Go</strong></p>
+  <p><strong>Safe project framework for Go</strong></p>
+  <p><strong>Framework seguro para projetos Go</strong></p>
 
   [![Go Reference](https://pkg.go.dev/badge/github.com/fvmoraes/ginger.svg)](https://pkg.go.dev/github.com/fvmoraes/ginger)
-  ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
-  ![Version](https://img.shields.io/badge/version-1.3.6-blue?style=flat)
+  ![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8?style=flat&logo=go)
+  ![Version](https://img.shields.io/badge/version-1.3.7-blue?style=flat)
   ![License](https://img.shields.io/badge/license-MIT-green?style=flat)
   ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 </div>
 
 ---
 
-> **Requires Go 1.25+** — Ginger depends on `go.opentelemetry.io/otel v1.42` which sets the minimum Go version to 1.25.
+> Ginger is a **safe project framework** for Go. It understands your codebase, keeps your
+> structure organized, and evolves your application **without overwriting your work**.
 >
-> **Requer Go 1.25+** — O Ginger depende de `go.opentelemetry.io/otel v1.42`, que exige Go 1.25 como versão mínima.
+> Ginger é um **framework seguro para projetos** Go. Ele entende sua codebase, mantém
+> sua estrutura organizada e evolui sua aplicação **sem sobrescrever seu trabalho**.
 
 ---
 
@@ -25,24 +27,23 @@
 # 1. Install
 go install github.com/fvmoraes/ginger/cmd/ginger@latest
 
-# If `ginger` is not found, export your Go bin to PATH
-export PATH="$(go env GOPATH)/bin:$PATH"
-
 # 2. Create a project
-ginger new foobar --service    # Service → cmd/foobar
-# short flags also work: -s, -w, -c
-cd foobar
-go mod tidy
+ginger new foobar --service
+cd foobar && go mod tidy && ginger run
 
-# 3. Run
-ginger run
+# 3. Or initialize an existing project
+cd my-existing-project
+ginger init           # detects structure, creates ginger.yaml
+ginger inspect        # analyze project
 ```
 
 **Your API is now running at** `http://localhost:8080`
 
 ```bash
-# Next steps
-ginger generate crud foobar     # Generate CRUD (model + handler + service + port + adapter)
+# Safe generation — plan before apply
+ginger add swagger --plan    # see what would be created
+ginger add postgres --plan
+ginger generate crud foobar --plan
 ginger generate service deployer # Generate a business service for --cli/--worker
 ginger generate test foobar     # Generate tests for handler/service/adapter
 ginger generate smoke-test      # Generate app smoke test
@@ -52,6 +53,41 @@ ginger build                    # Compile → bin/foobar
 ```
 
 📖 **Full guide:** [Getting Started (5 min)](./docs/GETTING_STARTED.md) | [Quick Reference](./docs/QUICK_REFERENCE.md)
+
+---
+
+## Positioning / Posicionamento
+
+Ginger is **not** just another web framework. It is a **project framework + safe generator + structure toolkit**.
+
+| | Ginger | Gin/Echo/Fiber | Cobra |
+|---|---|---|---|
+| HTTP framework | ✓ | ✓ | ✗ |
+| CLI framework | ✓ | ✗ | ✓ |
+| **Project structure** | ✓ | ✗ | ✗ |
+| **Works with existing code** | ✓ | ✗ | ✗ |
+| **Safe generation (plan → apply)** | ✓ | ✗ | ✗ |
+| **Managed regions** | ✓ | ✗ | ✗ |
+| **Auto-detect structure** | ✓ | ✗ | ✗ |
+
+---
+
+## Safe evolution flow
+
+All project-aware commands resolve the root from `ginger.yaml`, `go.mod`, or
+`.git`, including when invoked from a nested directory. Plan mode never writes:
+
+```bash
+ginger init
+ginger inspect
+ginger add swagger --plan
+ginger generate tests --scan --plan
+ginger doctor
+```
+
+See [`examples/existing-api`](./examples/existing-api) for a non-Ginger
+`net/http` project used to validate custom paths, route discovery, managed
+patches, and preservation of existing tests.
 
 ---
 
@@ -177,7 +213,8 @@ Extra directories such as `platform/`, `docs/`, additional layers, and more `dev
 
 ### Install the CLI
 
-> Requires **Go 1.25+**. Check your version with `go version`.
+> The Ginger core requires **Go 1.22+**. Optional capabilities may declare a
+> higher requirement; currently OpenTelemetry requires Go 1.25+.
 
 **Option 1: Go install (recommended)**
 ```bash
@@ -424,6 +461,10 @@ logger.FromContext(ctx).Info("handled")
 
 ### `pkg/telemetry` — OpenTelemetry
 
+Telemetry is an optional submodule so importing Ginger's core does not pull an
+OpenTelemetry SDK or raise the application's Go requirement. Install it only
+when needed with `go get github.com/fvmoraes/ginger/pkg/telemetry` (Go 1.25+).
+
 ```go
 provider, err := telemetry.Setup(ctx, telemetry.Config{
     ServiceName:    cfg.App.Name,
@@ -584,7 +625,7 @@ All fields can be overridden with environment variables:
 
 ## Observability
 
-Ginger ships with OpenTelemetry integration out of the box. The default exporter writes traces to stdout. Swap it for OTLP to send to Jaeger, Tempo, or any OTel-compatible backend.
+OpenTelemetry is available as an opt-in capability/submodule. The default exporter writes traces to stdout. Swap it for OTLP to send to Jaeger, Tempo, or any OTel-compatible backend.
 
 ```go
 provider, _ := telemetry.Setup(ctx, telemetry.Config{
@@ -774,7 +815,8 @@ Diretórios como `platform/`, `tests/`, `docs/`, camadas extras em `internal/api
 
 ### Instalar a CLI
 
-> Requer **Go 1.25+**. Verifique com `go version`.
+> O core do Ginger requer **Go 1.22+**. Capabilities opcionais podem exigir uma
+> versão maior; atualmente OpenTelemetry requer Go 1.25+.
 
 **Opção 1: Go install (recomendado)**
 ```bash
@@ -1012,6 +1054,10 @@ logger.FromContext(ctx).Info("processado")
 
 ### `pkg/telemetry` — OpenTelemetry
 
+Telemetry é um submódulo opcional: importar o core do Ginger não traz o SDK do
+OpenTelemetry nem aumenta a versão Go da aplicação. Instale apenas quando
+necessário com `go get github.com/fvmoraes/ginger/pkg/telemetry` (Go 1.25+).
+
 ```go
 provider, err := telemetry.Setup(ctx, telemetry.Config{
     ServiceName:    cfg.App.Name,
@@ -1172,7 +1218,7 @@ Todos os campos podem ser sobrescritos por variáveis de ambiente:
 
 ## Observabilidade
 
-O Ginger vem com integração OpenTelemetry pronta para uso. O exportador padrão escreve traces no stdout. Troque por OTLP para enviar ao Jaeger, Tempo ou qualquer backend compatível com OTel.
+OpenTelemetry está disponível como capability/submódulo opcional. O exportador padrão escreve traces no stdout. Troque por OTLP para enviar ao Jaeger, Tempo ou qualquer backend compatível com OTel.
 
 ```go
 provider, _ := telemetry.Setup(ctx, telemetry.Config{

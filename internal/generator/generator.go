@@ -17,12 +17,25 @@ import (
 var ErrFileExists = errors.New("file already exists")
 
 type genData struct {
-	FileName   string
-	Name       string
-	Slug       string
-	NameTitle  string
-	NamePlural string
-	Module     string
+	FileName        string
+	Name            string
+	Slug            string
+	NameTitle       string
+	NamePlural      string
+	Module          string
+	APIPackage      string
+	HandlersPackage string
+	ModelsPackage   string
+	ServicesPackage string
+	PortsPackage    string
+	AdaptersPackage string
+	APIImport       string
+	HandlersImport  string
+	ModelsImport    string
+	ServicesImport  string
+	PortsImport     string
+	AdaptersImport  string
+	ConfigImport    string
 }
 
 func newData(name string) genData {
@@ -37,12 +50,17 @@ func newData(name string) genData {
 	}
 
 	return genData{
-		FileName:   identifier,
-		Name:       identifier,
-		Slug:       slug,
-		NameTitle:  title(tokens),
-		NamePlural: slug + "s",
-		Module:     modulePath(),
+		FileName: identifier, Name: identifier, Slug: slug,
+		NameTitle: title(tokens), NamePlural: slug + "s", Module: modulePath(),
+		APIPackage: "api", HandlersPackage: "handlers", ModelsPackage: "models",
+		ServicesPackage: "services", PortsPackage: "ports", AdaptersPackage: "adapters",
+		APIImport:      modulePath() + "/internal/api",
+		HandlersImport: modulePath() + "/internal/api/handlers",
+		ModelsImport:   modulePath() + "/internal/models",
+		ServicesImport: modulePath() + "/internal/services",
+		PortsImport:    modulePath() + "/internal/ports",
+		AdaptersImport: modulePath() + "/internal/adapters",
+		ConfigImport:   modulePath() + "/internal/config",
 	}
 }
 
