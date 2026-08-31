@@ -89,7 +89,14 @@ if [[ "$add_ok" -eq 1 ]]; then
 		fi
 	done
 	if ! grep -qE "^ {2,4}redis:" "$WORK/demo/devops/docker/docker-compose.yml"; then
-		known_fail "expected compose service 'redis' missing after add"
+		# Pós-GIN-002: compose customizado permanece intocado — o serviço
+		# proposto vive no patch revisável.
+		PATCH="$WORK/demo/.ginger/patches/devops/docker/docker-compose.yml.patch"
+		if [ -f "$PATCH" ] && grep -qE "^ {2,4}redis:" "$PATCH"; then
+			note "OK: redis proposed in revisable patch ($PATCH)"
+		else
+			known_fail "redis service neither applied nor proposed in patch"
+		fi
 	fi
 fi
 

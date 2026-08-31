@@ -127,10 +127,10 @@ func TestPlanGoldenPostgresFreshService(t *testing.T) {
 	testPlanGolden(t, "postgres", false, "postgres-fresh-service")
 }
 
-// CARACTERIZAÇÃO DO BUG GIN-002 (não é comportamento desejado):
-// hoje o compose customizado é pinado como ChangeModify — o apply destrói
-// anchors/comentários/x-/networks. A Fase 1 (merge condicional por hash de
-// proveniência) deve trocar este golden por um patch em .ginger/patches/.
+// GIN-002 CORRIGIDO (Fase 1): compose customizado → merge condicional por
+// hash de proveniência → patch revisável em .ginger/patches/ e compose
+// intocado. O golden anterior (ChangeModify lossy) foi substituído
+// intencionalmente — ver evidence/regression-risk-validation.md.
 func TestPlanGoldenRedisCustomizedComposePinsGIN002(t *testing.T) {
 	testPlanGolden(t, "redis", true, "redis-customized-compose")
 }

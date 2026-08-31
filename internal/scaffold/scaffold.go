@@ -2,6 +2,9 @@
 package scaffold
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -314,14 +317,29 @@ func writeGingerYAML(projectDir string, data projectData) error {
 }
 
 // writeManifest creates the .ginger/manifest.yaml for a new project.
+// The compose entry (GIN-002) records the SHA-256 of the generated content so
+// later `add` runs can tell "intact since generation" (direct merge) from
+// "user-modified" (revisable patch).
 func writeManifest(projectDir string, data projectData) error {
 	type managedEntry struct {
-		Path     string   `yaml:"path"`
-		FullFile bool     `yaml:"full_file,omitempty"`
-		Regions  []string `yaml:"regions,omitempty"`
+		Path          string   `yaml:"path"`
+		FullFile      bool     `yaml:"full_file,omitempty"`
+		Regions       []string `yaml:"regions,omitempty"`
+		GeneratedHash string   `yaml:"generated_hash,omitempty"`
 	}
 	type manifest struct {
 		Managed []managedEntry `yaml:"managed"`
+	}
+
+	// Render the compose template once more to record its provenance hash.
+	var composeHash string
+	if tmpl, ok := baseFiles(data)["devops/docker/docker-compose.yml"]; ok {
+		var buf bytes.Buffer
+		t := template.Must(template.New("").Funcs(template.FuncMap{"title": titleCase}).Parse(tmpl))
+		if err := t.Execute(&buf, data); err == nil {
+			sum := sha256.Sum256(buf.Bytes())
+			composeHash = hex.EncodeToString(sum[:])
+		}
 	}
 
 	m := manifest{Managed: []managedEntry{{Path: "ginger.yaml", FullFile: true}}}
@@ -334,6 +352,9 @@ func writeManifest(projectDir string, data projectData) error {
 		entry := managedEntry{Path: filepath.ToSlash(path), FullFile: true}
 		if path == "internal/api/router.go" {
 			entry.Regions = []string{"routes"}
+		}
+		if path == "devops/docker/docker-compose.yml" && composeHash != "" {
+			entry.GeneratedHash = composeHash
 		}
 		m.Managed = append(m.Managed, entry)
 	}

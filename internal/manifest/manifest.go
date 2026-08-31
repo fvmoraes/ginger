@@ -13,10 +13,17 @@ import (
 )
 
 // Entry describes ownership of a file or named regions in that file.
+// GeneratedHash (GIN-002) records the SHA-256 of the content Ginger last
+// generated for this file: it enables the conditional compose merge
+// (intact since generation → direct merge; user-modified → patch).
+// Old manifests without the field parse normally (KnownFields rejects unknown
+// YAML keys, not missing ones); a missing hash is treated as "modified"
+// (data-safe fallback → patch).
 type Entry struct {
-	Path     string   `yaml:"path"`
-	FullFile bool     `yaml:"full_file,omitempty"`
-	Regions  []string `yaml:"regions,omitempty"`
+	Path          string   `yaml:"path"`
+	FullFile      bool     `yaml:"full_file,omitempty"`
+	Regions       []string `yaml:"regions,omitempty"`
+	GeneratedHash string   `yaml:"generated_hash,omitempty"`
 }
 
 // Manifest is stored at .ginger/manifest.yaml.
@@ -70,6 +77,18 @@ func (m *Manifest) ManagesRegion(path, region string) bool {
 	return false
 }
 
+// GeneratedHash returns the recorded hash of the last Ginger-generated
+// content for the relative path ("" when unknown).
+func (m *Manifest) GeneratedHash(path string) string {
+	path = filepath.ToSlash(filepath.Clean(path))
+	for _, entry := range m.Managed {
+		if filepath.ToSlash(filepath.Clean(entry.Path)) == path {
+			return entry.GeneratedHash
+		}
+	}
+	return ""
+}
+
 // Add merges ownership without discarding existing entries.
 func (m *Manifest) Add(entry Entry) {
 	entry.Path = filepath.ToSlash(filepath.Clean(entry.Path))
@@ -84,6 +103,10 @@ func (m *Manifest) Add(entry Entry) {
 			}
 		}
 		sort.Strings(m.Managed[i].Regions)
+		// GIN-002: refresh the provenance hash when a new one is provided.
+		if entry.GeneratedHash != "" {
+			m.Managed[i].GeneratedHash = entry.GeneratedHash
+		}
 		return
 	}
 	m.Managed = append(m.Managed, entry)

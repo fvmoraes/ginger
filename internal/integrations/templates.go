@@ -829,6 +829,17 @@ func LiveFeedHandler(w http.ResponseWriter, r *http.Request) {
 
 const wsTmpl = generatedGoFileHeader + `// Package handlers provides a WebSocket handler example.
 // For the full WebSocket helper, see github.com/fvmoraes/ginger/pkg/ws.
+//
+// Hardening (pkg/ws defaults, GIN-003): 64 KiB payload cap, same-origin check
+// and per-message read deadline. If your frontend runs on a different port
+// during development, allow it explicitly:
+//
+//	ws.HandleWithOptions(w, r, ws.Options{
+//	    CheckOrigin: func(r *http.Request) bool {
+//	        origin := r.Header.Get("Origin")
+//	        return origin == "" || strings.HasSuffix(origin, ":3000") || r.Host == strings.TrimPrefix(origin, "http://")
+//	    },
+//	}, handler)
 package handlers
 
 import (

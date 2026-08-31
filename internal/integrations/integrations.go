@@ -3,6 +3,8 @@
 package integrations
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +23,15 @@ import (
 	"github.com/fvmoraes/ginger/internal/region"
 	"gopkg.in/yaml.v3"
 )
+
+// hexSha256 returns the hex digest of b (GIN-002 provenance hash).
+func hexSha256(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// hexSha256From is a readability alias for hexSha256.
+func hexSha256From(b []byte) string { return hexSha256(b) }
 
 // ErrIntegrationExists is returned when the target integration file already exists.
 var ErrIntegrationExists = errors.New("integration already exists")
@@ -55,6 +66,28 @@ type composeService struct {
 type composeBuild struct {
 	Context    string `yaml:"context,omitempty"`
 	Dockerfile string `yaml:"dockerfile,omitempty"`
+}
+
+// UnmarshalYAML (GIN-002 extensão): aceita a forma abreviada do Compose
+// (`build: .` — string) além da forma de mapeamento (`build: {context: .}`).
+// Sem isso, um compose customizado com a forma abreviada falhava o
+// `ginger add` inteiro com um erro de parse.
+func (b *composeBuild) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var asString string
+	if err := unmarshal(&asString); err == nil {
+		b.Context = asString
+		return nil
+	}
+	var asMap struct {
+		Context    string `yaml:"context"`
+		Dockerfile string `yaml:"dockerfile"`
+	}
+	if err := unmarshal(&asMap); err != nil {
+		return fmt.Errorf("compose build: expected string or mapping: %w", err)
+	}
+	b.Context = asMap.Context
+	b.Dockerfile = asMap.Dockerfile
+	return nil
 }
 
 var registry = map[string]integration{
@@ -168,9 +201,9 @@ var registry = map[string]integration{
 	// ── Observability ──────────────────────────────────────────────────────
 	"otel": {
 		name: "otel",
-		pkg: "go.opentelemetry.io/otel@v1.42.0 " +
-			"go.opentelemetry.io/otel/sdk@v1.42.0 " +
-			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.42.0",
+		pkg: "go.opentelemetry.io/otel@v1.43.0 " +
+			"go.opentelemetry.io/otel/sdk@v1.43.0 " +
+			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.43.0",
 		file: "platform/telemetry/otel.go",
 		tmpl: otelTmpl,
 	},
@@ -811,8 +844,28 @@ func planComposePatch(prj *project.Project, p *plan.Plan, ownership *manifest.Ma
 	}
 	rel, _ := filepath.Rel(prj.Root, composePath)
 	if ownership.ManagesFullFile(rel) {
-		p.AddModify(composePath, out, true)
-		return nil, nil
+		// GIN-002: merge condicional por hash de proveniência.
+		// - intacto desde a geração (hash atual == hash gravado) → merge direto
+		//   (fluxo de scaffold novo preservado);
+		// - modificado pelo usuário OU hash ausente (manifest antigo) → patch
+		//   revisável (data-safe: nunca destruir conteúdo customizado).
+		currentHash := hexSha256(data)
+		recorded := ownership.GeneratedHash(rel)
+		switch {
+		case recorded != "" && recorded == currentHash:
+			p.AddModify(composePath, out, true)
+			return &manifest.Entry{Path: filepath.ToSlash(rel), FullFile: true, GeneratedHash: hexSha256From(out)}, nil
+		default:
+			if recorded == "" {
+				p.AddWarning("compose provenance hash is missing (older manifest); proposing a patch instead of rewriting")
+			} else {
+				p.AddWarning("compose file was customized after generation; proposing a patch instead of rewriting (GIN-002)")
+			}
+			patchPath := filepath.Join(prj.Root, ".ginger", "patches", filepath.FromSlash(filepath.ToSlash(rel)+".patch"))
+			patchRel, _ := filepath.Rel(prj.Root, patchPath)
+			p.AddCreate(patchPath, out, ownership.ManagesFullFile(patchRel))
+			return &manifest.Entry{Path: filepath.ToSlash(patchRel), FullFile: true}, nil
+		}
 	}
 	patchPath := filepath.Join(prj.Root, ".ginger", "patches", filepath.FromSlash(filepath.ToSlash(rel)+".patch"))
 	patchRel, _ := filepath.Rel(prj.Root, patchPath)

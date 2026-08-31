@@ -1,4 +1,5 @@
 create platform/cache/redis.go
-modify devops/docker/docker-compose.yml (safe managed update)
+create .ginger/patches/devops/docker/docker-compose.yml.patch
 modify .ginger/manifest.yaml (safe managed update)
 warn: apply will run 'go get github.com/redis/go-redis/v9' from the project root
+warn: compose file was customized after generation; proposing a patch instead of rewriting (GIN-002)
