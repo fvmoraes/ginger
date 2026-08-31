@@ -1,9 +1,7 @@
 // Package generator — worker handler generator for --worker projects.
 package generator
 
-import (
-	"path/filepath"
-)
+import ()
 
 const workerHandlerGenTmpl = generatedGoFileHeader + `package worker
 
@@ -42,20 +40,3 @@ func Test{{.NameTitle}}Handler_Handle(t *testing.T) {
 
 // WorkerHandler generates internal/worker/<name>_handler.go and its test.
 // Use this for --worker projects via: ginger generate handler <name>
-func WorkerHandler(name string) error {
-	data := newData(name)
-
-	if err := generate(
-		filepath.Join("internal", "worker", data.FileName+"_handler.go"),
-		workerHandlerGenTmpl,
-		data,
-	); err != nil {
-		return err
-	}
-
-	return generate(
-		filepath.Join("internal", "worker", data.FileName+"_handler_test.go"),
-		workerHandlerTestGenTmpl,
-		data,
-	)
-}

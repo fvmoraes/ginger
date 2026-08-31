@@ -1,9 +1,7 @@
 // Package generator — command subcommand generator for --cli projects.
 package generator
 
-import (
-	"path/filepath"
-)
+import ()
 
 const commandTmpl = generatedGoFileHeader + `package commands
 
@@ -46,20 +44,3 @@ func Test{{.NameTitle}}Cmd(t *testing.T) {
 `
 
 // Command generates internal/commands/<name>.go and its test for a --cli project.
-func Command(name string) error {
-	data := newData(name)
-
-	if err := generate(
-		filepath.Join("internal", "commands", data.FileName+".go"),
-		commandTmpl,
-		data,
-	); err != nil {
-		return err
-	}
-
-	return generate(
-		filepath.Join("internal", "commands", data.FileName+"_test.go"),
-		commandTestTmpl,
-		data,
-	)
-}

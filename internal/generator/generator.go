@@ -2,15 +2,9 @@
 package generator
 
 import (
-	"bufio"
 	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-	"text/template"
 	"unicode"
-	"unicode/utf8"
 )
 
 // ErrFileExists is returned when a generate target already exists on disk.
@@ -36,273 +30,6 @@ type genData struct {
 	PortsImport     string
 	AdaptersImport  string
 	ConfigImport    string
-}
-
-func newData(name string) genData {
-	tokens := splitNameTokens(name)
-	identifier := strings.Join(tokens, "_")
-	slug := strings.Join(tokens, "-")
-	if identifier == "" {
-		identifier = "resource"
-	}
-	if slug == "" {
-		slug = "resource"
-	}
-
-	return genData{
-		FileName: identifier, Name: identifier, Slug: slug,
-		NameTitle: title(tokens), NamePlural: slug + "s", Module: modulePath(),
-		APIPackage: "api", HandlersPackage: "handlers", ModelsPackage: "models",
-		ServicesPackage: "services", PortsPackage: "ports", AdaptersPackage: "adapters",
-		APIImport:      modulePath() + "/internal/api",
-		HandlersImport: modulePath() + "/internal/api/handlers",
-		ModelsImport:   modulePath() + "/internal/models",
-		ServicesImport: modulePath() + "/internal/services",
-		PortsImport:    modulePath() + "/internal/ports",
-		AdaptersImport: modulePath() + "/internal/adapters",
-		ConfigImport:   modulePath() + "/internal/config",
-	}
-}
-
-// Handler generates internal/api/handlers/<name>_handler.go.
-func Handler(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "api", "handlers", data.FileName+"_handler.go"),
-		handlerTmpl,
-		data,
-	)
-}
-
-// Routes generates internal/api/<name>_routes.go.
-func Routes(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "api", data.FileName+"_routes.go"),
-		apiRoutesTmpl,
-		data,
-	)
-}
-
-// Service generates internal/services/<name>_service.go.
-func Service(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "services", data.FileName+"_service.go"),
-		serviceTmpl,
-		data,
-	)
-}
-
-// Repository generates internal/ports/<name>_repository.go.
-func Repository(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "ports", data.FileName+"_repository.go"),
-		repositoryTmpl,
-		data,
-	)
-}
-
-// Adapter generates internal/adapters/<name>_memory_repository.go.
-func Adapter(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "adapters", data.FileName+"_memory_repository.go"),
-		adapterTmpl,
-		data,
-	)
-}
-
-// Model generates internal/models/<name>.go.
-func Model(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "models", data.FileName+".go"),
-		modelTmpl,
-		data,
-	)
-}
-
-// HandlerTest generates a handler test file.
-func HandlerTest(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "api", "handlers", data.FileName+"_handler_test.go"),
-		handlerTestTmpl,
-		data,
-	)
-}
-
-// ServiceTest generates a service test file.
-func ServiceTest(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "services", data.FileName+"_service_test.go"),
-		serviceTestTmpl,
-		data,
-	)
-}
-
-// RepositoryTest generates an adapter test file.
-func RepositoryTest(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("internal", "adapters", data.FileName+"_memory_repository_test.go"),
-		repositoryTestTmpl,
-		data,
-	)
-}
-
-// IntegrationTest generates tests/integration/<name>_test.go.
-func IntegrationTest(name string) error {
-	data := newData(name)
-	return generate(
-		filepath.Join("tests", "integration", data.FileName+"_test.go"),
-		integrationTestTmpl,
-		data,
-	)
-}
-
-// AppTest generates a basic application smoke test under tests/integration.
-func AppTest() error {
-	return generate(
-		filepath.Join("tests", "integration", "app_smoke_test.go"),
-		appTestTmpl,
-		genData{Module: modulePath()},
-	)
-}
-
-// Swagger generates docs/openapi.json with a starter OpenAPI document.
-func Swagger(name string) error {
-	data := genData{}
-	if name != "" {
-		data = newData(name)
-	}
-
-	return generate(
-		filepath.Join("docs", "openapi.json"),
-		openAPITmpl,
-		data,
-	)
-}
-
-// Tests generates handler, service, and adapter tests for a given resource.
-func Tests(name string) error {
-	if err := requireGeneratedResource(name, "handler", "service", "repository"); err != nil {
-		return err
-	}
-	return generateMany(name, []struct {
-		label string
-		fn    func(string) error
-	}{
-		{"handler test", HandlerTest},
-		{"service test", ServiceTest},
-		{"repository test", RepositoryTest},
-	})
-}
-
-// CRUD generates model + handler + service + port + adapter + integration test.
-func CRUD(name string) error {
-	fmt.Printf("\n  Generating CRUD for '%s'...\n\n", name)
-	steps := []struct {
-		label string
-		fn    func(string) error
-	}{
-		{"model", Model},
-		{"repository port", Repository},
-		{"memory adapter", Adapter},
-		{"service", Service},
-		{"handler", Handler},
-		{"api routes", Routes},
-		{"integration test", IntegrationTest},
-	}
-	if err := generateMany(name, steps); err != nil {
-		return err
-	}
-	fmt.Printf("\n  ✓ CRUD for '%s' generated.\n", name)
-	return nil
-}
-
-// ProjectService generates a service scaffold for CLI or worker projects.
-func ProjectService(name, projectType string) error {
-	data := newData(name)
-
-	switch projectType {
-	case "cli":
-		if err := generate(filepath.Join("internal", "services", data.FileName+".go"), cliServiceTmpl, data); err != nil {
-			return err
-		}
-		if err := generate(filepath.Join("internal", "services", data.FileName+"_test.go"), cliServiceTestTmpl, data); err != nil {
-			return err
-		}
-		return generate(filepath.Join("internal", "ports", data.FileName+".go"), cliServicePortTmpl, data)
-	case "worker":
-		if err := generate(filepath.Join("internal", "services", data.FileName+".go"), workerServiceTmpl, data); err != nil {
-			return err
-		}
-		if err := generate(filepath.Join("internal", "services", data.FileName+"_test.go"), workerServiceTestTmpl, data); err != nil {
-			return err
-		}
-		return generate(filepath.Join("internal", "ports", data.FileName+".go"), workerServicePortTmpl, data)
-	default:
-		return fmt.Errorf("project service generation is not supported for %s projects", projectType)
-	}
-}
-
-func generateMany(name string, steps []struct {
-	label string
-	fn    func(string) error
-}) error {
-	for _, s := range steps {
-		if err := s.fn(name); err != nil {
-			return fmt.Errorf("%s: %w", s.label, err)
-		}
-	}
-	return nil
-}
-
-func generate(path, tmplStr string, data genData) error {
-	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("%w: %s", ErrFileExists, path)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("generator: create %s: %w", path, err)
-	}
-	defer func() { _ = f.Close() }()
-
-	tmpl, err := template.New("").Parse(tmplStr)
-	if err != nil {
-		return err
-	}
-	if err := tmpl.Execute(f, data); err != nil {
-		return err
-	}
-	fmt.Printf("  ✓ created %s\n", path)
-	return nil
-}
-
-func title(tokens []string) string {
-	var b strings.Builder
-	for _, token := range tokens {
-		if token == "" {
-			continue
-		}
-		r, size := utf8.DecodeRuneInString(token)
-		if r == utf8.RuneError {
-			continue
-		}
-		b.WriteRune(unicode.ToUpper(r))
-		b.WriteString(token[size:])
-	}
-	if b.Len() == 0 {
-		return "Resource"
-	}
-	return b.String()
 }
 
 func splitNameTokens(s string) []string {
@@ -332,48 +59,32 @@ func splitNameTokens(s string) []string {
 	return tokens
 }
 
-func modulePath() string {
-	f, err := os.Open("go.mod")
-	if err != nil {
-		return "yourmodule"
+// newData builds the template data for a resource name. Module is filled by
+// the caller (projectData uses the project's real module — no CWD reads).
+func newData(name string) genData {
+	slug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), "_", "-"))
+	tokens := strings.Split(slug, "-")
+	plural := slug + "s"
+	if strings.HasSuffix(slug, "s") {
+		plural = slug
 	}
-	defer func() { _ = f.Close() }()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "module "))
-		}
+	return genData{
+		Name:       strings.ReplaceAll(slug, "-", "_"),
+		Slug:       slug,
+		FileName:   strings.ReplaceAll(slug, "-", "_"),
+		NameTitle:  title(tokens),
+		NamePlural: plural,
 	}
-
-	return "yourmodule"
 }
 
-func requireGeneratedResource(name string, kinds ...string) error {
-	var missing []string
-
-	for _, kind := range kinds {
-		var path string
-		switch kind {
-		case "handler":
-			path = filepath.Join("internal", "api", "handlers", newData(name).FileName+"_handler.go")
-		case "service":
-			path = filepath.Join("internal", "services", newData(name).FileName+"_service.go")
-		case "repository":
-			path = filepath.Join("internal", "adapters", newData(name).FileName+"_memory_repository.go")
-		default:
+// title capitalizes each token (replaces deprecated strings.Title).
+func title(tokens []string) string {
+	var b strings.Builder
+	for _, tk := range tokens {
+		if tk == "" {
 			continue
 		}
-
-		if _, err := os.Stat(path); err != nil {
-			missing = append(missing, path)
-		}
+		b.WriteString(strings.ToUpper(tk[:1]) + tk[1:])
 	}
-
-	if len(missing) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("generate the resource first; missing: %s", strings.Join(missing, ", "))
+	return b.String()
 }

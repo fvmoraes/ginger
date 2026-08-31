@@ -10,6 +10,41 @@ import (
 	"github.com/fvmoraes/ginger/internal/project"
 )
 
+// loadTestProject cria um projeto mínimo em cwd (para plan-based BuildPlan).
+// Para o gerador crud, cria também o router Ginger com a região routes
+// (requireGingerRouter exige generatedRouteRegistrars).
+func loadTestProject(t *testing.T) (*project.Project, error) {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(filepath.Join(wd, "go.mod"), []byte("module example.com/test\n\ngo 1.25\n"), 0o644); err != nil {
+		return nil, err
+	}
+
+	apiDir := filepath.Join(wd, "internal", "api")
+	if err := os.MkdirAll(apiDir, 0o755); err != nil {
+		return nil, err
+	}
+	routerSource := `package api
+
+import "github.com/fvmoraes/ginger/pkg/router"
+
+var generatedRouteRegistrars []func(*router.Router)
+
+func Register(r *router.Router) {
+	// ginger:begin routes
+	// ginger:end routes
+}
+`
+	if err := os.WriteFile(filepath.Join(apiDir, "router.go"), []byte(routerSource), 0o644); err != nil {
+		return nil, err
+	}
+
+	return project.Load(wd)
+}
+
 func TestNewDataNormalizesKebabCase(t *testing.T) {
 	data := newData("order-processor")
 
@@ -142,8 +177,16 @@ func TestCRUDDoesNotGenerateTests(t *testing.T) {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
 
-	if err := CRUD("user"); err != nil {
-		t.Fatalf("CRUD returned error: %v", err)
+	prj, err := loadTestProject(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := BuildPlan(prj, "crud", "user", false)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if err := p.Apply(); err != nil {
+		t.Fatalf("apply: %v", err)
 	}
 
 	expectedFiles := []string{
@@ -200,12 +243,23 @@ func TestTestsGeneratesFullResourceSuite(t *testing.T) {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
 
-	if err := CRUD("user"); err != nil {
-		t.Fatalf("CRUD returned error: %v", err)
+	prj, err := loadTestProject(t)
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	if err := Tests("user"); err != nil {
-		t.Fatalf("Tests returned error: %v", err)
+	p, err := BuildPlan(prj, "crud", "user", false)
+	if err != nil {
+		t.Fatalf("BuildPlan crud: %v", err)
+	}
+	if err := p.Apply(); err != nil {
+		t.Fatalf("apply crud: %v", err)
+	}
+	tp, err := BuildPlan(prj, "tests", "user", false)
+	if err != nil {
+		t.Fatalf("BuildPlan tests: %v", err)
+	}
+	if err := tp.Apply(); err != nil {
+		t.Fatalf("apply tests: %v", err)
 	}
 
 	expectedFiles := []string{
@@ -238,8 +292,21 @@ func TestCommandGeneratorCreatesFailingStub(t *testing.T) {
 		t.Fatalf("MkdirAll returned error: %v", err)
 	}
 
-	if err := Command("sync"); err != nil {
-		t.Fatalf("Command returned error: %v", err)
+	wd2, _ := os.Getwd()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(wd2) }()
+	prj, err := loadTestProject(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := BuildPlan(prj, "command", "sync", false)
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+	if err := p.Apply(); err != nil {
+		t.Fatalf("apply: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join("internal", "commands", "sync.go"))

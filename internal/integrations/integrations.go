@@ -64,7 +64,6 @@ type integration struct {
 	pkg          string // go get package
 	file         string // output file path
 	tmpl         string // file template
-	postGenerate func() error
 }
 
 // Spec exposes the declarative metadata (GIN-004 catalog).
@@ -215,7 +214,6 @@ var registry = map[string]integration{
 		pkg:          "",
 		file:         "internal/api/swagger.go",
 		tmpl:         swaggerTmpl,
-		postGenerate: enableSwaggerRoutesWrapper,
 	},
 	"clickhouse": {
 		name:        "clickhouse",
@@ -337,143 +335,6 @@ func ApplyWithRollback(p *plan.Plan, name, projectRoot string) error {
 }
 
 // Add generates the integration file and runs go get for the required package.
-func Add(name string) error {
-	intg, ok := registry[name]
-	if !ok {
-		return fmt.Errorf(
-			"unknown integration: %s\n\navailable integrations:\n"+
-				"  databases  : postgres, mysql, sqlite, sqlserver\n"+
-				"  orm        : gorm, sqlx, bun\n"+
-				"  nosql      : couchbase, mongodb\n"+
-				"  analytical : clickhouse\n"+
-				"  cache      : redis\n"+
-				"  messaging  : kafka, rabbitmq, nats, pubsub\n"+
-				"  protocols  : grpc, mcp\n"+
-				"  realtime   : sse, websocket\n"+
-				"  observ.    : otel, prometheus\n"+
-				"  docs       : swagger",
-			name,
-		)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(intg.file), 0755); err != nil {
-		return fmt.Errorf("add: mkdir: %w", err)
-	}
-
-	if _, err := os.Stat(intg.file); err == nil {
-		return fmt.Errorf("%w: %s", ErrIntegrationExists, intg.file)
-	}
-
-	f, err := os.Create(intg.file)
-	if err != nil {
-		return fmt.Errorf("add: create file: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-
-	tmpl, err := template.New("").Parse(intg.tmpl)
-	if err != nil {
-		return err
-	}
-	if err := tmpl.Execute(f, nil); err != nil {
-		return err
-	}
-
-	if intg.postGenerate != nil {
-		if err := intg.postGenerate(); err != nil {
-			_ = os.Remove(intg.file)
-			return err
-		}
-	}
-
-	fmt.Printf("  ✓ created %s\n", intg.file)
-
-	// MCP is stdlib-only — no external dependency needed.
-	if intg.pkg == "" {
-		if err := updateDockerCompose(name); err != nil {
-			return err
-		}
-		fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", name)
-		return nil
-	}
-
-	// go get the dependency
-	fmt.Printf("  → go get %s\n", intg.pkg)
-	args := append([]string{"get"}, strings.Fields(intg.pkg)...)
-	cmd := execCommand("go", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		_ = os.Remove(intg.file)
-		return fmt.Errorf("add dependency %s: %w", intg.pkg, err)
-	}
-	fmt.Printf("  ✓ dependency added\n")
-
-	if err := updateDockerCompose(name); err != nil {
-		return err
-	}
-
-	fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", name)
-	return nil
-}
-
-func updateDockerCompose(integrationName string) error {
-	composePath := filepath.Join("devops", "docker", "docker-compose.yml")
-	if _, err := os.Stat(composePath); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("add: stat compose file: %w", err)
-	}
-
-	data, err := os.ReadFile(composePath)
-	if err != nil {
-		return fmt.Errorf("add: read compose file: %w", err)
-	}
-
-	var compose composeFile
-	if err := yaml.Unmarshal(data, &compose); err != nil {
-		return fmt.Errorf("add: parse compose file: %w", err)
-	}
-
-	if compose.Services == nil {
-		compose.Services = make(map[string]composeService)
-	}
-	if compose.Volumes == nil {
-		compose.Volumes = make(map[string]map[string]string)
-	}
-
-	appName := detectComposeAppService(compose.Services)
-	app := compose.Services[appName]
-
-	changed := mergeIntegrationIntoCompose(&compose, appName, &app, integrationName)
-	if integrationName == "prometheus" {
-		created, err := ensurePrometheusConfig(composePath, appName)
-		if err != nil {
-			return err
-		}
-		if created {
-			fmt.Printf("  ✓ created %s\n", filepath.Join("devops", "docker", "prometheus.yml"))
-		}
-	}
-	if !changed {
-		return nil
-	}
-
-	compose.Services[appName] = app
-
-	out, err := yaml.Marshal(&compose)
-	if err != nil {
-		return fmt.Errorf("add: marshal compose file: %w", err)
-	}
-
-	if err := os.WriteFile(composePath, out, 0644); err != nil {
-		return fmt.Errorf("add: write compose file: %w", err)
-	}
-
-	fmt.Printf("  ✓ updated %s\n", composePath)
-	return nil
-}
-
 const prometheusComposeConfigTmpl = `global:
   scrape_interval: 15s
 
@@ -483,28 +344,34 @@ scrape_configs:
       - targets: ["{{.Name}}:8080"]
 `
 
-func ensurePrometheusConfig(composePath, appName string) (bool, error) {
-	configPath := filepath.Join(filepath.Dir(composePath), "prometheus.yml")
-	if _, err := os.Stat(configPath); err == nil {
-		return false, nil
-	} else if !os.IsNotExist(err) {
-		return false, fmt.Errorf("add: stat prometheus config: %w", err)
+// planPrometheusConfig (GIN-006) adds the prometheus.yml creation to the
+// plan when the integration is prometheus and the config does not exist yet.
+func planPrometheusConfig(prj *project.Project, p *plan.Plan) error {
+	configPath := filepath.Join(prj.Root, "devops", "docker", "prometheus.yml")
+	if _, err := os.Stat(configPath); err == nil || !os.IsNotExist(err) {
+		return nil
+	}
+
+	// App name: infer from the compose when it exists, fallback "app".
+	appName := "app"
+	composePath := filepath.Join(prj.Root, "devops", "docker", "docker-compose.yml")
+	if data, err := os.ReadFile(composePath); err == nil {
+		var compose composeFile
+		if yaml.Unmarshal(data, &compose) == nil && compose.Services != nil {
+			appName = detectComposeAppService(compose.Services)
+		}
 	}
 
 	var rendered strings.Builder
 	tmpl, err := template.New("prometheus-compose-config").Parse(prometheusComposeConfigTmpl)
 	if err != nil {
-		return false, fmt.Errorf("add: parse prometheus config template: %w", err)
+		return fmt.Errorf("prometheus config template: %w", err)
 	}
 	if err := tmpl.Execute(&rendered, struct{ Name string }{Name: appName}); err != nil {
-		return false, fmt.Errorf("add: render prometheus config template: %w", err)
+		return fmt.Errorf("prometheus config render: %w", err)
 	}
-
-	if err := os.WriteFile(configPath, []byte(rendered.String()), 0644); err != nil {
-		return false, fmt.Errorf("add: write prometheus config: %w", err)
-	}
-
-	return true, nil
+	p.AddCreate(configPath, []byte(rendered.String()), false)
+	return nil
 }
 
 func detectComposeAppService(services map[string]composeService) string {
@@ -769,6 +636,14 @@ func Plan(name string, prj *project.Project, overwrite bool) (*plan.Plan, error)
 	if composeEntry != nil {
 		ownedEntries = append(ownedEntries, *composeEntry)
 	}
+
+	// prometheus.yml entra no plano (antes só o legado criava — gap da
+	// migração plan-based). Idempotente: cria apenas se não existir.
+	if name == "prometheus" {
+		if err := planPrometheusConfig(prj, p); err != nil {
+			return nil, err
+		}
+	}
 	if len(ownedEntries) > 0 {
 		if err := manifest.PlanUpdate(p, ownedEntries...); err != nil {
 			return nil, err
@@ -984,38 +859,4 @@ func planComposePatch(prj *project.Project, p *plan.Plan, ownership *manifest.Ma
 
 func isWritable(change plan.PlannedChange) bool {
 	return change.Type == plan.ChangeCreate || change.Type == plan.ChangeModify
-}
-
-func enableSwaggerRoutes() error {
-	projectRoot := "."
-	routerPath := filepath.Join(projectRoot, "internal", "api", "router.go")
-	data, err := os.ReadFile(routerPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("add swagger: internal/api/router.go not found; swagger integration requires a service project")
-		}
-		return fmt.Errorf("add swagger: read router: %w", err)
-	}
-
-	content := string(data)
-	if strings.Contains(content, "registerSwaggerRoutes(r)") {
-		return nil
-	}
-
-	const marker = "\tv1 := r.Group(\"/api/v1\", middlewares.RequestID)\n"
-	if !strings.Contains(content, marker) {
-		return fmt.Errorf("add swagger: could not locate API group registration in %s", routerPath)
-	}
-
-	updated := strings.Replace(content, marker, "\tregisterSwaggerRoutes(r)\n"+marker, 1)
-	if err := os.WriteFile(routerPath, []byte(updated), 0644); err != nil {
-		return fmt.Errorf("add swagger: write router: %w", err)
-	}
-
-	return nil
-}
-
-// enableSwaggerRoutesWrapper wraps enableSwaggerRoutes for the registry (legacy API).
-func enableSwaggerRoutesWrapper() error {
-	return enableSwaggerRoutes()
 }
