@@ -17,13 +17,23 @@
 //	        }
 //	    })
 //	}
+//
+// Hardening (GIN-003): Handle applies safe defaults — 64 KiB payload limit,
+// same-origin check, per-message read deadline and masked-frame enforcement.
+// Use HandleWithOptions to override (e.g. allow a dev frontend on another port):
+//
+//	ws.HandleWithOptions(w, r, ws.Options{
+//	    CheckOrigin: func(r *http.Request) bool { return true },
+//	}, fn)
 package ws
 
 import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"sync"
+	"time"
 )
 
 // ErrUpgradeFailed is returned when the HTTP→WebSocket upgrade fails.
@@ -35,6 +45,55 @@ var ErrUpgradeFailed = errors.New("ws: upgrade failed")
 type Message struct {
 	Type string `json:"type"`
 	Data any    `json:"data,omitempty"`
+}
+
+// Options configures connection hardening. Zero values adopt the safe
+// defaults documented on each field.
+type Options struct {
+	// MaxMessageSize caps the payload of an incoming frame in bytes.
+	// 0 → 64 KiB (DefaultMaxMessageSize). Negative → unlimited (not recommended).
+	MaxMessageSize int64
+	// CheckOrigin validates the Origin header. nil → same-origin policy
+	// (Origin host must match the request Host; requests without Origin —
+	// non-browser clients — are allowed).
+	CheckOrigin func(r *http.Request) bool
+	// ReadTimeout is the per-message read deadline. 0 → 60s.
+	// Negative → no deadline (not recommended; idle connections never expire).
+	ReadTimeout time.Duration
+}
+
+// DefaultMaxMessageSize is the default per-frame payload cap (64 KiB).
+const DefaultMaxMessageSize int64 = 64 << 10
+
+// DefaultReadTimeout is the default per-message read deadline.
+const DefaultReadTimeout = 60 * time.Second
+
+// effective resolves the zero-value defaults.
+func (o Options) effective() Options {
+	if o.MaxMessageSize == 0 {
+		o.MaxMessageSize = DefaultMaxMessageSize
+	}
+	if o.CheckOrigin == nil {
+		o.CheckOrigin = sameOrigin
+	}
+	if o.ReadTimeout == 0 {
+		o.ReadTimeout = DefaultReadTimeout
+	}
+	return o
+}
+
+// sameOrigin implements the default same-origin policy (GIN-003).
+func sameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		// Non-browser clients (CLI tools, tests) may omit Origin.
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return u.Host == r.Host
 }
 
 // Conn wraps the underlying connection with typed send/receive helpers.
@@ -66,12 +125,15 @@ func (c *Conn) Close() error {
 // Handler is a function that handles a WebSocket connection.
 type Handler func(conn *Conn)
 
-// Handle upgrades the HTTP connection to WebSocket and calls fn.
-// It uses the standard HTTP hijack mechanism via golang.org/x/net/websocket
-// semantics but implemented over net/http for zero extra dependencies.
-//
-// The connection is closed automatically when fn returns.
+// Handle upgrades the HTTP connection to WebSocket and calls fn with the
+// safe defaults (see Options).
 func Handle(w http.ResponseWriter, r *http.Request, fn Handler) {
+	HandleWithOptions(w, r, Options{}, fn)
+}
+
+// HandleWithOptions upgrades the HTTP connection to WebSocket with explicit
+// hardening options and calls fn. The connection is closed when fn returns.
+func HandleWithOptions(w http.ResponseWriter, r *http.Request, opts Options, fn Handler) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, ErrUpgradeFailed.Error(), http.StatusInternalServerError)
@@ -90,6 +152,12 @@ func Handle(w http.ResponseWriter, r *http.Request, fn Handler) {
 		return
 	}
 
+	effective := opts.effective()
+	if !effective.CheckOrigin(r) {
+		http.Error(w, "ws: origin not allowed", http.StatusForbidden)
+		return
+	}
+
 	accept := computeAccept(key)
 
 	w.Header().Set("Upgrade", "websocket")
@@ -102,9 +170,17 @@ func Handle(w http.ResponseWriter, r *http.Request, fn Handler) {
 		return
 	}
 
+	limits := frameLimits{maxSize: effective.MaxMessageSize, readDeadline: effective.ReadTimeout}
+	if effective.MaxMessageSize < 0 {
+		limits.maxSize = 0 // unlimited
+	}
+	if effective.ReadTimeout < 0 {
+		limits.readDeadline = 0 // no deadline
+	}
+
 	conn := &Conn{
 		enc:    json.NewEncoder(newFrameWriter(netConn)),
-		dec:    json.NewDecoder(newFrameReader(buf, netConn)),
+		dec:    json.NewDecoder(newFrameReader(buf, netConn, limits)),
 		closer: netConn,
 	}
 	defer conn.Close()
