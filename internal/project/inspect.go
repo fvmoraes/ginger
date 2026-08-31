@@ -18,12 +18,16 @@ type PathStatus struct {
 	Files  int    `json:"files,omitempty"`
 }
 
-// Route describes an explicitly annotated or recognizable HTTP route.
+// Route describes an HTTP route discovered in the project.
+// Source/Confidence (GIN-014): annotation (authoritative) > ast (composed
+// prefixes, real call expressions) > regex fallback.
 type Route struct {
-	Method string `json:"method"`
-	Path   string `json:"path"`
-	File   string `json:"file"`
-	Line   int    `json:"line"`
+	Method     string `json:"method"`
+	Path       string `json:"path"`
+	File       string `json:"file"`
+	Line       int    `json:"line"`
+	Source     string `json:"source,omitempty"`
+	Confidence string `json:"confidence,omitempty"`
 }
 
 // Inspection is the stable, serializable project analysis model.
@@ -130,7 +134,11 @@ func Inspect(p *Project) (*Inspection, error) {
 		if strings.HasSuffix(lower, ".go") {
 			generatedSwagger := strings.HasSuffix(lower, "/swagger.go") && strings.Contains(text, "Arquivo gerado pelo Ginger")
 			if !generatedSwagger {
-				report.Routes = append(report.Routes, scanRoutes(text, rel)...)
+				// GIN-014: AST first (composed prefixes, annotations with
+				// high confidence); regex fallback fills gaps at low confidence.
+				astFound := astRoutes(text, rel)
+				regexFound := scanRoutes(text, rel)
+				report.Routes = append(report.Routes, mergeRouteResults(astFound, regexFound)...)
 			}
 		}
 		return nil
