@@ -30,9 +30,10 @@ type AppConfig struct {
 
 // HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
-	Host            string `yaml:"host"`
-	Port            int    `yaml:"port"`
-	ShutdownTimeout int    `yaml:"shutdown_timeout"` // seconds
+	Host              string `yaml:"host"`
+	Port              int    `yaml:"port"`
+	ShutdownTimeout   int    `yaml:"shutdown_timeout"`    // seconds
+	ReadHeaderTimeout int    `yaml:"read_header_timeout"` // seconds; 0 → 5s (GIN-023, anti-slowloris)
 }
 
 // DatabaseConfig holds SQL database connection settings.
@@ -73,7 +74,7 @@ func Load(path string) (*Config, error) {
 func defaults() *Config {
 	return &Config{
 		App:      AppConfig{Name: "ginger-app", Env: "development", Version: "0.0.1"},
-		HTTP:     HTTPConfig{Host: "0.0.0.0", Port: 8080, ShutdownTimeout: 30},
+		HTTP:     HTTPConfig{Host: "0.0.0.0", Port: 8080, ShutdownTimeout: 30, ReadHeaderTimeout: 5},
 		Log:      LogConfig{Level: "info", Format: "json"},
 		Database: DatabaseConfig{MaxOpen: 25, MaxIdle: 5},
 	}

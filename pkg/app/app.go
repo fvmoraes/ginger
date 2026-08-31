@@ -71,12 +71,20 @@ func (a *App) OnStop(fn func(context.Context) error) {
 // Run starts the HTTP server and blocks until a signal is received.
 func (a *App) Run() error {
 	addr := fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port)
+
+	// GIN-023: anti-slowloris. 0 (unset config) → safe 5s default.
+	headerTimeout := a.Config.HTTP.ReadHeaderTimeout
+	if headerTimeout <= 0 {
+		headerTimeout = 5
+	}
+
 	a.server = &http.Server{
-		Addr:         addr,
-		Handler:      a.Router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:              addr,
+		Handler:           a.Router,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: time.Duration(headerTimeout) * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	errCh := make(chan error, 1)

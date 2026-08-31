@@ -5,6 +5,8 @@ package health
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -20,7 +22,12 @@ type Checker interface {
 type Status struct {
 	Name    string `json:"name"`
 	Healthy bool   `json:"healthy"`
-	Error   string `json:"error,omitempty"`
+	// Error previously exposed err.Error() directly (GIN-022 — could leak
+	// DSNs/hosts). Kept for backward compatibility, now filled with the
+	// stable ErrorCode; full error details go to the server log only.
+	Error string `json:"error,omitempty"`
+	// ErrorCode is a stable, non-sensitive identifier for the failure (GIN-022).
+	ErrorCode string `json:"error_code,omitempty"`
 }
 
 // Response is the full health check payload.
@@ -66,7 +73,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			s := Status{Name: c.Name(), Healthy: true}
 			if err := c.Check(r.Context()); err != nil {
 				s.Healthy = false
-				s.Error = err.Error()
+				// GIN-022: log the full error server-side; expose only a
+				// stable code — err.Error() may embed DSNs/hosts.
+				s.ErrorCode = errorCodeFor(err)
+				s.Error = s.ErrorCode
+				log.Printf("health: checker %q failed: %v", s.Name, err)
 			}
 			statuses[i] = s
 		}()
@@ -93,4 +104,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+}
+
+// errorCodeFor derives a stable, non-sensitive code from the error type
+// (context deadline, timeouts, or a generic FAILURE bucket).
+func errorCodeFor(err error) string {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "TIMEOUT"
+	case errors.Is(err, context.Canceled):
+		return "CANCELED"
+	default:
+		return "CHECK_FAILED"
+	}
 }

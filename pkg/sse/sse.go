@@ -28,6 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // ErrStreamingUnsupported is returned when the ResponseWriter does not
@@ -53,10 +54,11 @@ type Stream struct {
 }
 
 // New prepares w for SSE and returns a Stream.
-// Returns ErrStreamingUnsupported if w does not implement http.Flusher.
+// Flushers are resolved through Unwrap chains (GIN-013) so SSE works behind
+// wrapping middlewares. Returns ErrStreamingUnsupported if none is reachable.
 func New(w http.ResponseWriter) (*Stream, error) {
-	f, ok := w.(http.Flusher)
-	if !ok {
+	f := flusherOf(w)
+	if f == nil {
 		return nil, ErrStreamingUnsupported
 	}
 	h := w.Header()
@@ -69,19 +71,40 @@ func New(w http.ResponseWriter) (*Stream, error) {
 	return &Stream{w: w, flusher: f}, nil
 }
 
+// flusherOf finds the http.Flusher, unwrapping ResponseWriter wrappers.
+func flusherOf(w http.ResponseWriter) http.Flusher {
+	if f, ok := w.(http.Flusher); ok {
+		return f
+	}
+	if u, ok := w.(interface{ Unwrap() http.ResponseWriter }); ok {
+		return flusherOf(u.Unwrap())
+	}
+	return nil
+}
+
 // Send writes a single SSE event to the client and flushes immediately.
+//
+// Injection-safe (GIN-012): multi-line payloads are split into multiple
+// `data:` lines (per the SSE spec) and CR/LF are stripped from ID, Type and
+// comments so user-controlled content can never forge protocol fields.
 func (s *Stream) Send(e Event) error {
 	if e.Retry > 0 {
-		fmt.Fprintf(s.w, "retry: %d\n", e.Retry)
+		if _, err := fmt.Fprintf(s.w, "retry: %d\n", e.Retry); err != nil {
+			return err
+		}
 	}
 	if e.ID != "" {
-		fmt.Fprintf(s.w, "id: %s\n", e.ID)
+		if _, err := fmt.Fprintf(s.w, "id: %s\n", stripBreaks(e.ID)); err != nil {
+			return err
+		}
 	}
 	eventType := e.Type
 	if eventType == "" {
 		eventType = "message"
 	}
-	fmt.Fprintf(s.w, "event: %s\n", eventType)
+	if _, err := fmt.Fprintf(s.w, "event: %s\n", stripBreaks(eventType)); err != nil {
+		return err
+	}
 
 	// Encode Data as JSON if it's not already a string.
 	var payload string
@@ -98,13 +121,33 @@ func (s *Stream) Send(e Event) error {
 		payload = string(b)
 	}
 
-	fmt.Fprintf(s.w, "data: %s\n\n", payload)
+	for _, line := range payloadLines(payload) {
+		if _, err := fmt.Fprintf(s.w, "data: %s\n", line); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprint(s.w, "\n"); err != nil {
+		return err
+	}
 	s.flusher.Flush()
 	return nil
 }
 
 // SendComment writes an SSE comment line (ignored by clients, useful as keepalive).
 func (s *Stream) SendComment(comment string) {
-	fmt.Fprintf(s.w, ": %s\n\n", comment)
+	_, _ = fmt.Fprintf(s.w, ": %s\n\n", stripBreaks(comment))
 	s.flusher.Flush()
+}
+
+// stripBreaks removes CR/LF sequences that would terminate an SSE field early.
+func stripBreaks(s string) string {
+	r := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ")
+	return r.Replace(s)
+}
+
+// payloadLines splits a payload into SSE data lines, normalizing CRLF.
+func payloadLines(payload string) []string {
+	normalized := strings.ReplaceAll(payload, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	return strings.Split(normalized, "\n")
 }

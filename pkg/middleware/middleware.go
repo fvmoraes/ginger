@@ -183,9 +183,16 @@ func resolveOrigin(requestOrigin string, allowed []string) string {
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code.
+// Unwrap (GIN-013) lets http.ResponseController reach the underlying
+// Flusher/Hijacker so SSE and WebSocket handlers work behind this middleware.
 type responseWriter struct {
 	http.ResponseWriter
 	status int
+}
+
+// Unwrap implements the http.ResponseController unwrapping convention.
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
