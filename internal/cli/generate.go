@@ -59,6 +59,11 @@ func runGenerate(args []string) {
 	if len(filtered) > 0 {
 		name = filtered[0]
 	}
+	// GIN-020: extra positional arguments were silently ignored before.
+	if len(filtered) > 1 {
+		fmt.Fprintf(os.Stderr, "error: unexpected extra argument %q — generate accepts <kind> [name]\n", filtered[1])
+		os.Exit(2)
+	}
 	requiresName := kind == "crud" || kind == "c" || kind == "command" || kind == "handler" || kind == "service"
 	if requiresName && name == "" {
 		fmt.Fprintf(os.Stderr, "usage: ginger generate %s <name> [--plan] [--force]\n", kind)

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"github.com/fvmoraes/ginger/internal/project"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,7 @@ func TestDetectCmdDirRejectsMultipleEntrypoints(t *testing.T) {
 		}
 	}
 
-	_, err = detectCmdDir()
+	_, err = detectCmdDir(tmp)
 	if err == nil || !strings.Contains(err.Error(), "multiple app entrypoints found") {
 		t.Fatalf("expected multiple entrypoints error, got %v", err)
 	}
@@ -44,7 +45,7 @@ func TestReadModulePath(t *testing.T) {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
 
-	got, err := readModulePath(goModPath)
+	got, err := project.ReadModulePath(goModPath)
 	if err != nil {
 		t.Fatalf("readModulePath returned error: %v", err)
 	}
@@ -91,7 +92,7 @@ func TestCLIBuildFlagArgsUsesProjectMetadata(t *testing.T) {
 	}
 	defer func() { gitOutput = originalGitOutput }()
 
-	got := cliBuildFlagArgs()
+	got := cliBuildFlagArgs(".")
 	if len(got) != 2 || got[0] != "-ldflags" {
 		t.Fatalf("cliBuildFlagArgs() = %v, want -ldflags pair", got)
 	}

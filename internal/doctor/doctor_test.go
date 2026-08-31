@@ -1,132 +1,87 @@
 package doctor
 
 import (
-	"bytes"
-	"io"
 	"os"
-	"strings"
+	"path/filepath"
+
 	"testing"
+
+	"github.com/fvmoraes/ginger/internal/project"
+	"github.com/fvmoraes/ginger/internal/scaffold"
 )
 
-func TestEvaluateChecksReturnsFalseWhenAnyCheckFails(t *testing.T) {
-	results, sum, allOK := evaluateChecks([]check{
-		{label: "ok", fn: func() checkResult { return checkResult{state: checkPass} }},
-		{label: "skip", fn: func() checkResult { return checkResult{state: checkSkip, reason: "not installed"} }},
-		{label: "fail", fn: func() checkResult { return checkResult{state: checkFail} }},
-	})
-
-	if allOK {
-		t.Fatal("expected allOK to be false when a check fails")
+// TestDiagnoseFreshServiceScaffold (GIN-008): doctor 0 falhas em scaffold novo.
+func TestDiagnoseFreshServiceScaffold(t *testing.T) {
+	dir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir: %v", err)
 	}
-	if len(results) != 3 {
-		t.Fatalf("expected 3 evaluated checks, got %d", len(results))
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
+
+	if err := scaffold.NewProject("demo", "service"); err != nil {
+		t.Fatalf("scaffold: %v", err)
 	}
-	if sum.passed != 1 || sum.skipped != 1 || sum.failed != 1 {
-		t.Fatalf("unexpected summary: %+v", sum)
-	}
-}
-
-func TestEvaluateChecksReturnsTrueWhenNoCheckFails(t *testing.T) {
-	_, sum, allOK := evaluateChecks([]check{
-		{label: "ok", fn: func() checkResult { return checkResult{state: checkPass} }},
-		{label: "skip", fn: func() checkResult { return checkResult{state: checkSkip, reason: "not installed"} }},
-	})
-
-	if !allOK {
-		t.Fatal("expected allOK to be true when no check fails")
-	}
-	if sum.passed != 1 || sum.skipped != 1 || sum.failed != 0 {
-		t.Fatalf("unexpected summary: %+v", sum)
-	}
-}
-
-func TestCheckLintSkipsWhenGolangCILintIsMissing(t *testing.T) {
-	originalLookPath := lookPath
-	lookPath = func(file string) (string, error) {
-		return "", errNotFound(file)
-	}
-	defer func() {
-		lookPath = originalLookPath
-	}()
-
-	result := checkLint()
-	if result.state != checkSkip {
-		t.Fatalf("expected checkSkip, got %v", result.state)
-	}
-}
-
-func TestRunReportsExecutedChecksWhenSomeAreSkipped(t *testing.T) {
-	originalChecks := defaultChecks
-	defaultChecks = func() []check {
-		return []check{
-			{label: "ok", fn: func() checkResult { return checkResult{state: checkPass} }},
-			{label: "skip", fn: func() checkResult { return checkResult{state: checkSkip, reason: "not installed"} }},
-		}
-	}
-	defer func() { defaultChecks = originalChecks }()
-
-	output := captureStdout(t, func() {
-		if !Run() {
-			t.Fatal("expected Run to return true")
-		}
-	})
-
-	if !strings.Contains(output, "All executed checks passed. Passed: 1, Skipped: 1.") {
-		t.Fatalf("unexpected output: %s", output)
-	}
-}
-
-func TestRunReportsCountsWhenChecksFail(t *testing.T) {
-	originalChecks := defaultChecks
-	defaultChecks = func() []check {
-		return []check{
-			{label: "ok", fn: func() checkResult { return checkResult{state: checkPass} }},
-			{label: "fail", fn: func() checkResult { return checkResult{state: checkFail} }},
-		}
-	}
-	defer func() { defaultChecks = originalChecks }()
-
-	output := captureStdout(t, func() {
-		if Run() {
-			t.Fatal("expected Run to return false")
-		}
-	})
-
-	if !strings.Contains(output, "Some checks failed. Passed: 1, Failed: 1, Skipped: 0.") {
-		t.Fatalf("unexpected output: %s", output)
-	}
-}
-
-type notFoundError string
-
-func (e notFoundError) Error() string { return string(e) }
-
-func errNotFound(file string) error {
-	return notFoundError(file + " not found")
-}
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	originalStdout := os.Stdout
-	r, w, err := os.Pipe()
+	root := filepath.Join(dir, "demo")
+	prj, err := project.Load(root)
 	if err != nil {
-		t.Fatalf("Pipe returned error: %v", err)
+		t.Fatalf("load: %v", err)
 	}
-	os.Stdout = w
 
-	outputCh := make(chan string, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		outputCh <- buf.String()
-	}()
+	d, err := Diagnose(prj)
+	if err != nil {
+		t.Fatalf("Diagnose: %v", err)
+	}
+	if !d.Healthy() {
+		for _, c := range d.Checks {
+			if c.Status == "fail" {
+				t.Errorf("unexpected fail: %s — %s", c.Name, c.Detail)
+			}
+		}
+	}
+	// Catalogued capabilities must appear.
+	found := false
+	for _, name := range d.AvailableCapabilities {
+		if name == "postgres" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("postgres capability missing from available list")
+	}
+}
 
-	fn()
+// TestDiagnosticHealthySemantics: warn não é fail (GIN-008).
+func TestDiagnosticHealthySemantics(t *testing.T) {
+	d := &Diagnostic{Root: "/x"}
+	d.Checks = append(d.Checks, DiagnosticCheck{Name: "a", Status: "pass"})
+	if !d.Healthy() {
+		t.Fatal("pass-only diagnostic must be healthy")
+	}
+	d.Checks = append(d.Checks, DiagnosticCheck{Name: "tests", Status: "warn"})
+	if !d.Healthy() {
+		t.Fatal("warn must not make the diagnostic unhealthy (GIN-008)")
+	}
+	d.Checks = append(d.Checks, DiagnosticCheck{Name: "vet", Status: "fail"})
+	if d.Healthy() {
+		t.Fatal("fail must make the diagnostic unhealthy")
+	}
+}
 
-	_ = w.Close()
-	os.Stdout = originalStdout
-	output := <-outputCh
-	_ = r.Close()
-	return output
+// TestMissingDepsDetection: padrões de dependência ausente (GIN-008).
+func TestMissingDepsDetection(t *testing.T) {
+	cases := []struct {
+		detail string
+		want   bool
+	}{
+		{"cmd/x/main.go:1: missing go.sum entry for module providing package", true},
+		{"no required module provides package github.com/x/y", true},
+		{"cannot find package \"x\"", true},
+		{"expected declaration, found badcode", false},
+	}
+	for _, c := range cases {
+		if got := missingDeps(c.detail); got != c.want {
+			t.Errorf("missingDeps(%q) = %v, want %v", c.detail, got, c.want)
+		}
+	}
 }

@@ -5,6 +5,7 @@ package capability
 
 import (
 	"fmt"
+	"github.com/fvmoraes/ginger/internal/integrations"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,18 +69,23 @@ func (c *Capability) CheckGoVersion(currentGo string) error {
 // delegated to the integration and generator packages to avoid package cycles.
 func DefaultRegistry() *Registry {
 	r := NewRegistry()
+	// GIN-004: derive capabilities from the integration catalog (single
+	// source of truth) so constraints cannot be bypassed by absence here.
+	for _, spec := range integrations.Catalog() {
+		c := &Capability{
+			Name:        spec.Name,
+			Description: spec.Description,
+			MinGo:       spec.MinGo,
+		}
+		if len(spec.ProjectTypes) > 0 {
+			c.ProjectTypes = spec.ProjectTypes
+		}
+		r.Register(c)
+	}
+	// Non-integration capabilities (generators/features, not `add` targets).
 	for _, c := range []*Capability{
-		{Name: "swagger", Description: "OpenAPI documentation", ProjectTypes: []string{"service"}},
 		{Name: "tests", Description: "Tests for existing code"},
 		{Name: "docker", Description: "Container development files"},
-		{Name: "postgres", Description: "PostgreSQL adapter"},
-		{Name: "mysql", Description: "MySQL adapter"},
-		{Name: "sqlite", Description: "SQLite adapter"},
-		{Name: "redis", Description: "Redis adapter"},
-		{Name: "prometheus", Description: "Prometheus metrics", ProjectTypes: []string{"service", "worker"}},
-		{Name: "otel", Description: "OpenTelemetry integration", MinGo: "1.25", ProjectTypes: []string{"service", "worker"}},
-		{Name: "grpc", Description: "gRPC server", ProjectTypes: []string{"service"}},
-		{Name: "mcp", Description: "MCP server", ProjectTypes: []string{"service", "cli"}},
 	} {
 		r.Register(c)
 	}

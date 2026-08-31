@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -34,10 +33,6 @@ type projectData struct {
 	GoVersion     string
 	GingerVersion string
 	UsesGinger    bool
-}
-
-var goVersionOutput = func() ([]byte, error) {
-	return exec.Command("go", "version").Output()
 }
 
 var gingerVersion = buildinfo.Version
@@ -83,7 +78,7 @@ func NewProject(name, projectType string) error {
 		Module:        name,
 		Type:          projectType,
 		CmdDir:        cmdDir,
-		GoVersion:     detectGoVersion(),
+		GoVersion:     detectGoVersion(projectType),
 		GingerVersion: gingerVersion(),
 		UsesGinger:    usesGinger,
 	}
@@ -139,13 +134,19 @@ func NewProject(name, projectType string) error {
 
 const minGoVersion = "1.22"
 
-// detectGoVersion returns the local Go version if >= minGoVersion, otherwise minGoVersion.
-func detectGoVersion() string {
-	out, err := goVersionOutput()
-	if err != nil {
-		return minGoVersion
+// minGoRuntimeVersion is the deterministic floor for projects embedding the
+// Ginger runtime (service/worker): pkg/telemetry (otel) requires Go 1.25,
+// and the `otel` capability blocks older go.mod directives anyway (GIN-028).
+const minGoRuntimeVersion = "1.25"
+
+// detectGoVersion returns the DETERMINISTIC minimum for the project type
+// (GIN-028): scaffolds must not depend on the developer's local toolchain.
+// service/worker embed the Ginger runtime → 1.25; generic/cli → 1.22.
+func detectGoVersion(projectType string) string {
+	if projectType == "service" || projectType == "worker" {
+		return minGoRuntimeVersion
 	}
-	return resolveGoVersion(strings.TrimSpace(string(out)))
+	return minGoVersion
 }
 
 // resolveGoVersion parses "go version go1.X.Y ..." and returns the major.minor,
@@ -270,7 +271,7 @@ func writeTemplate(path, tmplStr string, data any) error {
 	if err != nil {
 		return fmt.Errorf("scaffold: create %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		// titleCase capitalizes the first letter of a string.

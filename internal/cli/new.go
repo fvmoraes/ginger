@@ -39,6 +39,12 @@ func runNew(args []string) {
 	}
 
 	name := fs.Arg(0)
+	// GIN-020: extra positional arguments were silently ignored before.
+	if fs.NArg() > 1 {
+		fmt.Fprintf(os.Stderr, "error: unexpected extra argument %q — only one project name is accepted\n", fs.Arg(1))
+		fmt.Fprintln(os.Stderr, "usage: ginger new <name> [--service|--worker|--cli]")
+		os.Exit(2)
+	}
 
 	projectType := "generic"
 	switch {

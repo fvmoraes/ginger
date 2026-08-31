@@ -38,12 +38,65 @@ var ErrIntegrationExists = errors.New("integration already exists")
 
 var execCommand = exec.Command
 
+// IntegrationSpec holds the declarative metadata of a cataloged integration.
+// GIN-004: single source of truth — the capability registry (constraints) is
+// derived from this catalog, so an integration cannot bypass validations by
+// being absent from it. Unknown integration names now fail closed.
+type IntegrationSpec struct {
+	Name string
+	// Description for help/docs.
+	Description string
+	// Pkg is the `go get` target ("" = stdlib-only).
+	Pkg string
+	// File is the generated file path (relative to the project root).
+	File string
+	// MinGo is the minimum Go version ("" = none).
+	MinGo string
+	// ProjectTypes allowed; empty = allowed for any type.
+	ProjectTypes []string
+}
+
 type integration struct {
 	name         string
+	description  string // GIN-004
+	minGo        string // GIN-004
+	projectTypes []string
 	pkg          string // go get package
 	file         string // output file path
 	tmpl         string // file template
 	postGenerate func() error
+}
+
+// Spec exposes the declarative metadata (GIN-004 catalog).
+func (i integration) Spec() IntegrationSpec {
+	return IntegrationSpec{
+		Name:         i.name,
+		Description:  i.description,
+		Pkg:          i.pkg,
+		File:         i.file,
+		MinGo:        i.minGo,
+		ProjectTypes: i.projectTypes,
+	}
+}
+
+// Catalog returns the declarative specs of every registered integration.
+func Catalog() []IntegrationSpec {
+	names := make([]string, 0, len(registry))
+	for n := range registry {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	specs := make([]IntegrationSpec, 0, len(names))
+	for _, n := range names {
+		specs = append(specs, registry[n].Spec())
+	}
+	return specs
+}
+
+// IsCataloged reports whether the integration exists in the catalog (GIN-004).
+func IsCataloged(name string) bool {
+	_, ok := registry[name]
+	return ok
 }
 
 type composeFile struct {
@@ -93,114 +146,134 @@ func (b *composeBuild) UnmarshalYAML(unmarshal func(interface{}) error) error {
 var registry = map[string]integration{
 	// ── Databases ──────────────────────────────────────────────────────────
 	"postgres": {
-		name: "postgres",
-		pkg:  "github.com/lib/pq",
-		file: "platform/database/postgres.go",
-		tmpl: postgresTmpl,
+		name:        "postgres",
+		description: "PostgreSQL database adapter",
+		pkg:         "github.com/lib/pq",
+		file:        "platform/database/postgres.go",
+		tmpl:        postgresTmpl,
 	},
 	"mysql": {
-		name: "mysql",
-		pkg:  "github.com/go-sql-driver/mysql",
-		file: "platform/database/mysql.go",
-		tmpl: mysqlTmpl,
+		name:        "mysql",
+		description: "MySQL database adapter",
+		pkg:         "github.com/go-sql-driver/mysql",
+		file:        "platform/database/mysql.go",
+		tmpl:        mysqlTmpl,
 	},
 	"sqlite": {
-		name: "sqlite",
-		pkg:  "github.com/mattn/go-sqlite3",
-		file: "platform/database/sqlite.go",
-		tmpl: sqliteTmpl,
+		name:        "sqlite",
+		description: "SQLite database adapter",
+		pkg:         "github.com/mattn/go-sqlite3",
+		file:        "platform/database/sqlite.go",
+		tmpl:        sqliteTmpl,
 	},
 	"sqlserver": {
-		name: "sqlserver",
-		pkg:  "github.com/microsoft/go-mssqldb",
-		file: "platform/database/sqlserver.go",
-		tmpl: sqlserverTmpl,
+		name:        "sqlserver",
+		description: "SQL Server database adapter",
+		pkg:         "github.com/microsoft/go-mssqldb",
+		file:        "platform/database/sqlserver.go",
+		tmpl:        sqlserverTmpl,
 	},
 	"gorm": {
-		name: "gorm", pkg: "gorm.io/gorm", file: "platform/database/gorm.go", tmpl: gormTmpl,
+		name: "gorm", description: "GORM ORM integration", pkg: "gorm.io/gorm", file: "platform/database/gorm.go", tmpl: gormTmpl,
 	},
 	"sqlx": {
-		name: "sqlx", pkg: "github.com/jmoiron/sqlx github.com/lib/pq", file: "platform/database/sqlx.go", tmpl: sqlxTmpl,
+		name: "sqlx", description: "sqlx query builder integration", pkg: "github.com/jmoiron/sqlx github.com/lib/pq", file: "platform/database/sqlx.go", tmpl: sqlxTmpl,
 	},
 	"bun": {
-		name: "bun",
-		pkg:  "github.com/uptrace/bun github.com/uptrace/bun/dialect/pgdialect github.com/uptrace/bun/driver/pgdriver",
-		file: "platform/database/bun.go", tmpl: bunTmpl,
+		name:        "bun",
+		description: "Bun ORM integration",
+		pkg:         "github.com/uptrace/bun github.com/uptrace/bun/dialect/pgdialect github.com/uptrace/bun/driver/pgdriver",
+		file:        "platform/database/bun.go", tmpl: bunTmpl,
 	},
 	// ── Cache ──────────────────────────────────────────────────────────────
 	"redis": {
-		name: "redis",
-		pkg:  "github.com/redis/go-redis/v9",
-		file: "platform/cache/redis.go",
-		tmpl: redisTmpl,
+		name:        "redis",
+		description: "Redis cache client",
+		pkg:         "github.com/redis/go-redis/v9",
+		file:        "platform/cache/redis.go",
+		tmpl:        redisTmpl,
 	},
 	// ── NoSQL / Analytical ─────────────────────────────────────────────────
 	"couchbase": {
-		name: "couchbase",
-		pkg:  "github.com/couchbase/gocb/v2",
-		file: "platform/nosql/couchbase.go",
-		tmpl: couchbaseTmpl,
+		name:        "couchbase",
+		description: "Couchbase NoSQL client",
+		pkg:         "github.com/couchbase/gocb/v2",
+		file:        "platform/nosql/couchbase.go",
+		tmpl:        couchbaseTmpl,
 	},
 	"mongodb": {
-		name: "mongodb",
-		pkg:  "go.mongodb.org/mongo-driver/v2/mongo",
-		file: "platform/nosql/mongo.go",
-		tmpl: mongoTmpl,
+		name:        "mongodb",
+		description: "MongoDB client",
+		pkg:         "go.mongodb.org/mongo-driver/v2/mongo",
+		file:        "platform/nosql/mongo.go",
+		tmpl:        mongoTmpl,
 	},
 	"swagger": {
 		name:         "swagger",
+		description:  "OpenAPI documentation generator",
+		projectTypes: []string{"service"},
 		pkg:          "",
 		file:         "internal/api/swagger.go",
 		tmpl:         swaggerTmpl,
 		postGenerate: enableSwaggerRoutesWrapper,
 	},
 	"clickhouse": {
-		name: "clickhouse",
-		pkg:  "github.com/ClickHouse/clickhouse-go/v2",
-		file: "platform/database/clickhouse.go",
-		tmpl: clickhouseTmpl,
+		name:        "clickhouse",
+		description: "ClickHouse analytical store client",
+		pkg:         "github.com/ClickHouse/clickhouse-go/v2",
+		file:        "platform/database/clickhouse.go",
+		tmpl:        clickhouseTmpl,
 	},
 	// ── Messaging ──────────────────────────────────────────────────────────
 	"kafka": {
-		name: "kafka",
-		pkg:  "github.com/segmentio/kafka-go",
-		file: "platform/messaging/kafka.go",
-		tmpl: kafkaTmpl,
+		name:        "kafka",
+		description: "Kafka producer/consumer",
+		pkg:         "github.com/segmentio/kafka-go",
+		file:        "platform/messaging/kafka.go",
+		tmpl:        kafkaTmpl,
 	},
 	"rabbitmq": {
-		name: "rabbitmq",
-		pkg:  "github.com/rabbitmq/amqp091-go",
-		file: "platform/messaging/rabbitmq.go",
-		tmpl: rabbitmqTmpl,
+		name:        "rabbitmq",
+		description: "RabbitMQ producer/consumer",
+		pkg:         "github.com/rabbitmq/amqp091-go",
+		file:        "platform/messaging/rabbitmq.go",
+		tmpl:        rabbitmqTmpl,
 	},
 	"nats": {
-		name: "nats",
-		pkg:  "github.com/nats-io/nats.go",
-		file: "platform/messaging/nats.go",
-		tmpl: natsTmpl,
+		name:        "nats",
+		description: "NATS producer/consumer",
+		pkg:         "github.com/nats-io/nats.go",
+		file:        "platform/messaging/nats.go",
+		tmpl:        natsTmpl,
 	},
 	"pubsub": {
-		name: "pubsub",
-		pkg:  "cloud.google.com/go/pubsub/v2",
-		file: "platform/messaging/pubsub.go",
-		tmpl: pubsubTmpl,
+		name:        "pubsub",
+		description: "Google Cloud Pub/Sub producer/consumer",
+		pkg:         "cloud.google.com/go/pubsub/v2",
+		file:        "platform/messaging/pubsub.go",
+		tmpl:        pubsubTmpl,
 	},
 	// ── UI / Real-time ─────────────────────────────────────────────────────────
 	"sse": {
-		name: "sse",
-		pkg:  "",
-		file: "internal/api/handlers/sse_handler.go",
-		tmpl: sseTmpl,
+		name:        "sse",
+		description: "Server-Sent Events handler",
+		pkg:         "",
+		file:        "internal/api/handlers/sse_handler.go",
+		tmpl:        sseTmpl,
 	},
 	"websocket": {
-		name: "websocket",
-		pkg:  "",
-		file: "internal/api/handlers/ws_handler.go",
-		tmpl: wsTmpl,
+		name:        "websocket",
+		description: "WebSocket handler",
+		pkg:         "",
+		file:        "internal/api/handlers/ws_handler.go",
+		tmpl:        wsTmpl,
 	},
 	// ── Observability ──────────────────────────────────────────────────────
 	"otel": {
-		name: "otel",
+		name:         "otel",
+		description:  "OpenTelemetry tracing",
+		minGo:        "1.25",
+		projectTypes: []string{"service", "worker"},
 		pkg: "go.opentelemetry.io/otel@v1.43.0 " +
 			"go.opentelemetry.io/otel/sdk@v1.43.0 " +
 			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@v1.43.0",
@@ -208,24 +281,59 @@ var registry = map[string]integration{
 		tmpl: otelTmpl,
 	},
 	"prometheus": {
-		name: "prometheus",
-		pkg:  "github.com/prometheus/client_golang/prometheus",
-		file: "platform/metrics/prometheus.go",
-		tmpl: prometheusTmpl,
+		name:         "prometheus",
+		description:  "Prometheus metrics endpoint",
+		projectTypes: []string{"service", "worker"},
+		pkg:          "github.com/prometheus/client_golang/prometheus",
+		file:         "platform/metrics/prometheus.go",
+		tmpl:         prometheusTmpl,
 	},
 	// ── Protocols ──────────────────────────────────────────────────────────
 	"grpc": {
-		name: "grpc",
-		pkg:  "google.golang.org/grpc",
-		file: "platform/grpc/server.go",
-		tmpl: grpcTmpl,
+		name:         "grpc",
+		description:  "gRPC server integration",
+		projectTypes: []string{"service"},
+		pkg:          "google.golang.org/grpc",
+		file:         "platform/grpc/server.go",
+		tmpl:         grpcTmpl,
 	},
 	"mcp": {
-		name: "mcp",
-		pkg:  "",
-		file: "platform/mcp/server.go",
-		tmpl: mcpTmpl,
+		name:         "mcp",
+		description:  "Model Context Protocol server",
+		projectTypes: []string{"service", "cli"},
+		pkg:          "",
+		file:         "platform/mcp/server.go",
+		tmpl:         mcpTmpl,
 	},
+}
+
+// ApplyWithRollback (GIN-005) applies the plan, runs PostApply, and undoes
+// the ENTIRE apply (creates + modifies + manifest) if the post-apply step
+// fails — a failed `go get` must not leave half-applied integrations behind.
+func ApplyWithRollback(p *plan.Plan, name, projectRoot string) error {
+	snapshot, err := p.Snapshot()
+	if err != nil {
+		return fmt.Errorf("snapshot before apply: %w", err)
+	}
+
+	if err := p.Apply(); err != nil {
+		return fmt.Errorf("apply: %w", err)
+	}
+
+	if !NeedsPostApply(name, p) {
+		return nil
+	}
+
+	if err := PostApply(name, projectRoot); err != nil {
+		fmt.Fprintf(os.Stderr, "post-apply failed: %v\n", err)
+		fmt.Fprintln(os.Stderr, "↩ rolling back this apply (files restored to pre-apply state)")
+		if rbErr := snapshot.Restore(); rbErr != nil {
+			return fmt.Errorf("post-apply failed (%v) AND rollback failed: %w", err, rbErr)
+		}
+		fmt.Fprintln(os.Stderr, "✓ rollback complete — project restored")
+		return fmt.Errorf("post-apply: %w (apply rolled back)", err)
+	}
+	return nil
 }
 
 // Add generates the integration file and runs go get for the required package.
@@ -260,7 +368,7 @@ func Add(name string) error {
 	if err != nil {
 		return fmt.Errorf("add: create file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	tmpl, err := template.New("").Parse(intg.tmpl)
 	if err != nil {

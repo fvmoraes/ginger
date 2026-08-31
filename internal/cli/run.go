@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
+	"github.com/fvmoraes/ginger/internal/project"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -28,9 +28,21 @@ type projectBuildMetadata struct {
 	Date    string
 }
 
+// projectRoot resolves the project root from the current directory.
+// GIN-009: run/build work from any subdirectory, not just the repo root.
+// Falls back to the CWD when no project root can be detected (keeps the
+// historical behavior outside Ginger projects).
+func projectRoot() string {
+	if root, err := project.FindRoot("."); err == nil && root != "" {
+		return root
+	}
+	return "."
+}
+
 // detectCmdDir finds the only subdirectory of cmd/ that contains a main.go.
-func detectCmdDir() (string, error) {
-	entries, err := os.ReadDir("cmd")
+// Paths are relative to the project root (go run/build must run from there).
+func detectCmdDir(root string) (string, error) {
+	entries, err := os.ReadDir(filepath.Join(root, "cmd"))
 	if err != nil {
 		return "", fmt.Errorf("no cmd/ directory found — are you inside a Ginger project?")
 	}
@@ -40,7 +52,7 @@ func detectCmdDir() (string, error) {
 		if !e.IsDir() {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join("cmd", e.Name(), "main.go")); err == nil {
+		if _, err := os.Stat(filepath.Join(root, "cmd", e.Name(), "main.go")); err == nil {
 			matches = append(matches, "./"+filepath.Join("cmd", e.Name()))
 		}
 	}
@@ -57,7 +69,8 @@ func detectCmdDir() (string, error) {
 }
 
 func runRun(args []string) {
-	cmdDir, err := detectCmdDir()
+	root := projectRoot()
+	cmdDir, err := detectCmdDir(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -67,11 +80,12 @@ func runRun(args []string) {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
-	goArgs := append([]string{"run"}, cliBuildFlagArgs()...)
+	goArgs := append([]string{"run"}, cliBuildFlagArgs(root)...)
 	goArgs = append(goArgs, cmdDir)
 	goArgs = append(goArgs, args...)
 
 	cmd := exec.Command("go", goArgs...)
+	cmd.Dir = root
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -100,7 +114,8 @@ func runRun(args []string) {
 }
 
 func runBuild(args []string) {
-	cmdDir, err := detectCmdDir()
+	root := projectRoot()
+	cmdDir, err := detectCmdDir(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -113,10 +128,11 @@ func runBuild(args []string) {
 		output = args[0]
 	}
 
-	goArgs := append([]string{"build"}, cliBuildFlagArgs()...)
+	goArgs := append([]string{"build"}, cliBuildFlagArgs(root)...)
 	goArgs = append(goArgs, "-o", output, cmdDir)
 
 	cmd := exec.Command("go", goArgs...)
+	cmd.Dir = root
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -126,8 +142,8 @@ func runBuild(args []string) {
 	fmt.Printf("✓ Built: %s\n", output)
 }
 
-func cliBuildFlagArgs() []string {
-	modulePath, ok := detectCLIProjectModule()
+func cliBuildFlagArgs(root string) []string {
+	modulePath, ok := detectCLIProjectModule(root)
 	if !ok {
 		return nil
 	}
@@ -142,12 +158,12 @@ func cliBuildFlagArgs() []string {
 	return []string{"-ldflags", ldflags}
 }
 
-func detectCLIProjectModule() (string, bool) {
-	if _, err := os.Stat(filepath.Join("internal", "commands", "version.go")); err != nil {
+func detectCLIProjectModule(root string) (string, bool) {
+	if _, err := os.Stat(filepath.Join(root, "internal", "commands", "version.go")); err != nil {
 		return "", false
 	}
 
-	modulePath, err := readModulePath("go.mod")
+	modulePath, err := project.ReadModulePath(filepath.Join(root, "go.mod"))
 	if err != nil || modulePath == "" {
 		return "", false
 	}
@@ -170,26 +186,4 @@ func resolveProjectBuildMetadata() projectBuildMetadata {
 	}
 
 	return meta
-}
-
-func readModulePath(goModPath string) (string, error) {
-	f, err := os.Open(goModPath)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "module ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "module ")), nil
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-
-	return "", fmt.Errorf("module path not found in %s", goModPath)
 }

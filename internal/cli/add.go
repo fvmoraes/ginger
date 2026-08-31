@@ -89,18 +89,11 @@ func runAdd(args []string) {
 		return
 	}
 
-	// Apply
-	if err := p.Apply(); err != nil {
-		fmt.Fprintf(os.Stderr, "apply error: %v\n", err)
+	// Apply + post-apply with rollback (GIN-005): a failed `go get` undoes
+	// the whole apply instead of leaving a half-installed integration.
+	if err := integrations.ApplyWithRollback(p, integrationName, root); err != nil {
+		fmt.Fprintf(os.Stderr, "add error: %v\n", err)
 		os.Exit(1)
-	}
-
-	// Run post-apply steps (go get, etc.)
-	if integrations.NeedsPostApply(integrationName, p) {
-		if err := integrations.PostApply(integrationName, root); err != nil {
-			fmt.Fprintf(os.Stderr, "post-apply error: %v\n", err)
-			os.Exit(1)
-		}
 	}
 
 	fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", integrationName)
@@ -127,9 +120,12 @@ func parseAddArgs(args []string) (name string, planOnly, force bool, err error) 
 }
 
 func checkCapabilityConstraints(prj *project.Project, integrationName string) error {
+	// GIN-004: fail-closed — the capability registry is derived from the
+	// integration catalog, so an unknown name here means a programming error
+	// or a tampered invocation path; refusing is safer than silently allowing.
 	capabilityDef, ok := capability.DefaultRegistry().Get(integrationName)
 	if !ok {
-		return nil
+		return fmt.Errorf("integration %q is not cataloged — refusing to bypass constraints", integrationName)
 	}
 	if !capabilityDef.SupportsProjectType(prj.ProjectType()) {
 		return fmt.Errorf("%s supports project types %v, current type is %s", integrationName, capabilityDef.ProjectTypes, prj.ProjectType())

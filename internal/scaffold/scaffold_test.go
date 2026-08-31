@@ -83,15 +83,19 @@ func TestResolveGoVersion(t *testing.T) {
 	}
 }
 
-func TestDetectGoVersionFallsBackOnCommandError(t *testing.T) {
-	original := goVersionOutput
-	goVersionOutput = func() ([]byte, error) {
-		return nil, errors.New("boom")
+func TestDetectGoVersionDeterministicPerType(t *testing.T) {
+	// GIN-028: scaffolds must not depend on the local toolchain.
+	if got := detectGoVersion("generic"); got != minGoVersion {
+		t.Fatalf("generic = %q, want %q", got, minGoVersion)
 	}
-	defer func() { goVersionOutput = original }()
-
-	if got := detectGoVersion(); got != minGoVersion {
-		t.Fatalf("detectGoVersion() = %q, want %q", got, minGoVersion)
+	if got := detectGoVersion("cli"); got != minGoVersion {
+		t.Fatalf("cli = %q, want %q", got, minGoVersion)
+	}
+	if got := detectGoVersion("service"); got != minGoRuntimeVersion {
+		t.Fatalf("service = %q, want %q", got, minGoRuntimeVersion)
+	}
+	if got := detectGoVersion("worker"); got != minGoRuntimeVersion {
+		t.Fatalf("worker = %q, want %q", got, minGoRuntimeVersion)
 	}
 }
 
