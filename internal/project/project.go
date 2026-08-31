@@ -63,6 +63,56 @@ type Project struct {
 	IsGinger bool
 }
 
+// MergeGingerYAML (GIN-021) combines an existing ginger.yaml with the
+// auto-detected defaults: every field the user customized stays, missing
+// fields are filled from the defaults. Merge is field-level over the three
+// sections (project/structure/rules): an existing non-empty value wins.
+func MergeGingerYAML(existing *GingerYAML, detected *GingerYAML) *GingerYAML {
+	if existing == nil {
+		return detected
+	}
+	merged := &GingerYAML{Project: detected.Project, Structure: detected.Structure, Rules: detected.Rules}
+
+	// project: preserve Type/Root when set.
+	if existing.Project.Type != "" {
+		merged.Project.Type = existing.Project.Type
+	}
+	if existing.Project.Root != "" {
+		merged.Project.Root = existing.Project.Root
+	}
+
+	// structure: preserve any non-empty custom path.
+	customPaths := []struct {
+		dst *string
+		src string
+	}{
+		{&merged.Structure.Cmd, existing.Structure.Cmd},
+		{&merged.Structure.API, existing.Structure.API},
+		{&merged.Structure.Handlers, existing.Structure.Handlers},
+		{&merged.Structure.Middlewares, existing.Structure.Middlewares},
+		{&merged.Structure.Models, existing.Structure.Models},
+		{&merged.Structure.Services, existing.Structure.Services},
+		{&merged.Structure.Repositories, existing.Structure.Repositories},
+		{&merged.Structure.Ports, existing.Structure.Ports},
+		{&merged.Structure.Adapters, existing.Structure.Adapters},
+		{&merged.Structure.Config, existing.Structure.Config},
+		{&merged.Structure.Docs, existing.Structure.Docs},
+		{&merged.Structure.Tests, existing.Structure.Tests},
+		{&merged.Structure.Migrations, existing.Structure.Migrations},
+	}
+	for _, p := range customPaths {
+		if p.src != "" {
+			*p.dst = p.src
+		}
+	}
+
+	// rules: preserve explicit settings.
+	merged.Rules.Overwrite = existing.Rules.Overwrite
+	merged.Rules.CreateMissingDirs = existing.Rules.CreateMissingDirs
+	merged.Rules.RequirePlanBeforeApply = existing.Rules.RequirePlanBeforeApply
+	return merged
+}
+
 // DefaultGingerYAML returns a default ginger.yaml for autodetected projects.
 func DefaultGingerYAML(projectType string) *GingerYAML {
 	return &GingerYAML{

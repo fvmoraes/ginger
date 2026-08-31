@@ -27,7 +27,9 @@ func runInit(args []string) {
 	}
 
 	gingerPath := filepath.Join(root, "ginger.yaml")
-	if _, err := os.Stat(gingerPath); err == nil && !*force {
+	existingData, existsErr := os.ReadFile(gingerPath)
+	gingerExists := existsErr == nil
+	if gingerExists && !*force {
 		fmt.Printf("ginger.yaml already exists at %s; nothing changed.\n", gingerPath)
 		return
 	}
@@ -64,6 +66,18 @@ func runInit(args []string) {
 	fmt.Printf("  Tests:   %s\n", tests)
 
 	fmt.Println()
+
+	// GIN-021: `--force` sobre um ginger.yaml existente MERGE em vez de
+	// sobrescrever — campos customizados (structure paths, rules) são
+	// preservados; campos ausentes vêm dos defaults detectados.
+	if gingerExists {
+		var existing project.GingerYAML
+		if err := yaml.Unmarshal(existingData, &existing); err != nil {
+			fmt.Fprintf(os.Stderr, "error: existing ginger.yaml is invalid: %v\n", err)
+			os.Exit(1)
+		}
+		p.YAML = project.MergeGingerYAML(&existing, p.YAML)
+	}
 
 	data, err := yaml.Marshal(p.YAML)
 	if err != nil {
