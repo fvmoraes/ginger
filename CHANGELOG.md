@@ -5,6 +5,34 @@ All notable changes to the Ginger Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-31
+
+### Added
+- Feature improvements and bug fixes
+
+### Commit Summary
+- fix(release): repair YAML syntax blocking the release workflow; SLSA deferred
+- feat(governance): SLSA L3 provenance, Scorecard, SECURITY policy, ADRs, compatibility lifecycle (Fase 5)
+- chore: gofmt routes_ast
+- feat(cli): 128+N exit codes on signals, --json/--quiet, CLI golden tests (GIN-029/020)
+- feat(compose): central Docker services table + port conflict detection (GIN-026, Fase 4)
+- refactor(generator+integrations): remove legacy direct-mutation paths (GIN-006/030)
+- feat(cli): global --root flag for all project commands (GIN-027)
+- feat(inspect): AST-based route discovery with provenance (GIN-014)
+- fix(region): part of regions+catalog validation batch — validation tests, generator close handling, project module path export
+- fix(ci+docs): SHA-pinned actions, CodeQL, Dependabot, SBOM; docs contract; errcheck enabled (GIN-018/019/025)
+- fix(catalog): single source of truth with fail-closed constraints (GIN-004); doctor warnings; CLI arity (GIN-008/009/016/020/028)
+- fix(regions): explicit validation of malformed markers; rollback on failed post-apply (GIN-015, GIN-005)
+- fix(runtime): SSE escaping, middleware Unwrap, health sanitization, header timeout (GIN-012/013/022/023)
+- fix(install): verify checksums, temp dir, https-strict (GIN-011); flip CI gates to blocking (Fase 1)
+- fix(release): commit version files before tag; dist/ artifacts; loop guard (GIN-001, GIN-017)
+- fix(init): --force merges custom ginger.yaml (GIN-021)
+- fix(telemetry): bump otel 1.43.0 and grpc 1.82.1 (GIN-010)
+- fix(compose): conditional merge by provenance hash (GIN-002)
+- fix(ws): enforce frame limits, origin check and deadlines (GIN-003)
+- ci: add baseline CI and characterization suite (Fase 0)
+- chore: remove tracked binaries from repo (D-09)
+
 ## [1.4.3] - 2026-06-29
 
 ### Fixed
@@ -317,3 +345,4 @@ Verify downloads with `checksums.txt`.
 [1.3.6]: https://github.com/fvmoraes/ginger/releases/tag/v1.3.6
 [1.4.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.0
 [1.4.3]: https://github.com/fvmoraes/ginger/releases/tag/v1.4.3
+[1.5.0]: https://github.com/fvmoraes/ginger/releases/tag/v1.5.0
