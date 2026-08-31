@@ -1,0 +1,3 @@
+exit: 2
+error: unexpected extra argument "bar" — only one project name is accepted
+usage: ginger new <name> [--service|--worker|--cli]

@@ -4,6 +4,7 @@ package plan
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -176,6 +177,32 @@ func (p *Plan) AddWarning(msg string) { p.Warnings = append(p.Warnings, msg) }
 func (p *Plan) AddError(msg string) { p.Errors = append(p.Errors, msg) }
 
 // Render prints the plan in a human-readable format.
+// RenderJSON (GIN-020) returns the plan as machine-readable JSON for CI.
+func (p *Plan) RenderJSON() string {
+	type change struct {
+		Type   string `json:"type"`
+		Path   string `json:"path"`
+		Reason string `json:"reason,omitempty"`
+	}
+	type out struct {
+		Root     string   `json:"root"`
+		Changes  []change `json:"changes"`
+		Warnings []string `json:"warnings,omitempty"`
+		Errors   []string `json:"errors,omitempty"`
+	}
+	o := out{Root: p.ProjectRoot, Changes: []change{}}
+	for _, c := range p.Changes {
+		o.Changes = append(o.Changes, change{Type: string(c.Type), Path: relPath(p.ProjectRoot, c.Path), Reason: c.Reason})
+	}
+	o.Warnings = p.Warnings
+	o.Errors = p.Errors
+	data, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
 func (p *Plan) Render() {
 	fmt.Println()
 	fmt.Println("Plan:")

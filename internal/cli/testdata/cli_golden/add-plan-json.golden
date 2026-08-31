@@ -1,0 +1,22 @@
+exit: 0
+{
+  "root": "<ROOT>",
+  "changes": [
+    {
+      "type": "create",
+      "path": "platform/cache/redis.go"
+    },
+    {
+      "type": "create",
+      "path": ".ginger/patches/devops/docker/docker-compose.yml.patch"
+    },
+    {
+      "type": "create",
+      "path": ".ginger/manifest.yaml"
+    }
+  ],
+  "warnings": [
+    "apply will run 'go get github.com/redis/go-redis/v9' from the project root",
+    "compose file is not Ginger-owned; proposed content written to .ginger/patches/devops/docker/docker-compose.yml.patch"
+  ]
+}

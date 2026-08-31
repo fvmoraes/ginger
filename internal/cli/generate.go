@@ -21,6 +21,8 @@ func runGenerate(args []string) {
 	planOnly := false
 	force := false
 	scan := false
+	asJSON := false
+	quiet := false
 	filtered := make([]string, 0, len(rest))
 	for _, arg := range rest {
 		switch arg {
@@ -30,6 +32,10 @@ func runGenerate(args []string) {
 			force = true
 		case "--scan":
 			scan = true
+		case "--json":
+			asJSON = true
+		case "--quiet":
+			quiet = true
 		default:
 			filtered = append(filtered, arg)
 		}
@@ -72,6 +78,7 @@ func runGenerate(args []string) {
 
 	var generationPlan interface {
 		Render()
+		RenderJSON() string
 		HasErrors() bool
 		HasChanges() bool
 		Apply() error
@@ -85,7 +92,14 @@ func runGenerate(args []string) {
 		fmt.Fprintf(os.Stderr, "generate error: %v\n", err)
 		os.Exit(1)
 	}
-	generationPlan.Render()
+	switch {
+	case asJSON:
+		fmt.Println(generationPlan.RenderJSON())
+	case quiet:
+		// nothing
+	default:
+		generationPlan.Render()
+	}
 	if planOnly {
 		return
 	}

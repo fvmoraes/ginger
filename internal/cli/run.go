@@ -86,6 +86,7 @@ func runRun(args []string) {
 
 	cmd := exec.Command("go", goArgs...)
 	cmd.Dir = root
+	setupProcessGroup(cmd) // GIN-029: signal reaches go run AND the app
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -106,10 +107,16 @@ func runRun(args []string) {
 			os.Exit(1)
 		}
 	case sig := <-sigCh:
-		if cmd.Process != nil {
-			_ = cmd.Process.Signal(sig)
-		}
+		_ = signalChild(cmd, sig)
 		<-waitCh
+		// GIN-029: Ctrl-C must not look like success for scripts — exit
+		// 128+N for the signal we received (the child's own exit code is an
+		// implementation detail of `go run`, which reports 1 even when its
+		// grandchild died by signal).
+		if s, ok := sig.(syscall.Signal); ok {
+			os.Exit(128 + int(s))
+		}
+		os.Exit(1)
 	}
 }
 

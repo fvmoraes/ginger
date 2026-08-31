@@ -35,7 +35,7 @@ Flags:
   --force   Overwrite existing files`
 
 func runAdd(args []string) {
-	integrationName, planOnly, force, err := parseAddArgs(args)
+	integrationName, planOnly, force, asJSON, quiet, err := parseAddArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "add arguments: %v\n\n%s\n", err, addUsage)
 		os.Exit(2)
@@ -72,8 +72,15 @@ func runAdd(args []string) {
 		os.Exit(1)
 	}
 
-	// Render plan
-	p.Render()
+	// Render plan (GIN-020): --json for CI, --quiet to silence output.
+	switch {
+	case asJSON:
+		fmt.Println(p.RenderJSON())
+	case quiet:
+		// nothing
+	default:
+		p.Render()
+	}
 
 	if planOnly {
 		return
@@ -96,27 +103,33 @@ func runAdd(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", integrationName)
+	if !quiet {
+		fmt.Printf("\n✓ Integration '%s' added successfully!\n\n", integrationName)
+	}
 }
 
-func parseAddArgs(args []string) (name string, planOnly, force bool, err error) {
+func parseAddArgs(args []string) (name string, planOnly, force, asJSON, quiet bool, err error) {
 	for _, arg := range args {
 		switch arg {
 		case "--plan":
 			planOnly = true
 		case "--force":
 			force = true
+		case "--json":
+			asJSON = true
+		case "--quiet":
+			quiet = true
 		default:
 			if strings.HasPrefix(arg, "-") {
-				return "", false, false, fmt.Errorf("unknown flag %s", arg)
+				return "", false, false, false, false, fmt.Errorf("unknown flag %s", arg)
 			}
 			if name != "" {
-				return "", false, false, fmt.Errorf("expected one integration, got %q and %q", name, arg)
+				return "", false, false, false, false, fmt.Errorf("expected one integration, got %q and %q", name, arg)
 			}
 			name = arg
 		}
 	}
-	return name, planOnly, force, nil
+	return name, planOnly, force, asJSON, quiet, nil
 }
 
 func checkCapabilityConstraints(prj *project.Project, integrationName string) error {
