@@ -16,7 +16,7 @@ func runInit(args []string) {
 	force := fs.Bool("force", false, "overwrite existing ginger.yaml")
 	fs.Parse(args) //nolint:errcheck
 
-	root, err := project.FindRoot(".")
+	root, err := resolveRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v; ginger init requires an existing Go project with go.mod\n", err)
 		os.Exit(1)

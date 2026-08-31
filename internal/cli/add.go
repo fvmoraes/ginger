@@ -46,7 +46,7 @@ func runAdd(args []string) {
 	}
 
 	// Find project root and load project context
-	root, err := project.FindRoot(".")
+	root, err := resolveRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		fmt.Fprintln(os.Stderr, "Run 'ginger init' to initialize a project or create one with 'ginger new'.")

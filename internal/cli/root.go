@@ -5,9 +5,25 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fvmoraes/ginger/internal/buildinfo"
+	"github.com/fvmoraes/ginger/internal/project"
 )
+
+// rootOverride is set by the global --root flag (GIN-027): run commands
+// against a project root other than the current directory.
+var rootOverride string
+
+// resolveRoot returns the effective project root: --root when given,
+// otherwise FindRoot from the CWD ("" when no project is detected — callers
+// handle the empty case like they handled a FindRoot error).
+func resolveRoot() (string, error) {
+	if rootOverride != "" {
+		return rootOverride, nil
+	}
+	return project.FindRoot(".")
+}
 
 // Run is the CLI entrypoint. It dispatches to the appropriate subcommand.
 func Run() {
@@ -18,6 +34,25 @@ func Run() {
 
 	cmd := os.Args[1]
 	args := os.Args[2:]
+
+	// Global --root flag (GIN-027): extracted before command-specific parsing.
+	var filtered []string
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--root":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "error: --root requires a directory argument")
+				os.Exit(2)
+			}
+			rootOverride = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--root="):
+			rootOverride = strings.TrimPrefix(args[i], "--root=")
+		default:
+			filtered = append(filtered, args[i])
+		}
+	}
+	args = filtered
 
 	switch cmd {
 	case "new":

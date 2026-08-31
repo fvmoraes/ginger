@@ -5,39 +5,6 @@ import (
 	"testing"
 )
 
-func TestRunGenerateTestRejectsLegacyScopes(t *testing.T) {
-	err := runGenerateTest([]string{"user", "all"})
-	if err == nil {
-		t.Fatal("expected legacy scope error, got nil")
-	}
-
-	if !strings.Contains(err.Error(), "test scopes are no longer supported") {
-		t.Fatalf("expected legacy scope guidance, got %v", err)
-	}
-}
-
-func TestRunGenerateTestRequiresNameOrApp(t *testing.T) {
-	err := runGenerateTest(nil)
-	if err == nil {
-		t.Fatal("expected usage error, got nil")
-	}
-
-	if !strings.Contains(err.Error(), "usage: ginger generate test <name|app>") {
-		t.Fatalf("expected usage error, got %v", err)
-	}
-}
-
-func TestRunGenerateSmokeTestRejectsArguments(t *testing.T) {
-	err := runGenerateSmokeTest([]string{"app"})
-	if err == nil {
-		t.Fatal("expected usage error, got nil")
-	}
-
-	if !strings.Contains(err.Error(), "usage: ginger generate smoke-test") {
-		t.Fatalf("expected smoke-test usage error, got %v", err)
-	}
-}
-
 func TestValidateGeneratorForProjectType(t *testing.T) {
 	tests := []struct {
 		name        string

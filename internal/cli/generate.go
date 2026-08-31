@@ -36,7 +36,7 @@ func runGenerate(args []string) {
 	}
 
 	// Find project root
-	root, err := project.FindRoot(".")
+	root, err := resolveRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		fmt.Fprintln(os.Stderr, "Run 'ginger init' to initialize a project or create one with 'ginger new'.")
@@ -120,31 +120,6 @@ flags:
   --plan                   print the complete plan without writing
   --force                  explicitly replace existing targets
   --scan                   scan existing handlers/services/repositories`
-}
-
-func runGenerateTest(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: ginger generate test <name|app>")
-	}
-
-	if len(args) > 1 {
-		return fmt.Errorf("test scopes are no longer supported; use 'ginger generate test <name>' or 'ginger generate test app'")
-	}
-
-	name := args[0]
-	if name == "app" {
-		return generator.AppTest()
-	}
-
-	return generator.Tests(name)
-}
-
-func runGenerateSmokeTest(args []string) error {
-	if len(args) > 0 {
-		return fmt.Errorf("usage: ginger generate smoke-test")
-	}
-
-	return generator.AppTest()
 }
 
 func validateGeneratorForProjectType(projectType, kind string) error {

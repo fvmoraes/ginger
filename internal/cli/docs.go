@@ -16,7 +16,7 @@ func runDocs(args []string) {
 		fmt.Fprintf(os.Stderr, "docs flags: %v\n", err)
 		os.Exit(2)
 	}
-	root, err := project.FindRoot(".")
+	root, err := resolveRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "docs error: %v\n", err)
 		os.Exit(1)

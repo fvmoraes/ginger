@@ -33,7 +33,7 @@ type projectBuildMetadata struct {
 // Falls back to the CWD when no project root can be detected (keeps the
 // historical behavior outside Ginger projects).
 func projectRoot() string {
-	if root, err := project.FindRoot("."); err == nil && root != "" {
+	if root, err := resolveRoot(); err == nil && root != "" {
 		return root
 	}
 	return "."
