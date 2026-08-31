@@ -1,0 +1,4 @@
+create platform/cache/redis.go
+modify devops/docker/docker-compose.yml (safe managed update)
+modify .ginger/manifest.yaml (safe managed update)
+warn: apply will run 'go get github.com/redis/go-redis/v9' from the project root

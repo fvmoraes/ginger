@@ -773,6 +773,19 @@ exercise_service_integrations() {
 	assert_file "$SERVICE_PROJECT/platform/database/sqlite.go"
 	assert_file "$SERVICE_PROJECT/platform/nosql/mongo.go"
 	assert_file "$SERVICE_PROJECT/internal/api/swagger.go"
+
+	# Fase 0 (tarefa 8a-i, R1): caracterização do compose de scaffold novo —
+	# cada integração com infra local deve registrar seu serviço no compose.
+	local compose_file="$SERVICE_PROJECT/devops/docker/docker-compose.yml"
+	assert_file "$compose_file"
+	local svc
+	for svc in postgres mysql redis kafka rabbitmq nats mongodb clickhouse couchbase prometheus otel-collector; do
+		if ! grep -qE "^ {2,4}${svc}:" "$compose_file"; then
+			echo "Scenario (i): expected compose service '${svc}' after add (compose: $compose_file)" >&2
+			return 1
+		fi
+	done
+	note "Scenario (i) OK: fresh-scaffold compose contains all infra services"
 }
 
 exercise_service_generators() {

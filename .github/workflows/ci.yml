@@ -1,0 +1,146 @@
+# CI — Fase 0 (D-06, GIN-025)
+# Proteção de baseline: testes, race, lint, govulncheck, builds multiplataforma
+# e guard de binários rastreados (D-09).
+# Actions por tag por enquanto; pin por SHA entra na Fase 2 (GIN-018).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard-tracked-binaries:
+    name: Guard — no tracked binaries (D-09)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if bin/ or releases/ are tracked
+        run: |
+          if [ -n "$(git ls-files bin/ releases/)" ]; then
+            echo "::error::D-09 violation — binaries must live only in GitHub Releases"
+            git ls-files bin/ releases/
+            exit 1
+          fi
+          echo "OK: no tracked binaries"
+
+  test:
+    name: test (go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.24', '1.25', '1.26']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: go build
+        run: go build ./...
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+
+  race:
+    name: race (go 1.25)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: go test -race
+        run: go test -race ./...
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          args: --timeout 5m
+
+  govulncheck-root:
+    name: govulncheck (root module)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: govulncheck ./...
+        run: govulncheck ./...
+
+  telemetry:
+    name: telemetry submodule (build/vet/test + govulncheck)
+    runs-on: ubuntu-latest
+    continue-on-error: true # vira blocking após a Fase 1 corrigir GIN-010
+    defaults:
+      run:
+        working-directory: pkg/telemetry
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: go build/vet/test
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  crossbuild:
+    name: crossbuild (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Build (CGO disabled, H1 smoke)
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: go build -o dist/ginger ./cmd/ginger
+
+  compose-characterization:
+    name: compose characterization (offline asserts)
+    runs-on: ubuntu-latest
+    continue-on-error: true # cenário (ii) falha hoje (GIN-002); vira blocking na Fase 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - name: Run compose characterization suite
+        run: bash scripts/test-ginger-compose.sh
