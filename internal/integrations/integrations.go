@@ -817,10 +817,25 @@ func planComposePatch(prj *project.Project, p *plan.Plan, ownership *manifest.Ma
 	}
 	appName := detectComposeAppService(compose.Services)
 	app := compose.Services[appName]
+
+	// GIN-026: snapshot published ports BEFORE the merge to detect collisions
+	// between the integration's services and everything already declared.
+	publishedBefore := map[string]string{} // hostPort → owning service
+	for svcName, svc := range compose.Services {
+		for _, mapping := range svc.Ports {
+			publishedBefore[hostPort(mapping)] = svcName
+		}
+	}
+
 	if !mergeIntegrationIntoCompose(&compose, appName, &app, name) {
 		return nil, nil
 	}
 	compose.Services[appName] = app
+
+	for _, conflict := range detectPortConflicts(publishedBefore, DockerServicesByIntegration[name]) {
+		p.AddWarning(fmt.Sprintf("port conflict: %s is already published by service %q — adjust one of them before running docker compose", conflict.hostPort, conflict.owner))
+	}
+
 	out, err := yaml.Marshal(&compose)
 	if err != nil {
 		return nil, err
