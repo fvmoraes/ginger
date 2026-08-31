@@ -133,13 +133,9 @@ func Handle(w http.ResponseWriter, r *http.Request, fn Handler) {
 
 // HandleWithOptions upgrades the HTTP connection to WebSocket with explicit
 // hardening options and calls fn. The connection is closed when fn returns.
+// Hijackers are resolved through Unwrap chains (GIN-013) so WebSocket works
+// behind wrapping middlewares.
 func HandleWithOptions(w http.ResponseWriter, r *http.Request, opts Options, fn Handler) {
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		http.Error(w, ErrUpgradeFailed.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	// Perform the WebSocket handshake manually (RFC 6455).
 	if !isWebSocketUpgrade(r) {
 		http.Error(w, "ws: not a websocket upgrade request", http.StatusBadRequest)
@@ -155,6 +151,12 @@ func HandleWithOptions(w http.ResponseWriter, r *http.Request, opts Options, fn 
 	effective := opts.effective()
 	if !effective.CheckOrigin(r) {
 		http.Error(w, "ws: origin not allowed", http.StatusForbidden)
+		return
+	}
+
+	hj := hijackerOf(w)
+	if hj == nil {
+		http.Error(w, ErrUpgradeFailed.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -183,7 +185,7 @@ func HandleWithOptions(w http.ResponseWriter, r *http.Request, opts Options, fn 
 		dec:    json.NewDecoder(newFrameReader(buf, netConn, limits)),
 		closer: netConn,
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	fn(conn)
 }
 
@@ -192,4 +194,15 @@ func isWebSocketUpgrade(r *http.Request) bool {
 	return r.Method == http.MethodGet &&
 		r.Header.Get("Upgrade") == "websocket" &&
 		r.Header.Get("Connection") == "Upgrade"
+}
+
+// hijackerOf finds the http.Hijacker, unwrapping ResponseWriter wrappers.
+func hijackerOf(w http.ResponseWriter) http.Hijacker {
+	if h, ok := w.(http.Hijacker); ok {
+		return h
+	}
+	if u, ok := w.(interface{ Unwrap() http.ResponseWriter }); ok {
+		return hijackerOf(u.Unwrap())
+	}
+	return nil
 }

@@ -158,7 +158,7 @@ func TestUnmaskedFrameRejected(t *testing.T) {
 	if _, err := conn.Write([]byte{first, byte(len(`{}`)), '{', '}'}); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	_, err := io.ReadAll(conn)
 	if err != nil {
 		t.Fatalf("expected clean EOF after unmasked frame, got %v", err)
@@ -171,7 +171,7 @@ func TestOversizedFrameRejected(t *testing.T) {
 
 	conn, _ := dialWS(t, url, "")
 	clientSendFrame(t, conn, 0x1, bytes.Repeat([]byte("a"), 65))
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	_, err := io.ReadAll(conn)
 	if err != nil {
 		t.Fatalf("expected clean EOF after oversized frame, got %v", err)
@@ -189,7 +189,7 @@ func TestHugeDeclaredLengthRejected(t *testing.T) {
 	if _, err := conn.Write(header); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	_, err := io.ReadAll(conn)
 	if err != nil {
 		t.Fatalf("expected clean EOF for huge declared length, got %v", err)
@@ -276,7 +276,7 @@ func TestReadTimeoutClosesIdleConn(t *testing.T) {
 
 	conn, _ := dialWS(t, url, "")
 	start := time.Now()
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, err := io.ReadAll(conn)
 	elapsed := time.Since(start)
 	if err != nil {

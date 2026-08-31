@@ -89,7 +89,7 @@ func Error(w http.ResponseWriter, err error) {
 // The body is limited to 1 MiB to prevent resource exhaustion.
 // Returns a BadRequest AppError on malformed JSON.
 func Decode(r *http.Request, v any) error {
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(v); err != nil {
 		return apperrors.BadRequest("invalid request body")
 	}
