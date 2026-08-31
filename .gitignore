@@ -42,6 +42,8 @@ my-local/
 
 # Build artifacts
 bin/
+dist/
+releases/
 *.exe
 
 # dwyt
