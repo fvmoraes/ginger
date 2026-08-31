@@ -1,10 +1,9 @@
-# Fase 0 (GIN-025/D-06): lint mínimo para CI verde.
-# errcheck (9 issues) será habilitado na Fase 2 junto com a limpeza de erros.
+# Fase 2 (GIN-025): all default linters enabled — errcheck cleaned up.
 version: "2"
 
 linters:
-  disable:
-    - errcheck
+  enable-all: false
+  disable: []
 
 issues:
   max-issues-per-linter: 0

@@ -233,6 +233,59 @@ func (p *Plan) Apply() error {
 	return nil
 }
 
+// Snapshot captures the on-disk state of every writable change so a failed
+// apply+post-apply sequence can be undone (GIN-005 — N4: restores creates,
+// modifies and the manifest, not just created files).
+type Snapshot struct {
+	root    string
+	entries []snapshotEntry
+}
+
+type snapshotEntry struct {
+	path    string
+	existed bool
+	content []byte
+	mode    os.FileMode
+}
+
+// Snapshot reads the current state of the files this plan would change.
+// Call BEFORE Apply().
+func (p *Plan) Snapshot() (*Snapshot, error) {
+	s := &Snapshot{root: p.ProjectRoot}
+	for _, c := range p.Changes {
+		if c.Type != ChangeCreate && c.Type != ChangeModify {
+			continue
+		}
+		e := snapshotEntry{path: c.Path, mode: 0o644}
+		if data, err := os.ReadFile(c.Path); err == nil {
+			e.existed = true
+			e.content = data
+			if info, statErr := os.Stat(c.Path); statErr == nil {
+				e.mode = info.Mode()
+			}
+		}
+		s.entries = append(s.entries, e)
+	}
+	return s, nil
+}
+
+// Restore undoes the plan's writes: created files are removed and modified
+// files are rewritten with their pre-apply content.
+func (s *Snapshot) Restore() error {
+	for _, e := range s.entries {
+		if !e.existed {
+			if err := os.Remove(e.path); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("rollback: remove created %s: %w", e.path, err)
+			}
+			continue
+		}
+		if err := os.WriteFile(e.path, e.content, e.mode); err != nil {
+			return fmt.Errorf("rollback: restore %s: %w", e.path, err)
+		}
+	}
+	return nil
+}
+
 func (p *Plan) preflight(c *PlannedChange) error {
 	if c.Type != ChangeCreate && c.Type != ChangeModify {
 		return nil
@@ -312,7 +365,7 @@ func (p *Plan) writeModify(c PlannedChange) error {
 		return fmt.Errorf("create temporary file for %s: %w", c.Path, err)
 	}
 	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 	mode := c.expectedMode
 	if mode == 0 {
 		mode = 0o644

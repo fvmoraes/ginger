@@ -76,10 +76,10 @@ Não usamos frameworks de DI. Construtores explícitos:
 @Inject
 var userService UserService
 
-// Bom (explícito)
-userRepo := repositories.NewUserRepository(db)
+// Bom (explícito) — este é o código que `ginger generate crud user` produz:
+userRepo := adapters.NewUserMemoryRepository()
 userService := services.NewUserService(userRepo)
-userHandler := handlers.NewUserHandler(userService)
+handlers.NewUserHandler(userService).Register(r)
 ```
 
 ### 3. Interfaces no Consumidor

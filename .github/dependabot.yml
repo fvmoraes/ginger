@@ -1,0 +1,16 @@
+# Dependabot (GIN-018): keep Go modules and GitHub Actions current.
+# The telemetry submodule gets its own entry (separate go.mod).
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /pkg/telemetry
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
