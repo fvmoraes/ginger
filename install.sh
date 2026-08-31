@@ -101,16 +101,58 @@ if [ "$OS" = "windows" ]; then
     BINARY="${BINARY}.exe"
 fi
 
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY}"
+BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+DOWNLOAD_URL="${BASE_URL}/${BINARY}"
+
+# Temp working dir — never overwrite a user file named ./ginger in the CWD.
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
+cd "$WORK_DIR"
 
 echo "📦 Downloading ${BINARY}..."
 if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$DOWNLOAD_URL" -o ginger
+    curl --proto '=https' -fsSL "$DOWNLOAD_URL" -o ginger
 elif command -v wget >/dev/null 2>&1; then
     wget -q "$DOWNLOAD_URL" -O ginger
 else
     echo "❌ Neither curl nor wget found. Please install one of them."
     exit 1
+fi
+
+# Verify the published checksum (GIN-011). Missing checksums.txt → explicit
+# warning and continue (forks/mirrors/old releases); mismatch → hard failure.
+CHECKSUM_URL="${BASE_URL}/checksums.txt"
+if command -v curl >/dev/null 2>&1; then
+    curl --proto '=https' -fsSL "$CHECKSUM_URL" -o checksums.txt 2>/dev/null || \
+    curl --proto '=https' -fsSL "$CHECKSUM_URL" -o checksums.txt
+elif command -v wget >/dev/null 2>&1; then
+    wget -q "$CHECKSUM_URL" -O checksums.txt || { echo "⚠ checksums.txt not found for ${VERSION} — skipping verification"; }
+fi
+
+if [ -f checksums.txt ]; then
+    EXPECTED="$(grep " ${BINARY}\$" checksums.txt | awk '{print $1}')"
+    if [ -z "$EXPECTED" ]; then
+        echo "⚠ ${BINARY} not listed in checksums.txt — skipping verification"
+    else
+        if command -v sha256sum >/dev/null 2>&1; then
+            ACTUAL="$(sha256sum ginger | awk '{print $1}')"
+        elif command -v shasum >/dev/null 2>&1; then
+            ACTUAL="$(shasum -a 256 ginger | awk '{print $1}')"
+        else
+            ACTUAL=""
+            echo "⚠ no sha256sum/shasum available — skipping checksum verification"
+        fi
+        if [ -n "$ACTUAL" ]; then
+            if [ "$ACTUAL" = "$EXPECTED" ]; then
+                echo "🔒 Checksum verified"
+            else
+                echo "❌ Checksum mismatch for ${BINARY}!"
+                echo "   expected: ${EXPECTED}"
+                echo "   actual:   ${ACTUAL}"
+                exit 1
+            fi
+        fi
+    fi
 fi
 
 chmod +x ginger
