@@ -90,7 +90,7 @@ jobs:
   telemetry:
     name: telemetry submodule (build/vet/test + govulncheck)
     runs-on: ubuntu-latest
-    continue-on-error: true # vira blocking após a Fase 1 corrigir GIN-010
+    # GIN-010 corrigido na Fase 1: blocking a partir de agora.
     defaults:
       run:
         working-directory: pkg/telemetry
@@ -134,13 +134,13 @@ jobs:
         run: go build -o dist/ginger ./cmd/ginger
 
   compose-characterization:
-    name: compose characterization (offline asserts)
+    name: compose characterization (GIN-002 gate)
     runs-on: ubuntu-latest
-    continue-on-error: true # cenário (ii) falha hoje (GIN-002); vira blocking na Fase 1
+    # GIN-002 corrigido na Fase 1: strict gate a partir de agora.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-      - name: Run compose characterization suite
-        run: bash scripts/test-ginger-compose.sh
+      - name: Run compose characterization suite (strict)
+        run: bash scripts/test-ginger-compose.sh --strict
