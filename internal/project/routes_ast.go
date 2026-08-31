@@ -25,7 +25,7 @@ const (
 // router at the call site inherits that prefix (GIN-014 — the generated code
 // pattern `v1 := r.Group("/api/v1"); registerCoreRoutes(v1)` needs it).
 type routeGroupPrefixes struct {
-	prefixes map[string]string // identifier → prefix
+	prefixes map[string]string            // identifier → prefix
 	byFunc   map[string]map[string]string // funcName → paramName → prefix
 }
 
