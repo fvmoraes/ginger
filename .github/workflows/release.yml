@@ -12,8 +12,7 @@ on:
         options: [auto, major, minor, patch, skip]
         default: auto
 
-permissions:
-  contents: write
+permissions: {}
 
 # GIN-017: uma run por ref; a segunda espera (não cria estado inconsistente).
 concurrency:
@@ -21,11 +20,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    # R2 (GIN-001): o commit de versionamento é feito pelo bot — esta condição
-    # evita re-disparo em loop; [skip ci] na mensagem é a segunda barreira.
+  prepare:
+    # R2 (GIN-001): o commit de versionamento é feito pelo bot — condição +
+    # [skip ci] na mensagem evitam re-disparo em loop.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    outputs:
+      bump: ${{ steps.bump.outputs.type }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      run_config: ${{ steps.runconfig.outputs.run_config }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -38,7 +42,6 @@ jobs:
       - name: Determine bump type
         id: bump
         run: |
-          # Force override from manual dispatch
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             case "${{ inputs.bump }}" in
               major|minor|patch) echo "type=${{ inputs.bump }}" >> $GITHUB_OUTPUT; exit 0 ;;
@@ -46,7 +49,6 @@ jobs:
             esac
           fi
 
-          # Get latest tag
           LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
           if [[ -z "$LATEST_TAG" ]]; then
             echo "No tags found — skipping"
@@ -54,14 +56,12 @@ jobs:
             exit 0
           fi
 
-          # Check if current HEAD is already tagged
           if git describe --tags --exact-match HEAD >/dev/null 2>&1; then
             echo "HEAD already tagged — skipping"
             echo "type=skip" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Analyze conventional commits since last tag
           COMMITS=$(git log --pretty=format:'%s' "$LATEST_TAG..HEAD")
           if [[ -z "$COMMITS" ]]; then
             echo "No new commits since $LATEST_TAG — skipping"
@@ -103,7 +103,6 @@ jobs:
           NEW_VERSION="$MAJOR.$MINOR.$PATCH"
           NEW_TAG="v$NEW_VERSION"
 
-          # GIN-017: proteção contra tag duplicada (reexecuções/races).
           if git ls-remote --tags origin "refs/tags/$NEW_TAG" | grep -q "$NEW_TAG"; then
             echo "::error::Tag $NEW_TAG already exists on origin — aborting (previous release partially done?)"
             exit 1
@@ -147,7 +146,6 @@ jobs:
             MSG="Maintenance and internal improvements"
           fi
 
-          # Build changelog entry
           ENTRY=$'## ['$VERSION$'] - '$DATE$'\n\n### '$SECTION$'\n- '$MSG$'\n\n### Commit Summary'
           while IFS= read -r line; do
             ENTRY+=$'\n- '$line
@@ -169,7 +167,6 @@ jobs:
             echo "[$VERSION]: https://github.com/${{ github.repository }}/releases/tag/$TAG" >> CHANGELOG.md
           fi
 
-          # GIN-017: corpo do release com o mesmo conteúdo do changelog.
           {
             echo "### ${SECTION}"
             echo "- ${MSG}"
@@ -178,25 +175,13 @@ jobs:
             while IFS= read -r line; do echo "- $line"; done <<< "$COMMITS"
           } > body.md
 
-      - name: Build binaries (D-09: artifacts live in dist/, never tracked)
+      - name: Save release body
         if: steps.bump.outputs.type != 'skip'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          DIST_DIR="dist"
-          mkdir -p "$DIST_DIR"
-
-          for platform in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64"; do
-            IFS='/' read -r GOOS GOARCH <<< "$platform"
-            OUTPUT="$DIST_DIR/ginger-$GOOS-$GOARCH"
-            [[ "$GOOS" == "windows" ]] && OUTPUT+=".exe"
-            echo "  → $GOOS/$GOARCH → $OUTPUT"
-            GOOS="$GOOS" GOARCH="$GOARCH" \
-              go build -ldflags="-s -w -X github.com/fvmoraes/ginger/internal/buildinfo.releaseVersion=$VERSION" \
-              -o "$OUTPUT" ./cmd/ginger
-          done
-
-          cd "$DIST_DIR"
-          shasum -a 256 ginger-* > checksums.txt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-body
+          path: body.md
+          retention-days: 5
 
       - name: Commit version files, tag, and push (GIN-001)
         if: steps.bump.outputs.type != 'skip'
@@ -207,8 +192,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # A tag passa a apontar para um commit que CONTÉM os metadados da
-          # própria versão (version.txt/badge/CHANGELOG coerentes).
           git add internal/buildinfo/version.txt README.md CHANGELOG.md
           if git diff --cached --quiet; then
             echo "No version file changes to commit"
@@ -220,25 +203,82 @@ jobs:
           git tag -a "$TAG" -m "Release $VERSION"
           git push origin "$TAG"
 
-      - name: Create GitHub Release
+      - name: Emit SLSA run-config (Fase 5 — provenance)
+        id: runconfig
         if: steps.bump.outputs.type != 'skip'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          {
+            echo 'run_config<<EOF_RUNCONFIG'
+            cat <<'YAML' | sed "s/__VERSION__/${VERSION}/g"
+          version: 1
+          runner: ubuntu-latest
+          command: |
+            set -euo pipefail
+            mkdir -p dist
+            for platform in "linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64"; do
+              GOOS="${platform%/*}"; GOARCH="${platform#*/}"
+              OUT="dist/ginger-$GOOS-$GOARCH"
+              [[ "$GOOS" == "windows" ]] && OUT+=".exe"
+              echo "  → $GOOS/$GOARCH → $OUT"
+              GOOS="$GOOS" GOARCH="$GOARCH" \
+                go build -ldflags="-s -w -X github.com/fvmoraes/ginger/internal/buildinfo.releaseVersion=__VERSION__" \
+                -o "$OUT" ./cmd/ginger
+            done
+            ( cd dist && shasum -a 256 ginger-* > checksums.txt )
+          YAML
+            echo 'EOF_RUNCONFIG'
+          } >> "$GITHUB_OUTPUT"
+
+  # Fase 5: SLSA L3 provenance — the reusable builder controls the build.
+  build:
+    needs: [prepare]
+    if: needs.prepare.outputs.bump != 'skip'
+    permissions:
+      id-token: write # for SLSA provenance
+      contents: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generic_slsa3.yml@5a775b367a56d5bd118a224a811bba288150a563 # v2.0.0
+    with:
+      go-version: "1.25"
+      run-config: ${{ needs.prepare.outputs.run_config }}
+    secrets: inherit
+
+  release:
+    needs: [build, prepare]
+    if: needs.prepare.outputs.bump != 'skip'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built artifacts (dist/ + provenance)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: dist*
+          merge-multiple: true
+          path: dist
+
+      - name: Download release body
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-body
+          path: .
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Ginger Framework ${{ steps.version.outputs.tag }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Ginger Framework ${{ needs.prepare.outputs.tag }}
           body_path: body.md
           files: |
-            dist/ginger-linux-amd64
-            dist/ginger-linux-arm64
-            dist/ginger-darwin-amd64
-            dist/ginger-darwin-arm64
-            dist/ginger-windows-amd64.exe
-            dist/checksums.txt
+            dist/*
           make_latest: true
 
       - name: Attach SBOM (SPDX, GIN-018)
-        if: steps.bump.outputs.type != 'skip'
         uses: anchore/sbom-action@df80a981bc6edbc4e220a492d3cbe9f5547a6e75 # v0.17.9
         with:
           format: spdx-json
-          artifact-name: ginger-${{ steps.version.outputs.version }}.spdx.json
+          artifact-name: ginger-${{ needs.prepare.outputs.version }}.spdx.json
