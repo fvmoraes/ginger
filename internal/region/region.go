@@ -19,6 +19,76 @@ type Region struct {
 	End     int
 }
 
+// marker is a parsed region marker with its position.
+type marker struct {
+	kind     string // "begin" | "end"
+	name     string
+	line     int // 1-based, for error messages
+	startIdx int // byte offset of the line start
+	endIdx   int // byte offset of the line end (exclusive)
+}
+
+// parseMarkers extracts and positions every region marker in the content.
+func parseMarkers(content string) []marker {
+	var out []marker
+	for _, loc := range regionPattern.FindAllStringSubmatchIndex(content, -1) {
+		kind := content[loc[2]:loc[3]]
+		name := content[loc[4]:loc[5]]
+		lineEnd := strings.Index(content[loc[0]:], "\n")
+		lineNo := 1 + strings.Count(content[:loc[0]], "\n")
+		end := len(content)
+		if lineEnd >= 0 {
+			end = loc[0] + lineEnd
+		}
+		out = append(out, marker{kind: kind, name: name, line: lineNo, startIdx: loc[0], endIdx: end})
+	}
+	return out
+}
+
+// ValidateRegions (GIN-015) verifies that every marker pairs correctly.
+// It reports: unclosed begins, orphan ends, duplicated regions, nested and
+// interleaved regions — all of which previously produced silent no-ops.
+func ValidateRegions(content string) error {
+	ms := parseMarkers(content)
+	seenOpen := map[string]marker{} // region name → its begin marker
+	closed := map[string]int{}      // region name → times closed
+	lastBegin := marker{}
+	haveLastBegin := false
+
+	for _, m := range ms {
+		switch m.kind {
+		case "begin":
+			if haveLastBegin {
+				// A begin while another region is open: nested or interleaved.
+				return fmt.Errorf("region %q (line %d): nested or interleaved region %q (line %d) is not supported — close %q first",
+					lastBegin.name, lastBegin.line, m.name, m.line, lastBegin.name)
+			}
+			if prev, dup := seenOpen[m.name]; dup {
+				return fmt.Errorf("region %q duplicated (first at line %d, duplicate at line %d) — update it with ReplaceRegion instead",
+					m.name, prev.line, m.line)
+			}
+			seenOpen[m.name] = m
+			lastBegin = m
+			haveLastBegin = true
+		case "end":
+			if !haveLastBegin {
+				return fmt.Errorf("orphan end marker for region %q (line %d) — no begin is open", m.name, m.line)
+			}
+			if m.name != lastBegin.name {
+				return fmt.Errorf("region %q opened at line %d is closed by mismatched end %q (line %d)",
+					lastBegin.name, lastBegin.line, m.name, m.line)
+			}
+			closed[m.name]++
+			haveLastBegin = false
+		}
+	}
+
+	if haveLastBegin {
+		return fmt.Errorf("region %q (line %d) has no end marker", lastBegin.name, lastBegin.line)
+	}
+	return nil
+}
+
 // FindRegion finds a managed region by name in the given content.
 // Returns nil if the region is not found.
 func FindRegion(content, name string) *Region {
@@ -56,9 +126,13 @@ func HasRegion(content, name string) bool {
 	return FindRegion(content, name) != nil
 }
 
-// ReplaceRegion replaces the content of a managed region. If the region does not
-// exist, an error is returned (use InsertRegion for new regions).
+// ReplaceRegion replaces the content of a managed region. If the region does
+// not exist, or the file's markers are malformed, an error is returned
+// (GIN-015 — malformed markers used to fail silently).
 func ReplaceRegion(content, name, replacement string) (string, error) {
+	if err := ValidateRegions(content); err != nil {
+		return "", err
+	}
 	r := FindRegion(content, name)
 	if r == nil {
 		return "", fmt.Errorf("region %q not found", name)
@@ -67,13 +141,24 @@ func ReplaceRegion(content, name, replacement string) (string, error) {
 }
 
 // InsertRegion inserts a new managed region into the content. Returns an error
-// if the region already exists.
+// if the region already exists or the existing markers are malformed (GIN-015).
+// Line endings match the file's dominant style (CRLF preserved — GIN-015).
 func InsertRegion(content, name, insertion string) (string, error) {
+	if err := ValidateRegions(content); err != nil {
+		return "", err
+	}
 	if HasRegion(content, name) {
 		return "", fmt.Errorf("region %q already exists — use ReplaceRegion", name)
 	}
-	marker := fmt.Sprintf("// ginger:begin %s\n%s\n// ginger:end %s\n", name, insertion, name)
-	return content + "\n" + marker, nil
+	eol := "\n"
+	if strings.Count(content, "\r\n") > strings.Count(content, "\n")/2 {
+		eol = "\r\n"
+	}
+	marker := fmt.Sprintf("// ginger:begin %s%s%s%s// ginger:end %s%s", name, eol, insertion, eol, name, eol)
+	if content == "" {
+		return marker, nil
+	}
+	return strings.TrimRight(content, eol) + eol + eol + marker, nil
 }
 
 // ExtractRegions returns all managed regions in the content.

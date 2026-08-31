@@ -211,7 +211,7 @@ func Load(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	if modPath, readErr := readModulePath(filepath.Join(base, "go.mod")); readErr == nil {
+	if modPath, readErr := ReadModulePath(filepath.Join(base, "go.mod")); readErr == nil {
 		p.Module = modPath
 	}
 	if !p.IsGinger {
@@ -231,7 +231,7 @@ func Detect(root string) (*Project, error) {
 		root = resolved
 	}
 	p := &Project{Root: filepath.Clean(root)}
-	if module, readErr := readModulePath(filepath.Join(p.Root, "go.mod")); readErr == nil {
+	if module, readErr := ReadModulePath(filepath.Join(p.Root, "go.mod")); readErr == nil {
 		p.Module = module
 	}
 	p.YAML = autoDetect(p.Root, p.Module)
@@ -577,7 +577,9 @@ func pathWithin(root, candidate string) bool {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
-func readModulePath(goModPath string) (string, error) {
+// ReadModulePath extracts the module path from a go.mod file.
+// Exported for internal consumers (GIN-016 — single source of truth).
+func ReadModulePath(goModPath string) (string, error) {
 	data, err := os.ReadFile(goModPath)
 	if err != nil {
 		return "", err

@@ -273,7 +273,7 @@ func generate(path, tmplStr string, data genData) error {
 	if err != nil {
 		return fmt.Errorf("generator: create %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	tmpl, err := template.New("").Parse(tmplStr)
 	if err != nil {
@@ -337,7 +337,7 @@ func modulePath() string {
 	if err != nil {
 		return "yourmodule"
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
